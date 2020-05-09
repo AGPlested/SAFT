@@ -15,6 +15,7 @@ import scipy.signal as scsig
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 
+#SAFT imports
 from clicker import clickAlgebra
 from peaksDialog import getPeaksDialog
 from resultsDF import Results
