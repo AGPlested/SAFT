@@ -650,7 +650,7 @@ class MainWindow(QMainWindow):
         # pass in any external parameters for the peak extraction
         _peak_t, _ = self.peakResults.getPeaks('Mean', '4 mM')
         
-        #pd.series
+        # pd.series
         print (_peak_t, type(_peak_t))
         
         _sorted_peak_t = _peak_t.sort_values(ascending=True)
@@ -662,7 +662,7 @@ class MainWindow(QMainWindow):
         # returns 1 (works like True) when accept() or 0 (we take for False) otherwise.
         accepted = self.gpd.exec_()
         
-        # data from dialog is stored in its attributes
+        # data from dialog is stored in the attributes of self.gpd
         
         if accepted:
             self.noPeaks = False
@@ -697,12 +697,12 @@ class MainWindow(QMainWindow):
             self.p1.plot(x, y[i], pen=(i,3))
         
             if _sel_set == _set:
-                #curve
+                # curve
                 self.p3.plot(x, y[i], pen=(i,3))
                 
                 xp, yp = self.peaksWrapper(x, y[i], _set)
                 
-                #need to add something to p3 scatter
+                # need to add something to p3 scatter
                 self.p3.plot(xp, yp, name="Peaks "+_set, pen=None, symbol="s", symbolBrush=(i,3))
                 
                 self.cA = clickAlgebra(self.p3)
@@ -715,8 +715,8 @@ class MainWindow(QMainWindow):
         
     def findSimplePeaks(self, xdat, ydat, name='unnamed'):
         """Simple and dumb peak finding algorithm"""
-        #SNR is used as a proxy for prominence in the simple algorithm.
-        #cut_off is not implemented here
+        # SNR is used as a proxy for prominence in the simple algorithm.
+        # cut_off is not implemented here
         self.cwt_SNR = self.cwt_SNR_Spin.value()
         
         peaks, _ = scsig.find_peaks(ydat, prominence=self.cwt_SNR)
@@ -736,8 +736,8 @@ class MainWindow(QMainWindow):
         
     def findcwtPeaks(self, xdat, ydat, name='unnamed'):
         """Find peaks using continuous wavelet transform"""
-        #think about storing per ROI peak data
-        #indexes in peakcwt are not zero-biased
+        # think about storing per ROI peak data
+        # indexes in peakcwt are not zero-biased
         self.cwt_width = self.cwt_w_Spin.value()
         self.cwt_SNR = self.cwt_SNR_Spin.value()
         peakcwt = scsig.find_peaks_cwt(ydat, np.arange(1, self.cwt_width), min_snr=self.cwt_SNR) - 1
@@ -746,7 +746,7 @@ class MainWindow(QMainWindow):
             xpeak = xdat[peakcwt]
             ypeak = ydat[peakcwt]
             
-            #filter out small peaks
+            # filter out small peaks
             _cutOff = float (self.removeSml_Spin.value()) * ydat.max() / 100.0
             xpf = xpeak[np.where(ypeak > _cutOff)]
             ypf = ypeak[np.where(ypeak > _cutOff)]
@@ -766,30 +766,31 @@ class MainWindow(QMainWindow):
         _sel_set = self.p3Selection.currentText()
         _ROI = self.ROI_selectBox.currentText()
         
-        #update the peaks in p1 and histograms only
+        # update the peaks in p1 and histograms only
         for i, _set in enumerate(self.sheets):
+            #colours
             col_series = (i, len(self.sheets))
             
             if _sel_set == _set :
                 _scatter = findScatter(self.p3.items)
-                #sometimes a new scatter is made and this "deletes" the old onec
-                #retrieve the current manually curated peak data
+                # sometimes a new scatter is made and this "deletes" the old one
+                # retrieve the current manually curated peak data
                 if _scatter is None:
-                    print ('No Scatter found, running autopeaks')
+                    print ('No Scatter found, running autopeaks.')
                     xp = []
                     yp = []
                 else:
                     xp, yp = _scatter.getData()
                 
-                #write peaks into results
+                # write peaks into results
                 self.peakResults.addPeaks(_ROI, _sel_set, xp, yp)
                 #print (self.peakResults.df[_ROI])
                 
-                #update peaks in p1 - but there are 3 scatter plots here...
+                # update peaks in p1 - but there are 3 scatter plots here...
                 _scatter1 = findScatter(self.p1.items)
                 print ("scatter from p1", _scatter1)
                 
-                #update the histogram
+                # update the histogram
                 self.p2.clear()
                 hy, hx = np.histogram(yp)
                 self.p2.plot(hx, hy, name="Histogram "+_set, stepMode=True, fillLevel=0, fillOutline=True, brush=col_series)
