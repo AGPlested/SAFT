@@ -22,6 +22,8 @@ from resultsDF import Results
 
 import pyqtgraph as pg
 
+#some functions that could probably go to another module
+
 def savitzky_golay(y, window_size, order, deriv=0, rate=1):
     """From SciPy cookbook
 https://scipy-cookbook.readthedocs.io/items/SavitzkyGolay.html
@@ -168,7 +170,7 @@ class MainWindow(QMainWindow):
         self.central_layout = QGridLayout()
         self.central_widget.setLayout(self.central_layout)
         self.setCentralWidget(self.central_widget)
-        self.resize(1500,800)
+        self.resize(1500,800)           # works well on MacBook Retina display
         
         self.df = {}                    # dictionary for trace data frames
         self.extPa = {}                 # external parameters for the peak scraping dialog
@@ -177,19 +179,21 @@ class MainWindow(QMainWindow):
         self.ROI_list = None
         self.dataLoaded = False
         self.simplePeaks = False            # choice of peak finding algorithm
-        self.autoPeaks = True                  #find peaks automatically or manually
+        self.autoPeaks = True                  # find peaks automatically or manually
         self.cwt_width = 5                # width of the continuous wavelet transform pk finding
-        self.sheets = ['0.5 mM', '2 mM', '4 mM', '8 mM'] #example with one too many
+        self.sheets = ['0.5 mM', '2 mM', '4 mM', '8 mM'] # example with one too many
         self.split_traces = False
         self.dataLock = True                    # when manual peak editing, lock to trace data
         self.noPeaks = True
-        #setup main window widgets and menus
+        
+        # setup main window widgets and menus
         self.create_plot_widgets()
         self.create_controls_widgets()
         self.create_menu()
         
         
     def create_menu(self):
+        # Skeleton menu commands
         self.file_menu = self.menuBar().addMenu("File")
         self.help_menu = self.menuBar().addMenu("Help")
         
@@ -228,8 +232,9 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, "Getting Started", helpful_msg)
     
     def create_split_trace_layout(self):
-        """Split view with each ROI trace in a separate plot (will not be shown at this stage)"""
-        # Store the plot items in a list for convenience - can't seem to get them easily otherwise?
+        """Optional split view with each ROI trace in a separate plot (not the default)"""
+        
+        # Store the plot items in a list - can't seem to get them easily otherwise?
         data = []
         self.p1stackMembers = []
         for c in self.sheets:
@@ -300,13 +305,13 @@ class MainWindow(QMainWindow):
             print ("Turn on manual peak editing to get some value for your clicks.\nFor debugging: ", args)
             return
         else:
-            # the asterisk in call unpacks the tuple into arguments!
-            # a free click should be locked to the data (like the crosshair)
+            # the asterisk in call unpacks the tuple into arguments.
+            # a free click should be locked to the data (as the crosshair is)
             self.cA.onClick (*args, dataLocked=self.dataLock)
     
     def createLinearRegion(self):
-        """Linear region that defines the x-region in p3 (manual editing window)"""
-        #from pyqtgraph examples.
+        """Linear region in p1 that defines the x-region in p3 (manual editing window)"""
+        # taken from pyqtgraph examples.
         
         if self.LR_created == False:
             self.LR_created = True
@@ -330,26 +335,24 @@ class MainWindow(QMainWindow):
         updatePlot()
     
     def mouseMoved(self, evt):
-        """Crosshair in p3 during manual fitting"""
+        """Crosshair in p3 shown during manual fitting"""
         if self.autoPeaks == False:
             pos = evt[0]  ## using signal proxy turns original arguments into a tuple
             if self.p3.sceneBoundingRect().contains(pos):
                 mousePoint = self.p3vb.mapSceneToView(pos)
                 
-                #there should be two plot data items, find the curve data
+                # there should be two plot data items, find the curve data
                 _c = findCurve(self.p3.items)
                 sx, sy = _c.getData()
             
-                #quantize x to curve, and get corresponding y locked to curve
+                # quantize x to curve, and get corresponding y locked to curve
                 idx = np.abs(sx - mousePoint.x()).argmin()
                 ch_x = sx[idx]
                 ch_y = sy[idx]
                 self.hLine.setPos(ch_y)
                 self.vLine.setPos(ch_x)
                 
-                #print ("update label: x={:.2f}, y={:.2f}".format(ch_x, ch_y))
-                # this label can't be seen!
-                self.plots.cursorlabel.setText("Cursor: t={:.2f} s, dF/F = {:.2f}".format(ch_x, ch_y))
+                # print ("update label: x={:.2f}, y={:.2f}".format(ch_x, ch_y))
     
     def split_state(self, b):
         """Called when trace display selection radio buttons are activated """
@@ -376,14 +379,14 @@ class MainWindow(QMainWindow):
             self.plots.removeItem(tobeRemoved)
             self.plots.addItem(self.p1, *self.p1rc, 3, 1)
 
-        #call general update method
+        # call general update method
         self.ROI_Change()
     
     def manualPeakToggle (self, b):
         """disable controls if we are editing peaks manually"""
         
         if b.isChecked() == True:
-            #enter manual mode
+            # enter manual mode
             print ("Manual peak editing")
             self.autoPeaks = False
             
@@ -411,7 +414,7 @@ class MainWindow(QMainWindow):
             
         else:
             # Enter auto peak mode
-            print ("auto peak finding")
+            print ("Auto peak finding")
             self.autoPeaks = True
             
             # Re-enable all the controls for auto peak finding
@@ -424,7 +427,7 @@ class MainWindow(QMainWindow):
             self.autobs_Box.setEnabled(True)
             self.removeSml_Spin.setEnabled(True)
             
-            #remove the hint
+            # Remove the hint
             self.p3.removeItem(self.p3hint)
             # Remove crosshair from p3.
             self.p3.removeItem(self.vLine)
@@ -445,9 +448,9 @@ class MainWindow(QMainWindow):
         traceGrid.addWidget(self.combine_B, 0, 0)
         traceGrid.addWidget(self.split_B, 1, 0)
         
-        #selection of ROI, mean etc
+        # selection of ROI trace, or mean, variance etc
         ROIBox_label = QtGui.QLabel("Select ROI")
-        #ROIBox_label.setAlignment(QtCore.Qt.AlignRight)  #makes a wrong vertical alignment?
+        
         self.ROI_selectBox = QtGui.QComboBox()
         self.ROI_selectBox.addItems(['None'])
         self.ROI_selectBox.currentIndexChanged.connect(self.ROI_Change)
@@ -455,11 +458,11 @@ class MainWindow(QMainWindow):
         traceGrid.addWidget(self.ROI_selectBox, 0, 3, -1, 1)
         traces.setLayout(traceGrid)
         
-        #peak finding controls box
+        # peak finding controls box
         peakFinding = QGroupBox("Peak finding and editing")
         pkF_grid = QGridLayout()
         
-        #switch for manual peak finding
+        # Switch for manual peak finding
         self.manual = QRadioButton("Edit peaks with mouse", self)
         if self.autoPeaks:
             self.manual.setChecked(False)
@@ -467,34 +470,22 @@ class MainWindow(QMainWindow):
         
         p3_select_label = QtGui.QLabel("Show in Peak editing/zoom")
         self.p3Selection = QtGui.QComboBox()
-        self.p3Selection.setFixedSize(80,25)       #only width seems to work
+        self.p3Selection.setFixedSize(80,25)       # only width seems to work
         self.p3Selection.addItems(['-'])
         self.p3Selection.currentIndexChanged.connect(self.ROI_Change)
                 
-        #toggle between wavelet transform and simple algorithm
+        # Toggle between wavelet transform and simple algorithm for peak finding
         peakFind_L_label = QtGui.QLabel("Find peaks with")
         peakFind_R_label = QtGui.QLabel("algorithm.")
         cwt_width_label = QtGui.QLabel("Width (wavelet only)")
         SNR_label = QtGui.QLabel("Prominence / SNR")
-        
-        #Savitsky-Golay smoothing is very aggressive and doesn't work well in this instance
-        SGsmoothing_label = QtGui.QLabel("Savitzky-Golay smoothing")
-        self.SGsmoothing_CB = pg.ComboBox()
-        self.SGsmoothing_CB.setFixedSize(80, 25)
-        self.SGsmoothing_CB.addItems(['Off','On'])
-        self.SGsmoothing_CB.currentIndexChanged.connect(self.ROI_Change)
-        
-        SG_window_label = QtGui.QLabel("S-G window size")
-        self.SGWin_Spin = pg.SpinBox(value=15, step=2, bounds=[5, 49], delay=0, int=True)
-        self.SGWin_Spin.setFixedSize(80, 25)
-        self.SGWin_Spin.valueChanged.connect(self.ROI_Change)
         
         self.peak_CB = pg.ComboBox()
         self.peak_CB.setFixedSize(80,25)
         self.peak_CB.addItems(['wavelet','simple'])
         self.peak_CB.currentIndexChanged.connect(self.ROI_Change)
         
-        #spin boxes for CWT algorithm parameters
+        # spin boxes for CWT algorithm parameters
         self.cwt_SNR_Spin = pg.SpinBox(value=1.5, step=.1, bounds=[.1, 4], delay=0, int=False)
         self.cwt_SNR_Spin.setFixedSize(80, 25)
         self.cwt_SNR_Spin.valueChanged.connect(self.ROI_Change)
@@ -503,6 +494,7 @@ class MainWindow(QMainWindow):
         self.cwt_w_Spin.setFixedSize(80, 25)
         self.cwt_w_Spin.valueChanged.connect(self.ROI_Change)
         
+        # Control to exclude small peaks
         removeSml_L_label = QtGui.QLabel("Ignore peaks smaller than")
         removeSml_R_label = QtGui.QLabel("of the largest peak.")
         self.removeSml_Spin = pg.SpinBox(value=30, step=10, bounds=[0, 100], suffix='%', delay=0, int=False)
@@ -529,7 +521,7 @@ class MainWindow(QMainWindow):
         pkF_grid.setColumnStretch(2,2)
         peakFinding.setLayout(pkF_grid)
         
-        #baseline controls box
+        # Baseline controls box
         baseline = QGroupBox("Automatic baseline cleanup")
         base_grid = QGridLayout()
         auto_bs_label = QtGui.QLabel("Baseline removal?")
@@ -537,6 +529,7 @@ class MainWindow(QMainWindow):
         self.autobs_Box.addItems(['auto','none'])
         self.autobs_Box.currentIndexChanged.connect(self.ROI_Change)
         
+        # parameters for the auto baseline algorithm
         auto_bs_lam_label = QtGui.QLabel("lambda")
         self.auto_bs_lam_slider = QtGui.QSlider(QtCore.Qt.Horizontal)
         self.auto_bs_lam_slider.setTickPosition(QtGui.QSlider.TicksBothSides)
@@ -564,16 +557,28 @@ class MainWindow(QMainWindow):
         base_grid.setColumnStretch(1,1)
         baseline.setLayout(base_grid)
         
-        #launch peak extraction wizard
+        # Savitsky-Golay smoothing is very aggressive and doesn't work well in our hands
+        SGsmoothing_label = QtGui.QLabel("Savitzky-Golay smoothing")
+        self.SGsmoothing_CB = pg.ComboBox()
+        self.SGsmoothing_CB.setFixedSize(80, 25)
+        self.SGsmoothing_CB.addItems(['Off','On'])
+        self.SGsmoothing_CB.currentIndexChanged.connect(self.ROI_Change)
+        
+        SG_window_label = QtGui.QLabel("S-G window size")
+        self.SGWin_Spin = pg.SpinBox(value=15, step=2, bounds=[5, 49], delay=0, int=True)
+        self.SGWin_Spin.setFixedSize(80, 25)
+        self.SGWin_Spin.valueChanged.connect(self.ROI_Change)
+        
+        # launch peak extraction wizard dialog
         getResponsesBtn = QtGui.QPushButton('Extract peaks for all ROIs')
         getResponsesBtn.clicked.connect(self.getResponses)
         
-        #should be inactive until extraction
+        # should be inactive until extraction
         self.savePSRBtn = QtGui.QPushButton('Save peak data')
         self.savePSRBtn.clicked.connect(self.save_peaks)
         self.savePSRBtn.setDisabled(True)
         
-        #should be inactive until extraction
+        # should be inactive until extraction
         self.save_baselined_ROIs_Btn = QtGui.QPushButton('Save baselined ROI data')
         self.save_baselined_ROIs_Btn.clicked.connect(self.save_baselined)
         self.save_baselined_ROIs_Btn.setDisabled(True)
@@ -593,6 +598,7 @@ class MainWindow(QMainWindow):
         
         controls.addWidget(getResponsesBtn, 7, 0, 1, 2)
         controls.addWidget(self.savePSRBtn, 7, 2, 1, 2)
+        
         controls.addWidget(self.save_baselined_ROIs_Btn, 8, 0, 1, 2)
         controls.addWidget(dataBtn, 8, 2, 1, 2)
         
