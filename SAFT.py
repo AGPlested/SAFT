@@ -263,7 +263,7 @@ class MainWindow(QMainWindow):
         data = []
         self.plots = pg.GraphicsLayoutWidget(title="display")
         self.p1rc = (1,0)
-        self.p1 = self.plots.addPlot(title="Traces", y=data, row=self.p1rc[0], col=self.p1rc[1], rowspan=3, colspan=1)
+        self.p1 = self.plots.addPlot(title="Traces and background subtraction", y=data, row=self.p1rc[0], col=self.p1rc[1], rowspan=3, colspan=1)
         self.p1.setLabel('left', "dF / F")
         self.p1.setLabel('bottom', "Time (s)")
         self.p1.vb.setLimits(xMin=0)
@@ -407,7 +407,7 @@ class MainWindow(QMainWindow):
             self.p3.addItem(self.vLine, ignoreBounds=True)
             self.p3.addItem(self.hLine, ignoreBounds=True)
             
-            #need to find a better way to add it!!! Label at top?
+            # add a hint - need to find a better way to add it!!! Label at top?
             self.p3hint = pg.TextItem('left click to add/remove peaks')
             self.p3hint.setPos(0, .2)
             self.p3.addItem(self.p3hint)
@@ -429,6 +429,7 @@ class MainWindow(QMainWindow):
             
             # Remove the hint
             self.p3.removeItem(self.p3hint)
+            
             # Remove crosshair from p3.
             self.p3.removeItem(self.vLine)
             self.p3.removeItem(self.hLine)
@@ -668,8 +669,8 @@ class MainWindow(QMainWindow):
             self.noPeaks = False
 
             print (self.gpd.pkextracted_by_set)
-            
-            #make 'save' buttons available
+            '                                          
+'            #make 'save' buttons available
             self.savePSRBtn.setEnabled(True)
             self.save_baselined_ROIs_Btn.setEnabled(True)
         
@@ -684,7 +685,7 @@ class MainWindow(QMainWindow):
         """Do some setup immediately after data is loaded"""
         
         _sel_set = self.p3Selection.currentText()
-        print ("PND with the p3 selector set for: ", _sel_set)
+        print ("Plot New Data with the p3 selector set for: ", _sel_set)
         y = {}
         
         self.p1.clear()
@@ -705,6 +706,7 @@ class MainWindow(QMainWindow):
                 # need to add something to p3 scatter
                 self.p3.plot(xp, yp, name="Peaks "+_set, pen=None, symbol="s", symbolBrush=(i,3))
                 
+                # create the object for parsing clicks in p3
                 self.cA = clickAlgebra(self.p3)
                 _p3_scatter = findScatter(self.p3.items)
                 _p3_scatter.sigClicked.connect(self.clickRelay)
@@ -766,6 +768,9 @@ class MainWindow(QMainWindow):
         _sel_set = self.p3Selection.currentText()
         _ROI = self.ROI_selectBox.currentText()
         
+        #maybe recursively delete all scatter in p1 and then plot back from peakResults in the loop?
+        #need to consider split traces
+        
         # update the peaks in p1 and histograms only
         for i, _set in enumerate(self.sheets):
             #colours
@@ -776,7 +781,7 @@ class MainWindow(QMainWindow):
                 # sometimes a new scatter is made and this "deletes" the old one
                 # retrieve the current manually curated peak data
                 if _scatter is None:
-                    print ('No Scatter found, running autopeaks.')
+                    print ('No Scatter found, running autopeaks.') # but not really
                     xp = []
                     yp = []
                 else:
