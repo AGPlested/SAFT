@@ -159,19 +159,20 @@ def findScatter(items):
         if len(x) > 0:
             return pdi.scatter
 
-def remove_all_scatter(items):
+def remove_all_scatter(p1):
     #### Not yet working
     
-    PDIs = [d for d in items if isinstance(d, pg.PlotDataItem)]
+    PDIs = [d for d in p1.items if isinstance(d, pg.PlotDataItem)]
     for pdi in PDIs:
         
         x, _ = pdi.scatter.getData()
         if len(x) > 0:
-            print ("removing: {}".format(pdi))
-            pdi.clear()
+            print ("Removing: {}".format(pdi))
+            p1.removeItem(pdi)
             #need to use remove item to get rid of it.
-            
-    print([d for d in items if isinstance(d, pg.PlotDataItem)])
+    _rem = p1.listDataItems()
+
+    print("Data items remaining in {0}: {1}".format(p1, len(_rem)))
             
             
 class MainWindow(QMainWindow):
@@ -241,6 +242,7 @@ class MainWindow(QMainWindow):
         \nIn the 'Peak editing' window, turn on "Edit peaks with mouse". You can manually add peaks by left-clicking (and left-click on existing peaks to remove). Histogram should update as you go. Your clicks are locked to the data. You can do this manually for every trace if you like.
         \nBetter: the "extract peaks for all ROIs" button will open a dialog that uses the positions of the peaks from the 4 mM "mean" trace to get all the peaks from every ROI. You can optionally blacklist ROIs from analysis that have a bad SNR. You can also select a region around each peak for the search.
         \nSave the peaks and also the automatically baselined traces from the File menu or buttons. Peaks are sorted in SNR order.
+        \nHistograms (summed over ROIs and separated) can be saved as well.
         """
         QMessageBox.information(self, "Getting Started", helpful_msg)
     
@@ -294,7 +296,7 @@ class MainWindow(QMainWindow):
         self.p2.addLegend()
         
         #zoomed editing region
-        self.p3 = self.plots.addPlot(title="Peak editing", y=data, row=0, col=1, rowspan=4, colspan=1)
+        self.p3 = self.plots.addPlot(title="Peak editing", y=data, row=0, col=1, rowspan=4, colspan=2)
         self.p3.setLabel('left', "dF / F")
         self.p3.setLabel('bottom', "Time (s)")
         self.p3vb = self.p3.vb
@@ -306,9 +308,12 @@ class MainWindow(QMainWindow):
         self.p3.scene().sigMouseClicked.connect(self.clickRelay)
         #self.p3.sigMouseClicked.connect(self.clickRelay)
         
-        #this label doesn't behave - jiggles about
-        self.plots.cursorlabel = pg.LabelItem(text='Cursor', justify='right')
-        self.plots.addItem(self.plots.cursorlabel, row=4, col=1, rowspan=1, colspan=1)
+        self.plots.cursorlabel = pg.LabelItem(text='', justify='right')
+        
+        #to fix label jiggling about (graphicswidget method)
+        self.plots.cursorlabel.setFixedWidth(100)
+        
+        self.plots.addItem(self.plots.cursorlabel, row=4, col=2, rowspan=1, colspan=1)
         
         self.central_layout.addWidget(self.plots, row=0, col=0, rowspan=1,colspan=2)
         
@@ -366,7 +371,7 @@ class MainWindow(QMainWindow):
                 self.vLine.setPos(ch_x)
                 
                 # print ("update label: x={:.2f}, y={:.2f}".format(ch_x, ch_y))
-                self.plots.cursorlabel.setText("Cursor: x={:.2f}, y={:.3f}".format(ch_x, ch_y))
+                self.plots.cursorlabel.setText("Cursor: x={: .2f}, y={: .3f}".format(ch_x, ch_y))
     
     def split_state(self, b):
         """Called when trace display selection radio buttons are activated """
@@ -467,12 +472,18 @@ class MainWindow(QMainWindow):
         self.histo_Max_Spin.valueChanged.connect(self.updateHistograms)
         
         #toggle show ROI histogram sum
-        #
+        histsum_label = QtGui.QLabel("Histograms for ROI")
+        self.sum_hist = pg.ComboBox()
+        self.sum_hist.setFixedSize(120,25)
+        self.sum_hist.addItems(['Separated','Summed'])
+        self.sum_hist.currentIndexChanged.connect(self.updateHistograms)
         
         histGrid.addWidget(NBin_label, 0, 0)
         histGrid.addWidget(histMax_label, 1, 0)
+        histGrid.addWidget(histsum_label, 2, 0)
         histGrid.addWidget(self.histo_NBin_Spin, 0, 1)
         histGrid.addWidget(self.histo_Max_Spin, 1, 1)
+        histGrid.addWidget(self.sum_hist, 2, 1)
         histograms.setLayout(histGrid)
         
         traces = QGroupBox("Trace display")
@@ -672,28 +683,51 @@ class MainWindow(QMainWindow):
         _max = self.histo_Max_Spin.value()
         return _nbins, _max
     
+       
+    def doHistograms(self):
+        """called for histogram output"""
+        _nbins, _max = self.histogram_parameters()
+        # create a dataframe to put the results in
+        #self.histogramFrame = pd.dataframe(???)
+        #maxVal = len (self.peakResults???)
+        progMsg = "Histogram for {0} traces".format(maxVal)
+        with pg.ProgressDialog(progMsg, 0, maxVal) as dlg:
+        # calculate individual histograms and add to dataframe
+        
+        # add sum column at the end from pandas command?
+        
+    
     def updateHistograms(self):
         """called when histogram controls are changed"""
         
         # get controls values
         _nbins, _max = self.histogram_parameters()
         _ROI = self.ROI_selectBox.currentText()
-        print ('Update Histograms for {2} with Nbins = {0} and maximum dF/F = {1}.'.format(_nbins, _max, _ROI))
+        _hsum = self.sum_hist.currentText()
+        print ('Update {3} Histogram(s) for {2} with Nbins = {0} and maximum dF/F = {1}.'.format(_nbins, _max, _ROI, _hsum))
        
         # clear
         self.p2.clear()
         # check for peaks otherwise return?
-        for i, _set in enumerate(self.sheets):
-            #colours
-            col_series = (i, len(self.sheets))
-            # get relevant peaks data for displayed histograms
-            _, _pdata = self.peakResults.getPeaks(_ROI, _set)
-            # redo histogram
-            hy, hx  = np.histogram(_pdata, bins=_nbins, range=(0., _max))
-            # replot
-            self.p2.plot(hx, hy, name="Histogram "+_set, stepMode=True, fillLevel=0, fillOutline=True, brush=col_series)
+        if _hsum == "Separated":
+            for i, _set in enumerate(self.sheets):
+                #colours
+                col_series = (i, len(self.sheets))
+                # get relevant peaks data for displayed histograms
+                _, _pdata = self.peakResults.getPeaks(_ROI, _set)
+                # redo histogram
+                hy, hx  = np.histogram(_pdata, bins=_nbins, range=(0., _max))
+                # replot
+                self.p2.plot(hx, hy, name="Histogram "+_set, stepMode=True, fillLevel=0, fillOutline=True, brush=col_series)
         
-        
+        elif _hsum == "Summed":
+            sumhy = np.zeros(_nbins)
+            for _set in self.sheets:
+                _, _pdata = self.peakResults.getPeaks(_ROI, _set)
+                hy, hx  = np.histogram(_pdata, bins=_nbins, range=(0., _max))
+                sumhy += hy
+            
+            self.p2.plot(hx, sumhy, name="Summed histogram "+_ROI, stepMode=True, fillLevel=0, fillOutline=True, brush='y')
     
     def getResponses(self):
         """Wrapping function to get peak data from the dialog"""
@@ -733,7 +767,9 @@ class MainWindow(QMainWindow):
         if accepted:
             self.noPeaks = False
 
-            print (self.gpd.pkextracted_by_set)
+            print (self.gpd.pkextracted_by_set) #the whitelist
+            
+            self.peakResults.readInPeakDialogResults(self.gpd.pkextracted_by_set)
             
             #make 'save' buttons available
             self.savePSRBtn.setEnabled(True)
@@ -837,7 +873,7 @@ class MainWindow(QMainWindow):
         #need to consider split traces
         
         # update the peaks in p1 and histograms only
-        remove_all_scatter(self.p1.items)
+        remove_all_scatter(self.p1)
         
         #update p2 histograms here
         self.updateHistograms()
@@ -851,7 +887,7 @@ class MainWindow(QMainWindow):
                 # sometimes a new scatter is made and this "deletes" the old one
                 # retrieve the current manually curated peak data
                 if _scatter is None:
-                    print ('No Scatter found, running autopeaks.') # but not really?
+                    print ('No Scatter found, making empty data.')
                     xp = []
                     yp = []
                 else:
@@ -973,7 +1009,6 @@ class MainWindow(QMainWindow):
                 xp, yp = self.peaksWrapper(x, y[i], _set)
                 
                 #write autopeaks into results
-                #print (_ROI, _set, xp, yp)
                 self.peakResults.addPeaks(_ROI, _set, xp, yp)
             #
             else:
@@ -982,7 +1017,7 @@ class MainWindow(QMainWindow):
                 
                 if len(xp) == 0:
                     # Even though we are in manual peaks, the ROI was changed and there is no fit data.
-                    print ("Peak results are empty, running auto peaks for ", _ROI)
+                    print ("Peak results are empty, running auto peaks for {0} {1}".format(_ROI, _set))
                     
                     xp, yp = self.peaksWrapper(x, y[i], _set)
                     
@@ -1044,7 +1079,7 @@ class MainWindow(QMainWindow):
         return
     
     def save_peaks(self):
-        print ("save_peak data")
+        print ("save_peak data and optionally histograms")
         
         #format for header cells.
         _hform = {
@@ -1062,10 +1097,13 @@ class MainWindow(QMainWindow):
         #from XlsxWriter examples, John McNamara
         if self.filename:
             with pd.ExcelWriter(self.filename) as writer:
-            
-                for _set in self.gpd.pkextracted_by_set:
+                
+                # combine whitelist and blacklist dictionaries for output
+                _output = {**self.gpd.pkextracted_by_set, **self.gpd.blacklisted_by_set}
+                
+                for _set in _output:
                     #in case there are duplicate peaks extracted, remove them and package into dummy variable
-                    _pe = self.gpd.pkextracted_by_set[_set].drop_duplicates()
+                    _pe = _output[_set].drop_duplicates()
                     
                     #skip the first row
                     _pe.to_excel(writer, sheet_name=_set, startrow=1, header=False)
@@ -1078,7 +1116,8 @@ class MainWindow(QMainWindow):
                     for col_num, value in enumerate(_pe.columns.values):
                         _worksheet.write(0, col_num + 1, value + " " +_set, header_format)
 
-        
+                
+    
     def save_baselined(self):
         
         # No filtering so far

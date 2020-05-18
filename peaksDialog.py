@@ -135,13 +135,15 @@ class getPeaksDialog(QDialog):
     
         # yes, output may be modified below
         self.peaksScraped = True
+        self.blacklisted_by_set = {}
         
         if self.ignore:
-            #blacklist peaks from traces with low SNR
+            
+            # freshly blacklist peaks from traces with low SNR
             self.maskLowSNR()
         
+            # the cut-off value
             _cut = self.badSNRcut
-            _blacklisted_by_set = {}
             
             #split peak data into sets from high and low SNR
             for s in self.pkextracted_by_set.keys():
@@ -151,12 +153,8 @@ class getPeaksDialog(QDialog):
                 whitelisted = pk[wls.sort_values(ascending=False).index]
                 blacklisted = pk[bls.sort_values(ascending=False).index]
                 self.pkextracted_by_set[s] = whitelisted
-                _blacklisted_by_set[s + "_SNR<" + str(_cut)] = blacklisted
-         
-            #put the blacklisted items back as new key value pairs (marked keys will be used for Excel sheets)
-            for s,bl in _blacklisted_by_set.items():
-                self.pkextracted_by_set[s] = bl
-        
+                self.blacklisted_by_set[s + "_SNR<" + str(_cut)] = blacklisted
+    
         #close the dialog
         self.accept()
     
@@ -184,7 +182,7 @@ class getPeaksDialog(QDialog):
             # find SNR from column-wise Max / SD
             snr = _df.max() / _df.std()
             
-            #histogram with SNRcut drawn?
+            #histogram with 'SNRcut'-off drawn?
             
             self.whitelists[_set] = snr.where(snr >= self.badSNRcut).dropna()
             self.blacklists[_set] = snr.where(snr < self.badSNRcut).dropna()
@@ -192,10 +190,10 @@ class getPeaksDialog(QDialog):
             wl_count += len(self.whitelists[_set])
             bl_count += len(self.blacklists[_set])
         
-            #output to window?
             print ("Whitelist "+_set, self.whitelists[_set])
             print ("Blacklist "+_set, self.blacklists[_set])
-      
+        
+        #update dialog
         skipLabelText = "Skipping {0} traces out of {1} for low SNR.".format(bl_count, wl_count+bl_count)
         self.skipRB.setText(skipLabelText)
         

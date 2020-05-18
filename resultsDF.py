@@ -19,7 +19,9 @@ class Results():
         
         self.df = pd.DataFrame([], [0], self.cols)
         print (self.df.head())
-        
+    
+    
+    
     def addPeaks (self, _ROI, _set, _times, _peaks):
         # the peaks (and their times) are arrays of values that belong to a ROI and a set (condition).
         
@@ -43,4 +45,9 @@ class Results():
         
         return _times, _peaks
 
-     #other methods??
+    def readInPeakDialogResults(self, gpdResults):
+        
+        # for each set
+        pass
+        # for each ROI
+            #self.addPeaks(_ROI, _set, _t, _p)
