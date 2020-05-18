@@ -19,7 +19,7 @@ from scipy.sparse.linalg import spsolve
 from clicker import clickAlgebra
 from peaksDialog import getPeaksDialog
 from resultsDF import Results
-from histogramDF import HistogramR
+from histogramDF import HistogramsR
 
 import pyqtgraph as pg
 
@@ -688,23 +688,24 @@ class MainWindow(QMainWindow):
     def doHistograms(self):
         """called for histogram output"""
         _nbins, _max = self.histogram_parameters()
+        _setList = self.sheets
         
-        #what shpu;d this be?
-        #####_ROILIST = self.gpd.pkextracted_by_set.KEYS>COLUMNS         #from the whitelist?
-        _SETLiST = self.sheets
-        
-        hDF = histogramR(_ROILIST, _SETLiST, _nbins, 0, _max)
+        self.hDF = HistogramsR(self.ROI_list, _setList, _nbins, 0., _max)
         # create a dataframe to put the results in
-        #self.histogramFrame = pd.dataframe(???)
-        #maxVal = len (self.peakResults???)
+       
+        maxVal = len (self.ROI_list) * len (_setList)
         progMsg = "Histogram for {0} traces".format(maxVal)
         with pg.ProgressDialog(progMsg, 0, maxVal) as dlg:
         # calculate individual histograms and add to dataframe
-            for _set in self.gpd.pkextracted_by_set.keys
-                for _ROI in _set.columns()
-                    hy,hx = np.histogram(_set[_ROI],bins=_nbins, range=(0., _max))
-                # add sum column at the end from pandas command?
-        
+            for _set in self.gpd.pkextracted_by_set.keys():      #from the whitelist, should be from edited internal data?
+                _pe = self.gpd.pkextracted_by_set[_set]
+                for _ROI in _pe.columns:
+                    dlg += 1
+                    hy, hx = np.histogram(_pe[_ROI], bins=_nbins, range=(0., _max))
+                    self.hDF.addHist(_ROI, _set, hy)
+                    
+        # add sum columns
+        self.hDF.ROI_sum()
     
     def updateHistograms(self):
         """called when histogram controls are changed"""
@@ -1131,7 +1132,7 @@ class MainWindow(QMainWindow):
         self.doHistograms()
         
         #save histograms into new sheet
-        self.histogramData.to_excel(writer, sheet_name="histograms")
+        self.HDF.to_excel(writer, sheet_name="histograms")
     
     def save_baselined(self):
         
