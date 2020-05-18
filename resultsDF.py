@@ -25,7 +25,7 @@ class Results():
         
         # list of peaks will be of arbitrary length
         # check that it is not too long for the dataFrame
-        print ("aP: self.df.index.size, lenpeaks:",self.df.index.size, len(_peaks) )
+        print ("aP: self.df.index.size, lenpeaks:", self.df.index.size, len(_peaks) )
         if self.df.index.size < len (_peaks):
             _rlp = range(len(_peaks))
             self.df = self.df.reindex(_rlp)

@@ -164,10 +164,11 @@ def remove_all_scatter(items):
     
     PDIs = [d for d in items if isinstance(d, pg.PlotDataItem)]
     for pdi in PDIs:
-        print (pdi)
+        
         x, _ = pdi.scatter.getData()
         if len(x) > 0:
-            pass
+            print ("removing: {}".format(pdi))
+            pdi.clear()
             #need to use remove item to get rid of it.
             
     print([d for d in items if isinstance(d, pg.PlotDataItem)])
@@ -306,7 +307,7 @@ class MainWindow(QMainWindow):
         #self.p3.sigMouseClicked.connect(self.clickRelay)
         
         #this label doesn't behave - jiggles about
-        self.plots.cursorlabel = pg.LabelItem(text='cursor')
+        self.plots.cursorlabel = pg.LabelItem(text='Cursor', justify='right')
         self.plots.addItem(self.plots.cursorlabel, row=4, col=1, rowspan=1, colspan=1)
         
         self.central_layout.addWidget(self.plots, row=0, col=0, rowspan=1,colspan=2)
@@ -357,7 +358,7 @@ class MainWindow(QMainWindow):
                 _c = findCurve(self.p3.items)
                 sx, sy = _c.getData()
             
-                # quantize x to curve, and get corresponding y locked to curve
+                # quantize x to curve, and get corresponding y that is locked to curve
                 idx = np.abs(sx - mousePoint.x()).argmin()
                 ch_x = sx[idx]
                 ch_y = sy[idx]
@@ -365,6 +366,7 @@ class MainWindow(QMainWindow):
                 self.vLine.setPos(ch_x)
                 
                 # print ("update label: x={:.2f}, y={:.2f}".format(ch_x, ch_y))
+                self.plots.cursorlabel.setText("Cursor: x={:.2f}, y={:.3f}".format(ch_x, ch_y))
     
     def split_state(self, b):
         """Called when trace display selection radio buttons are activated """
@@ -665,24 +667,33 @@ class MainWindow(QMainWindow):
         qmb.setLayout(qmb.layout)
         qmb.exec_()
     
+    def histogram_parameters(self):
+        _nbins = int(self.histo_NBin_Spin.value())
+        _max = self.histo_Max_Spin.value()
+        return _nbins, _max
+    
     def updateHistograms(self):
         """called when histogram controls are changed"""
         
         # get controls values
-        _nbins = int(self.histo_NBin_Spin.value())
-        _max = self.histo_Max_Spin.value()
-        
-        print ('Update Histograms with Nbins = {0} and maximum dF/F = {1}.'.format(_nbins, _max))
-        
-        # get relevant peaks data for displayed histograms
+        _nbins, _max = self.histogram_parameters()
+        _ROI = self.ROI_selectBox.currentText()
+        print ('Update Histograms for {2} with Nbins = {0} and maximum dF/F = {1}.'.format(_nbins, _max, _ROI))
+       
+        # clear
+        self.p2.clear()
         # check for peaks otherwise return?
+        for i, _set in enumerate(self.sheets):
+            #colours
+            col_series = (i, len(self.sheets))
+            # get relevant peaks data for displayed histograms
+            _, _pdata = self.peakResults.getPeaks(_ROI, _set)
+            # redo histogram
+            hy, hx  = np.histogram(_pdata, bins=_nbins, range=(0., _max))
+            # replot
+            self.p2.plot(hx, hy, name="Histogram "+_set, stepMode=True, fillLevel=0, fillOutline=True, brush=col_series)
         
         
-        
-        # redo histograms
-        # clear?
-        
-        # replot
     
     def getResponses(self):
         """Wrapping function to get peak data from the dialog"""
@@ -828,6 +839,9 @@ class MainWindow(QMainWindow):
         # update the peaks in p1 and histograms only
         remove_all_scatter(self.p1.items)
         
+        #update p2 histograms here
+        self.updateHistograms()
+        
         for i, _set in enumerate(self.sheets):
             #colours
             col_series = (i, len(self.sheets))
@@ -837,7 +851,7 @@ class MainWindow(QMainWindow):
                 # sometimes a new scatter is made and this "deletes" the old one
                 # retrieve the current manually curated peak data
                 if _scatter is None:
-                    print ('No Scatter found, running autopeaks.') # but not really
+                    print ('No Scatter found, running autopeaks.') # but not really?
                     xp = []
                     yp = []
                 else:
@@ -846,15 +860,18 @@ class MainWindow(QMainWindow):
                 # write peaks into results
                 self.peakResults.addPeaks(_ROI, _sel_set, xp, yp)
                 #print (self.peakResults.df[_ROI])
+             
+            xp, yp = self.peakResults.getPeaks(_ROI, _set)
+            
+            if self.split_traces:
+                _target = self.p1stackMembers[i]
+                # only one scatter item in each split view
+                _t_scat = findScatter(_target.items)
+                _t_scat.setData(xp, yp, brush=col_series)
                 
-                # update peaks in p1 - but there are 3 scatter plots here...
-                _scatter1 = findScatter(self.p1.items)
-                print ("scatter from p1", _scatter1)
-                
-                # update the histogram
-                self.p2.clear()
-                hy, hx = np.histogram(yp)
-                self.p2.plot(hx, hy, name="Histogram "+_set, stepMode=True, fillLevel=0, fillOutline=True, brush=col_series)
+            else:
+                self.p1.plot(xp, yp, pen=None, symbol="s", symbolBrush=col_series)
+            
                 
     def setBaselineParams (self):
         """Get parameters for auto baseline from GUI"""
@@ -874,7 +891,7 @@ class MainWindow(QMainWindow):
         
         
     def ROI_Change(self):
-        """General "Update" method"""
+        """General 'Update' method"""
         # called when ROI/trace is changed but
         # also when a new peak fit
         # approach is chosen.
@@ -914,7 +931,6 @@ class MainWindow(QMainWindow):
         
         # Rather than doing this, need to keep the peak objects and set their data anew?
         self.p1.clear()
-        self.p2.clear()
         
         # Rather than clearing objects in p3, we set their data anew
         _p3_items = self.p3.items
@@ -939,16 +955,13 @@ class MainWindow(QMainWindow):
                 y[i] = self.df[_set][_ROI].to_numpy()
             
             if self.auto_bs:
+                # baseline
                 z[i] = baseline_als(y[i], lam=self.auto_bs_lam, p=self.auto_bs_P, niter=10)
                 
-                #subtract the baseline
+                # subtract the baseline
                 y[i] = y[i] - z[i]
                 
-                #plot baseline, offset by the signal max.
-                self.p1.plot(x, z[i]-y[i].max(), pen=(255,255,255,80))
-                
-                #adding labels and legends seems hard!!!! This does NOTHING!
-                self.p1.addLegend()
+                # plotting is done below
                 
             if self.sgSmooth:
                 print ('Savitsky Golay smoothing with window: {0}'.format(self.sgWin))
@@ -974,9 +987,10 @@ class MainWindow(QMainWindow):
                     xp, yp = self.peaksWrapper(x, y[i], _set)
                     
                 else:
+                    # we are in manual peaks and there was data, so don't overwrite it
                     print ("Retrieved: ", xp, yp)
             
-            # Redraw p1 traces
+            # draw p1 traces and scatter
             if self.split_traces:
                 target = self.p1stackMembers[i]
                 target.clear()
@@ -985,12 +999,11 @@ class MainWindow(QMainWindow):
             else:
                 self.p1.plot(x, y[i], pen=col_series)
                 self.p1.plot(xp, yp, pen=None, symbol="s", symbolBrush=col_series)
+                
+                #plot baseline, offset by the signal max.
+                self.p1.plot(x, z[i]-y[i].max(), pen=(255,255,255,80))
             
-            # Redo histograms for p2
-            hy, hx = np.histogram(yp)
-            #print (hy, hx)
-            self.p2.plot(hx, hy, name="Histogram "+_set, stepMode=True, fillLevel=0, fillOutline=True, brush=col_series)
-        
+    
             #p3: plot only the chosen trace
             if self.p3Selection.currentText() == _set:
                 if _p3_scatter is None:
@@ -1004,6 +1017,8 @@ class MainWindow(QMainWindow):
                 _p3_curve.setData(x, y[i], pen=col_series)
                 
         self.createLinearRegion()
+        
+        self.updateHistograms()
         
         return
         
