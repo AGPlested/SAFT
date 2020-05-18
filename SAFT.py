@@ -19,6 +19,7 @@ from scipy.sparse.linalg import spsolve
 from clicker import clickAlgebra
 from peaksDialog import getPeaksDialog
 from resultsDF import Results
+from histogramDF import HistogramR
 
 import pyqtgraph as pg
 
@@ -160,16 +161,16 @@ def findScatter(items):
             return pdi.scatter
 
 def remove_all_scatter(p1):
-    #### Not yet working
+    """p1 should be a plot item"""
     
     PDIs = [d for d in p1.items if isinstance(d, pg.PlotDataItem)]
     for pdi in PDIs:
         
-        x, _ = pdi.scatter.getData()
+        x, _ = pdi.scatter.getData()            #scatter data objects have some data points in them
         if len(x) > 0:
             print ("Removing: {}".format(pdi))
-            p1.removeItem(pdi)
-            #need to use remove item to get rid of it.
+            p1.removeItem(pdi)                  #need to use remove item to get rid of it.
+            
     _rem = p1.listDataItems()
 
     print("Data items remaining in {0}: {1}".format(p1, len(_rem)))
@@ -687,20 +688,28 @@ class MainWindow(QMainWindow):
     def doHistograms(self):
         """called for histogram output"""
         _nbins, _max = self.histogram_parameters()
+        
+        #what shpu;d this be?
+        #####_ROILIST = self.gpd.pkextracted_by_set.KEYS>COLUMNS         #from the whitelist?
+        _SETLiST = self.sheets
+        
+        hDF = histogramR(_ROILIST, _SETLiST, _nbins, 0, _max)
         # create a dataframe to put the results in
         #self.histogramFrame = pd.dataframe(???)
         #maxVal = len (self.peakResults???)
         progMsg = "Histogram for {0} traces".format(maxVal)
         with pg.ProgressDialog(progMsg, 0, maxVal) as dlg:
         # calculate individual histograms and add to dataframe
-        
-        # add sum column at the end from pandas command?
+            for _set in self.gpd.pkextracted_by_set.keys
+                for _ROI in _set.columns()
+                    hy,hx = np.histogram(_set[_ROI],bins=_nbins, range=(0., _max))
+                # add sum column at the end from pandas command?
         
     
     def updateHistograms(self):
         """called when histogram controls are changed"""
         
-        # get controls values
+        # get controls values and summarise to terminal
         _nbins, _max = self.histogram_parameters()
         _ROI = self.ROI_selectBox.currentText()
         _hsum = self.sum_hist.currentText()
@@ -708,10 +717,10 @@ class MainWindow(QMainWindow):
        
         # clear
         self.p2.clear()
-        # check for peaks otherwise return?
+        
         if _hsum == "Separated":
             for i, _set in enumerate(self.sheets):
-                #colours
+                # colours
                 col_series = (i, len(self.sheets))
                 # get relevant peaks data for displayed histograms
                 _, _pdata = self.peakResults.getPeaks(_ROI, _set)
@@ -887,7 +896,7 @@ class MainWindow(QMainWindow):
                 # sometimes a new scatter is made and this "deletes" the old one
                 # retrieve the current manually curated peak data
                 if _scatter is None:
-                    print ('No Scatter found, making empty data.')
+                    print ('No Scatter found, empty data.')
                     xp = []
                     yp = []
                 else:
@@ -1116,7 +1125,13 @@ class MainWindow(QMainWindow):
                     for col_num, value in enumerate(_pe.columns.values):
                         _worksheet.write(0, col_num + 1, value + " " +_set, header_format)
 
-                
+                self.save_histograms(writer)
+
+    def save_histograms(self, writer):
+        self.doHistograms()
+        
+        #save histograms into new sheet
+        self.histogramData.to_excel(writer, sheet_name="histograms")
     
     def save_baselined(self):
         
