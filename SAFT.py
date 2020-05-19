@@ -402,6 +402,13 @@ class MainWindow(QMainWindow):
         # call general update method
         self.ROI_Change()
     
+    
+    def saveHistogramsLogic (self, b):
+        if b.isChecked() == True:
+            self.saveHistogramsOption = True
+        else:
+            self.saveHistogramsOption = False
+    
     def manualPeakToggle (self, b):
         """disable controls if we are editing peaks manually"""
         
@@ -479,12 +486,17 @@ class MainWindow(QMainWindow):
         self.sum_hist.addItems(['Separated','Summed'])
         self.sum_hist.currentIndexChanged.connect(self.updateHistograms)
         
+        self.saveHistogramsToggle = QRadioButton("Save Histograms ", self)
+        self.saveHistogramsToggle.setChecked(True)
+        self.saveHistogramsToggle.toggled.connect(lambda:self.saveHistogramsLogic(self.saveHistogramsToggle))
+        
         histGrid.addWidget(NBin_label, 0, 0)
         histGrid.addWidget(histMax_label, 1, 0)
         histGrid.addWidget(histsum_label, 2, 0)
         histGrid.addWidget(self.histo_NBin_Spin, 0, 1)
         histGrid.addWidget(self.histo_Max_Spin, 1, 1)
         histGrid.addWidget(self.sum_hist, 2, 1)
+        histGrid.addWidget(self.saveHistogramsToggle, 3, 0, 1, 2)
         histograms.setLayout(histGrid)
         
         traces = QGroupBox("Trace display")
@@ -688,19 +700,21 @@ class MainWindow(QMainWindow):
     def doHistograms(self):
         """called for histogram output"""
         _nbins, _max = self.histogram_parameters()
-        _setList = self.sheets
+        _setList = self.sheets + ["Sum"]
         
-        self.hDF = HistogramsR(self.ROI_list, _setList, _nbins, 0., _max)
         # create a dataframe to put the results in
-       
+        self.hDF = HistogramsR(self.ROI_list, _setList, _nbins, 0., _max)
+        
         maxVal = len (self.ROI_list) * len (_setList)
         progMsg = "Histogram for {0} traces".format(maxVal)
         with pg.ProgressDialog(progMsg, 0, maxVal) as dlg:
-        # calculate individual histograms and add to dataframe
+        
             for _set in self.gpd.pkextracted_by_set.keys():      #from the whitelist, should be from edited internal data?
                 _pe = self.gpd.pkextracted_by_set[_set]
+                print (_set, _pe.columns)
                 for _ROI in _pe.columns:
                     dlg += 1
+                    # calculate individual histograms and add to dataframe
                     hy, hx = np.histogram(_pe[_ROI], bins=_nbins, range=(0., _max))
                     self.hDF.addHist(_ROI, _set, hy)
                     
@@ -1092,7 +1106,7 @@ class MainWindow(QMainWindow):
         print ("save_peak data and optionally histograms")
         
         #format for header cells.
-        _hform = {
+        self.hform = {
         'text_wrap': True,
         'valign': 'top',
         'fg_color': '#D5D4AC',
@@ -1125,15 +1139,21 @@ class MainWindow(QMainWindow):
                     header_format = _workbook.add_format(_hform)
                     for col_num, value in enumerate(_pe.columns.values):
                         _worksheet.write(0, col_num + 1, value + " " +_set, header_format)
-
-                self.save_histograms(writer)
+                
+                if self.saveHistogramsOption:
+                    self.save_histograms(writer)
 
     def save_histograms(self, writer):
         self.doHistograms()
-        
+        print (self.hDF.df.head(5))
         #save histograms into new sheet
-        self.HDF.to_excel(writer, sheet_name="histograms")
-    
+        self.hDF.df.to_excel(writer, sheet_name="histograms",startrow=1, header=False)
+        _workbook  = writer.book
+        _worksheet = writer.sheets["histograms"]
+        header_format = _workbook.add_format(self.hform)
+        for col_num, value in enumerate(_pe.columns.values):
+            _worksheet.write(0, col_num + 1, value + " hi", header_format)
+            
     def save_baselined(self):
         
         # No filtering so far
