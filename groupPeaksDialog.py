@@ -31,6 +31,9 @@ class groupDialog(QDialog):
         self.NRepeatsLabel = QLabel('Analysing grouped peaks')
         layout.addWidget(self.NRepeatsLabel, 1, 0, 1, 3)
         
+        self.N_ROI_label = QLabel('Grouping peaks from ROIs \n over sets')
+        layout.addWidget(self.N_ROI_label, 2, 0, 1, 2)
+        
         groupNSB_selecter_label = QLabel('Number of grouped responses')
         layout.addWidget(groupNSB_selecter_label, 0, 0, 1, 2)
         
@@ -127,7 +130,7 @@ class groupDialog(QDialog):
         self.groupsextracted_by_set = {}
         _step  = self.groupNSB.value()
         
-        for _set in self.peakdata.keys():
+        for _set in self.peakData.keys():
             #prep means and sd frames
             c = self.peakData[_set].columns
             
