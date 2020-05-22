@@ -39,38 +39,52 @@ class groupDialog(QDialog):
         self.groupNSB.setFixedSize(60, 25)
         layout.addWidget(self.groupNSB, 0, 2, 1, 1)
         self.groupNSB.valueChanged.connect(self.updateGroup)
-        
-        #will be altered as soon as data loads
-        self.skipRB = QRadioButton('Skip ROIs')
-        self.skipRB.setChecked(True)
-        layout.addWidget(self.skipRB,2,0,1,3)
-        
-        psr_label = QLabel('Search range around peak (data points)')
-        layout.addWidget(psr_label,  3, 0, 1, 2)
-        
-        self.psrSB = pg.SpinBox(value=3, step=2, bounds=[1, 7], delay=0, int=True)
-        self.psrSB.setFixedSize(60, 25)
-        layout.addWidget(self.psrSB, row=3, col=2)
-        
+       
         _doScrapeBtn = QPushButton('Extract grouped data')
         _doScrapeBtn.clicked.connect(self.groupPeaks)
         layout.addWidget(_doScrapeBtn, 5, 0, 1, 2)
         
-        _saveGroupsBtn = QPushButton('Save grouped peak data')
-        _saveGroupsBtn.clicked.connect(self.saveGroupPeaks)
-        layout.addWidget(_saveGroupsBtn, 6, 0, 1, 2)
+        self.saveGroupsBtn = QPushButton('Save grouped peak data')
         
-        _cancelBtn = QPushButton('Done')
-        _cancelBtn.clicked.connect(self.accept)
+        # at first, there is nothing to save
+        self.saveGroupsBtn.setEnabled(False)
+        self.saveGroupsBtn.clicked.connect(self.saveGroupPeaks)
+        layout.addWidget(self.saveGroupsBtn, 6, 0, 1, 2)
         
-        layout.addWidget(_cancelBtn, row=6, col=2)
+        _doneBtn = QPushButton('Done')
+        _doneBtn.clicked.connect(self.accept)
+        
+        layout.addWidget(_doneBtn, row=6, col=2)
         self.setLayout(layout)
         
         self.updateGroup()
     
     def saveGroupPeaks (self):
         print ("save group peak data")
-       
+        #print (self.hDF.df.head(5))
+        
+        #format for header cells.
+        self.hform = {
+        'text_wrap': True,
+        'valign': 'top',
+        'fg_color': '#D5D4AC',
+        'border': 1}
+        
+        self.filename = QFileDialog.getSaveFileName(self,
+        "Save Peak Data", os.path.expanduser("~"))[0]
+        
+        #from XlsxWriter examples, John McNamara
+        if self.filename:
+            with pd.ExcelWriter(self.filename) as writer:
+                #save peaks into sheet
+                for _set in self.groupsextracted_by_set:
+                
+                    _set.to_excel(writer, sheet_name=_set, startrow=1, header=False)
+                    _workbook  = writer.book
+                    _worksheet = writer.sheets[_set]
+                    header_format = _workbook.add_format(self.hform)
+                    for col_num, value in enumerate(_set.columns.values):
+                        _worksheet.write(0, col_num + 1, value + _set, header_format)
     
     def setExternalParameters(self, extPa):
         """extPa is a dictionary of external parameters that can be passed"""
@@ -85,11 +99,11 @@ class groupDialog(QDialog):
         
     def prepGuiParameters(self):
         """Take parameters specified by GUI"""
-        
+        print ("prep GUI parameters?")
         #True if box is checked, otherwise False
-        self.ignore =  self.skipRB.isChecked()
+        #self.ignore =  self.skipRB.isChecked()
         
-        self.psr = self.psrSB.value() // 2          #floor division to get ears
+        #self.psr = self.psrSB.value() // 2          #floor division to get ears
     
     
     def addData(self, data):
@@ -98,12 +112,12 @@ class groupDialog(QDialog):
         self.peakData = data
         pdk = self.peakData.keys()
         pdk_display = ", ".join(str(k) for k in pdk)
-        N_ROI = [len (self.peakdata[d].columns) for d in pdk]
+        N_ROI = [len (self.peakData[d].columns) for d in pdk]
         
         self.N_ROI_label.setText("Grouping peaks from {} ROIs \n over the sets named {}".format(N_ROI, pdk_display))
         
-        _printable = "{}\n{}\n".format(pdk_display, [self.peakdata[d].head() for d in pdk])
-        print ("Added data of type {}:\n{}\n".format(type(self.peakdata), _printable))
+        _printable = "{}\n{}\n".format(pdk_display, [self.peakData[d].head() for d in pdk])
+        print ("Added data of type {}:\n{}\n".format(type(self.peakData), _printable))
         
         
     def groupPeaks(self):
@@ -111,8 +125,32 @@ class groupDialog(QDialog):
         
         self.prepGuiParameters()
         self.groupsextracted_by_set = {}
+        _step  = self.groupNSB.value()
+        
+        for _set in self.peakdata.keys():
+            #prep means and sd frames
+            c = self.peakData[_set].columns
+            
+            # make dataframes
+            _means = pd.dataframe([], range(_step), c)
+            _SDs = pd.dataframe([], range(_step), c)
+            
+            
+            for p in range(_step):
+                #get pth row group
+                _subset = self.peakData[_set][p::_step]
+                
+                _means[p] = _subset.describe.loc['mean']
+                _SDs[p] = _subset.describe.loc['std']
+            
+            self.groupsextracted_by_set[_set + "_m"] = _means
+            self.groupsextracted_by_set[_set + "_sd"] = _SDs
+        
+        # we can save now that we have data
+        self.saveGroupsBtn.state.setEnabled(True)
+    
         """
-        for _set in self.tracedata.keys():
+        for _set in self.peakdata.keys():
             maxVal = len(self.tPeaks)
         
         
@@ -143,28 +181,7 @@ class groupDialog(QDialog):
                 self.pkextracted_by_set[_set] = peaksdf
         
     
-        # yes, output may be modified below
-        self.peaksScraped = True
-        self.blacklisted_by_set = {}
         
-        if self.ignore:
-            
-            # freshly blacklist peaks from traces with low SNR
-            self.maskLowSNR()
-        
-            # the cut-off value
-            _cut = self.badSNRcut
-            
-            #split peak data into sets from high and low SNR
-            for s in self.pkextracted_by_set.keys():
-                wls = self.whitelists[s]
-                bls = self.blacklists[s]
-                pk = self.pkextracted_by_set[s]
-                whitelisted = pk[wls.sort_values(ascending=False).index]
-                blacklisted = pk[bls.sort_values(ascending=False).index]
-                self.pkextracted_by_set[s] = whitelisted
-                self.blacklisted_by_set[s + "_SNR<" + str(_cut)] = blacklisted
-    
         #close the dialog
         self.accept()"""
     

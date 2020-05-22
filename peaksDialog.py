@@ -182,7 +182,7 @@ class getPeaksDialog(QDialog):
             # find SNR from column-wise Max / SD
             snr = _df.max() / _df.std()
             
-            #histogram with 'SNRcut'-off drawn?
+            # add histogram of SNR values with 'SNRcut'-off drawn?
             
             self.whitelists[_set] = snr.where(snr >= self.badSNRcut).dropna()
             self.blacklists[_set] = snr.where(snr < self.badSNRcut).dropna()
@@ -190,8 +190,8 @@ class getPeaksDialog(QDialog):
             wl_count += len(self.whitelists[_set])
             bl_count += len(self.blacklists[_set])
         
-            print ("Whitelist "+_set, self.whitelists[_set])
-            print ("Blacklist "+_set, self.blacklists[_set])
+            print ("Whitelist: "+_set, self.whitelists[_set])
+            print ("Blacklist: "+_set, self.blacklists[_set])
         
         #update dialog
         skipLabelText = "Skipping {0} traces out of {1} for low SNR.".format(bl_count, wl_count+bl_count)

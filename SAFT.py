@@ -20,6 +20,7 @@ from clicker import clickAlgebra
 from peaksDialog import getPeaksDialog
 from resultsDF import Results
 from histogramDF import HistogramsR
+from groupPeaksDialog import groupDialog
 
 import pyqtgraph as pg
 
@@ -644,6 +645,12 @@ class MainWindow(QMainWindow):
         self.save_baselined_ROIs_Btn.clicked.connect(self.save_baselined)
         self.save_baselined_ROIs_Btn.setDisabled(True)
         
+        # should be inactive until extraction
+        self.extractGroupsDialog_Btn = QtGui.QPushButton('Extract group resposes')
+        self.extractGroupsDialog_Btn.clicked.connect(self.getGroups)
+        self.extractGroupsDialog_Btn.setDisabled(True)
+        
+        
         dataBtn = QtGui.QPushButton('Show current peak data')
         dataBtn.clicked.connect(self.resultsPopUp)
         
@@ -664,6 +671,7 @@ class MainWindow(QMainWindow):
         
         controls.addWidget(self.save_baselined_ROIs_Btn, 8, 0, 1, 2)
         controls.addWidget(dataBtn, 8, 2, 1, 2)
+        controls.addWidget(self.extractGroupsDialog_Btn, 9, 0, 1, 2)
         
         self.central_layout.addWidget(controls, 0, 3, -1, 1)
         return
@@ -753,6 +761,13 @@ class MainWindow(QMainWindow):
             
             self.p2.plot(hx, sumhy, name="Summed histogram "+_ROI, stepMode=True, fillLevel=0, fillOutline=True, brush='y')
     
+    def getGroups(self):
+        """launch group processing dialog"""
+        print ('get group responses from all ROIs.')
+        self.getgroupsDialog = groupDialog()
+        self.getgroupsDialog.addData(self.gpd.pkextracted_by_set)
+        accepted = self.getgroupsDialog.exec_()
+        
     def getResponses(self):
         """Wrapping function to get peak data from the dialog"""
         print ('Opening dialog for getting peaks from all ROIs.')
@@ -798,6 +813,7 @@ class MainWindow(QMainWindow):
             #make 'save' buttons available
             self.savePSRBtn.setEnabled(True)
             self.save_baselined_ROIs_Btn.setEnabled(True)
+            self.extractGroupsDialog_Btn.setEnabled(True)
         
         else:
             print ('Returned but not happily: self.gpd.pkextracted_by_set is {}'.format(self.gpd.pkextracted_by_set))
