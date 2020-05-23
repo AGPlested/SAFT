@@ -143,7 +143,7 @@ class groupDialog(QDialog):
             _means = pd.DataFrame([], range(_step), c)
             _SDs = pd.DataFrame([], range(_step), c)
             
-            
+            #strange double row writing?
             for p in range(_step):
                 # get pth row group
                 _subset = self.peakData[_set][p::_step]

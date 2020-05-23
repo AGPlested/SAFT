@@ -212,7 +212,7 @@ class MainWindow(QMainWindow):
         self.dataLoaded = False
         self.simplePeaks = False            # choice of peak finding algorithm
         self.autoPeaks = True                  # find peaks automatically or manually
-        self.cwt_width = 5                # width of the continuous wavelet transform pk finding
+        self.cwt_width = 5                # width of the continuous wavelet transform peak finding
         self.sheets = ['0.5 mM', '2 mM', '4 mM', '8 mM'] # example with one too many
         self.split_traces = False
         self.dataLock = True                    # when manual peak editing, lock to trace data
@@ -296,7 +296,7 @@ class MainWindow(QMainWindow):
     def createPlotWidgets(self):
         """analysis plots"""
         
-        #traces plot
+        # traces plot
         data = []
         self.plots = pg.GraphicsLayoutWidget(title="display")
         self.p1rc = (1,0)
@@ -310,23 +310,23 @@ class MainWindow(QMainWindow):
         if self.dataLoaded:
             createLinearRegion()
         
-        #Histograms
+        # Histograms
         self.p2 = self.plots.addPlot(title="Peak Histograms", row=0, col=0, rowspan=1, colspan=1)
         self.p2.setLabel('left', "N")
         self.p2.setLabel('bottom', "dF / F")
         self.p2.vb.setLimits(xMin=0, yMin=0)
         self.p2.addLegend()
         
-        #zoomed editing region
+        # zoomed editing region
         self.p3 = self.plots.addPlot(title="Peak editing", y=data, row=0, col=1, rowspan=4, colspan=2)
         self.p3.setLabel('left', "dF / F")
         self.p3.setLabel('bottom', "Time (s)")
         self.p3vb = self.p3.vb
         
-        #draw the crosshair if we are in manual editing mode
+        # draw the crosshair if we are in manual editing mode
         self.p3proxyM = pg.SignalProxy(self.p3.scene().sigMouseMoved, rateLimit=60, slot=self.mouseMoved)
         
-        #what does this do??
+        # what does this do??
         self.p3.scene().sigMouseClicked.connect(self.clickRelay)
         #self.p3.sigMouseClicked.connect(self.clickRelay)
         
@@ -558,7 +558,7 @@ class MainWindow(QMainWindow):
         
         p3_select_label = QtGui.QLabel("Show in Peak editing/zoom")
         self.p3Selection = QtGui.QComboBox()
-        self.p3Selection.setFixedSize(80,25)       # only width seems to work
+        self.p3Selection.setFixedSize(90, 25)       # only width seems to work
         self.p3Selection.addItems(['-'])
         self.p3Selection.currentIndexChanged.connect(self.ROI_Change)
                 
@@ -569,24 +569,24 @@ class MainWindow(QMainWindow):
         SNR_label = QtGui.QLabel("Prominence / SNR")
         
         self.peak_CB = pg.ComboBox()
-        self.peak_CB.setFixedSize(80,25)
+        self.peak_CB.setFixedSize(90, 25)
         self.peak_CB.addItems(['wavelet','simple'])
         self.peak_CB.currentIndexChanged.connect(self.ROI_Change)
         
         # spin boxes for CWT algorithm parameters
         self.cwt_SNR_Spin = pg.SpinBox(value=1.5, step=.1, bounds=[.1, 4], delay=0, int=False)
-        self.cwt_SNR_Spin.setFixedSize(80, 25)
+        self.cwt_SNR_Spin.setFixedSize(70, 25)
         self.cwt_SNR_Spin.valueChanged.connect(self.ROI_Change)
         
         self.cwt_w_Spin = pg.SpinBox(value=6, step=1, bounds=[2, 20], delay=0, int=True)
-        self.cwt_w_Spin.setFixedSize(80, 25)
+        self.cwt_w_Spin.setFixedSize(70, 25)
         self.cwt_w_Spin.valueChanged.connect(self.ROI_Change)
         
         # Control to exclude small peaks
         removeSml_L_label = QtGui.QLabel("Ignore peaks smaller than")
         removeSml_R_label = QtGui.QLabel("of the largest peak.")
         self.removeSml_Spin = pg.SpinBox(value=30, step=10, bounds=[0, 100], suffix='%', delay=0, int=False)
-        self.removeSml_Spin.setFixedSize(60, 25)
+        self.removeSml_Spin.setFixedSize(70, 25)
         self.removeSml_Spin.valueChanged.connect(self.ROI_Change)
         
         pkF_grid.addWidget(self.manual, 0, 0)
@@ -614,7 +614,7 @@ class MainWindow(QMainWindow):
         base_grid = QGridLayout()
         auto_bs_label = QtGui.QLabel("Baseline removal?")
         self.autobs_Box = pg.ComboBox()
-        self.autobs_Box.addItems(['auto','none'])
+        self.autobs_Box.addItems(['Auto', 'None', 'Lock'])
         self.autobs_Box.currentIndexChanged.connect(self.ROI_Change)
         
         # parameters for the auto baseline algorithm
@@ -645,16 +645,18 @@ class MainWindow(QMainWindow):
         base_grid.setColumnStretch(1,1)
         baseline.setLayout(base_grid)
         
-        # Savitsky-Golay smoothing is very aggressive and doesn't work well in our hands
+        # Savitsky-Golay smoothing is very aggressive and doesn't work well in this case
         SGsmoothing_label = QtGui.QLabel("Savitzky-Golay smoothing")
+        SGsmoothing_label.setFixedSize(170,25)
         self.SGsmoothing_CB = pg.ComboBox()
-        self.SGsmoothing_CB.setFixedSize(80, 25)
+        self.SGsmoothing_CB.setFixedSize(70, 25)
         self.SGsmoothing_CB.addItems(['Off','On'])
         self.SGsmoothing_CB.currentIndexChanged.connect(self.ROI_Change)
         
-        SG_window_label = QtGui.QLabel("S-G window size")
+        SG_window_label = QtGui.QLabel("S-G window")
+        SG_window_label.setFixedSize(110,25)
         self.SGWin_Spin = pg.SpinBox(value=15, step=2, bounds=[5, 49], delay=0, int=True)
-        self.SGWin_Spin.setFixedSize(80, 25)
+        self.SGWin_Spin.setFixedSize(70, 25)
         self.SGWin_Spin.valueChanged.connect(self.ROI_Change)
         
         # launch peak extraction wizard dialog
@@ -682,15 +684,15 @@ class MainWindow(QMainWindow):
         
         #stack widgets into control panel
         controls.addWidget(traces, 0, 0, 1, -1)
-        controls.addWidget(histograms, 1 , 0, 1, -1)
+        controls.addWidget(histograms, 6 , 0, 1, -1)
         
-        controls.addWidget(baseline, 2, 0 , 1, -1)
-        controls.addWidget(peakFinding, 3, 0 , 2, -1)
+        controls.addWidget(baseline, 1, 0 , 1, -1)
+        controls.addWidget(peakFinding, 4, 0 , 2, -1)
         
-        controls.addWidget(SGsmoothing_label, 5, 0, 1, 2)
-        controls.addWidget(self.SGsmoothing_CB, 5, 2, 1, 2)
-        controls.addWidget(SG_window_label, 6, 0, 1, 2)
-        controls.addWidget(self.SGWin_Spin, 6, 2, 1, 2)
+        controls.addWidget(SGsmoothing_label, 2, 0, 1, 2)
+        controls.addWidget(self.SGsmoothing_CB, 2, 2, 1, 2)
+        controls.addWidget(SG_window_label, 3, 0, 1, 2)
+        controls.addWidget(self.SGWin_Spin, 3, 2, 1, 2)
         
         controls.addWidget(getResponsesBtn, 7, 0, 1, 2)
         controls.addWidget(self.savePSRBtn, 7, 2, 1, 2)
@@ -807,8 +809,14 @@ class MainWindow(QMainWindow):
         
         # automatically reduce baseline (could also do this interactively??)
         # baselineIterator includes a progress indicator.
-        if self.auto_bs:
-            self.setBaselineParams()
+        
+        # can be Auto or Lock (meaning GUI controls are not updating algorithm)
+        if self.autobs_Box.value() != 'None':
+            
+            if self.autobs_Box.value() == 'Auto':
+                # populate values for automatic baseline removal from GUI (unless 'Lock')
+                self.setBaselineParams()
+            
             _data = baselineIterator(_data, self.auto_bs_lam, self.auto_bs_P)
         
         self.gpd.addData(_data)
@@ -884,19 +892,22 @@ class MainWindow(QMainWindow):
         
     def findSimplePeaks(self, xdat, ydat, name='unnamed'):
         """Simple and dumb peak finding algorithm"""
-        # SNR is used as a proxy for prominence in the simple algorithm.
         # cut_off is not implemented here
+        
+        # SNR is used as a proxy for 'prominence' in the simple algorithm.
         self.cwt_SNR = self.cwt_SNR_Spin.value()
         
         peaks, _ = scsig.find_peaks(ydat, prominence=self.cwt_SNR)
         _npeaks = len(peaks)
         if _npeaks != 0:
+            print ('Simple peak finding algorithm found {0} peaks in {1} trace with prominence {2}'.format(_npeaks, name, self.cwt_SNR))
+            
             xp = xdat[peakcwt]
             yp = ydat[peakcwt]
             
-            print ('Simple peak finding algorithm found {0} peaks in {1} trace with prominence {2}'.format(_npeaks, name, self.cwt_SNR))
         else:
             print ('No peaks found in {0} trace with simple algorithm with prominence {1}'.format(name, self.cwt_SNR))
+            
             xp = []
             yp = []
            
@@ -935,13 +946,10 @@ class MainWindow(QMainWindow):
         _sel_set = self.p3Selection.currentText()
         _ROI = self.ROI_selectBox.currentText()
         
-        #maybe recursively delete all scatter in p1 and then plot back from peakResults in the loop?
-        #need to consider split traces
-        
         # update the peaks in p1 and histograms only
         remove_all_scatter(self.p1)
         
-        #update p2 histograms here
+        #update p2 histograms
         self.updateHistograms()
         
         for i, _set in enumerate(self.sheets):
@@ -999,11 +1007,13 @@ class MainWindow(QMainWindow):
         # approach is chosen.
         # consider renaming
         
-        #we are not interested in updating data if there isn't any
+        #### if baseline was changed in another window, all the peaks are now off...
+        
+        # we are not interested in updating data if there isn't any
         if self.dataLoaded == False:
             return
         
-        #something changed in the control panel, get latest values
+        # something changed in the control panel, get latest values
         _ROI = self.ROI_selectBox.currentText()
               
         if self.peak_CB.value() == 'simple':
@@ -1011,17 +1021,18 @@ class MainWindow(QMainWindow):
         else:
             self.simplePeaks = False
 
-        if self.autobs_Box.value() == 'auto':
+        if self.autobs_Box.value() != 'None':
             self.auto_bs = True
-            #populate values for automatic baseline removal from GUI
-            self.setBaselineParams()
-            #print (self.auto_bs_lam_slider.value(), self.auto_bs_P_slider.value())
+            # populate values for automatic baseline removal from GUI
+            if self.autobs_Box.value() == 'Auto':
+                self.setBaselineParams()
+            # print (self.auto_bs_lam_slider.value(), self.auto_bs_P_slider.value())
             
         else:
             self.auto_bs = False
             
         if self.SGsmoothing_CB.value() == 'On':
-            #populate values for Savitsky-Golay smoothing from GUI
+            # populate values for Savitsky-Golay smoothing from GUI
             self.sgSmooth = True
             self.sgWin = self.SGWin_Spin.value()
         else:
@@ -1049,7 +1060,7 @@ class MainWindow(QMainWindow):
                 
             elif _ROI == "Variance":
                 y[i] = self.df[_set].var(axis=1).to_numpy()
-                #we never want to subtract the steady state variance
+                # we never want to subtract the steady state variance
                 self.auto_bs = False
                 print ('No baseline subtraction for variance trace')
                 
@@ -1064,6 +1075,8 @@ class MainWindow(QMainWindow):
                 y[i] = y[i] - z[i]
                 
                 # plotting is done below
+                
+                
                 
             if self.sgSmooth:
                 print ('Savitsky Golay smoothing with window: {0}'.format(self.sgWin))
