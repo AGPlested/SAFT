@@ -219,7 +219,7 @@ if __name__ == '__main__':
     w = pg.GraphicsWindow()
 
     """
-    #THIS ALSO WORKS
+    # alternative trial code: THIS ALSO WORKS
     q = QtGui.QMainWindow()
     q.central_widget = QtGui.QWidget()
     q.central_layout = QtGui.QGridLayout()

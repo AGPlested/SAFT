@@ -24,7 +24,7 @@ from groupPeaksDialog import groupDialog
 
 import pyqtgraph as pg
 
-#some functions that could probably go to another module
+# some functions below that could probably go to a module
 
 def savitzky_golay(y, window_size, order, deriv=0, rate=1):
     """From SciPy cookbook
@@ -178,6 +178,22 @@ def remove_all_scatter(p1):
             
             
 class MainWindow(QMainWindow):
+    
+    ### Methods
+    ###
+    ### createMenu                  : make menubar
+    ### about                       : About the app
+    ### getStarted                  : a help file for novices
+    ### createSplitTraceLayout      : for display of split traces
+    ### createPlotWidgets           : build the plots
+    ### createLinearRegion          : linear selection for zoom window
+    ### mouseMoved                  : when the mouse moves in zoom
+    ### splitState                  : change the split state for the overview window
+    ### manualPeakToggle            :
+    ###
+    ###
+    ###
+    
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
         
@@ -203,12 +219,12 @@ class MainWindow(QMainWindow):
         self.noPeaks = True
         
         # setup main window widgets and menus
-        self.create_plot_widgets()
-        self.create_controls_widgets()
-        self.create_menu()
+        self.createPlotWidgets()
+        self.createControlsWidgets()
+        self.createMenu()
         
         
-    def create_menu(self):
+    def createMenu(self):
         # Skeleton menu commands
         self.file_menu = self.menuBar().addMenu("File")
         self.help_menu = self.menuBar().addMenu("Help")
@@ -220,6 +236,7 @@ class MainWindow(QMainWindow):
         self.file_menu.addAction("Save baselined", self.save_baselined)
         
         self.help_menu.addAction("Getting Started", self.getStarted)
+    
     
     def about(self):
         QMessageBox.about (self, "About SAFT",
@@ -233,6 +250,7 @@ class MainWindow(QMainWindow):
         \nRunning on {4}
         """.format(__version__, platform.python_version(), pyside_version, QtCore.__version__, platform.platform()))
     
+    
     def getStarted(self):
         
         helpful_msg = """
@@ -242,13 +260,15 @@ class MainWindow(QMainWindow):
         \nLoad your data (traces in columns) from Excel. The first row should name the regions of interest (ROI), and each condition should be a separate sheet: 0.5 mM, 2 mM, 4 mM, etc. The ROIs do not have to be the same for each condition.
         \nAdjust the baseline and find peaks automatically.
         \nIn the 'Peak editing' window, turn on "Edit peaks with mouse". You can manually add peaks by left-clicking (and left-click on existing peaks to remove). Histogram should update as you go. Your clicks are locked to the data. You can do this manually for every trace if you like.
-        \nBetter: the "extract peaks for all ROIs" button will open a dialog that uses the positions of the peaks from the 4 mM "mean" trace to get all the peaks from every ROI. You can optionally blacklist ROIs from analysis that have a bad SNR. You can also select a region around each peak for the search.
+        \nBetter: the "Extract peaks for all ROIs" button will open a dialog that uses the positions of the peaks from the 4 mM "mean" trace to get all the peaks from every other ROI. You can optionally blacklist ROIs from analysis that have a bad SNR. You can also select a region around each peak for the search.
         \nSave the peaks and also the automatically baselined traces from the File menu or buttons. Peaks are sorted in SNR order.
-        \nHistograms (summed over ROIs and separated) can be saved as well.
+        \nHistograms (summed for each ROI over conditions or separated) can be saved as well.
+        \nIf traces consist of grouped responses to repeated stimuli, these can be batch analysed with "Extract group stats".
         """
         QMessageBox.information(self, "Getting Started", helpful_msg)
     
-    def create_split_trace_layout(self):
+    
+    def createSplitTraceLayout(self):
         """Optional split view with each ROI trace in a separate plot (not the default)"""
         
         # Store the plot items in a list - can't seem to get them easily otherwise?
@@ -273,7 +293,7 @@ class MainWindow(QMainWindow):
         p1_stack_member.setLabel('bottom', "Time (s)")
     
     
-    def create_plot_widgets(self):
+    def createPlotWidgets(self):
         """analysis plots"""
         
         #traces plot
@@ -318,7 +338,8 @@ class MainWindow(QMainWindow):
         self.plots.addItem(self.plots.cursorlabel, row=4, col=2, rowspan=1, colspan=1)
         
         self.central_layout.addWidget(self.plots, row=0, col=0, rowspan=1,colspan=2)
-        
+     
+     
     def clickRelay(self, *args):
         """logic to avoid the click signal getting sent out if manual peak editing is not on."""
         if self.autoPeaks:
@@ -328,6 +349,7 @@ class MainWindow(QMainWindow):
             # the asterisk in call unpacks the tuple into arguments.
             # a free click should be locked to the data (as the crosshair is)
             self.cA.onClick (*args, dataLocked=self.dataLock)
+    
     
     def createLinearRegion(self):
         """Linear region in p1 that defines the x-region in p3 (manual editing window)"""
@@ -354,6 +376,7 @@ class MainWindow(QMainWindow):
             self.p1.addItem(self.lr)
         updatePlot()
     
+    
     def mouseMoved(self, evt):
         """Crosshair in p3 shown during manual fitting"""
         if self.autoPeaks == False:
@@ -375,7 +398,8 @@ class MainWindow(QMainWindow):
                 # print ("update label: x={:.2f}, y={:.2f}".format(ch_x, ch_y))
                 self.plots.cursorlabel.setText("Cursor: x={: .2f}, y={: .3f}".format(ch_x, ch_y))
     
-    def split_state(self, b):
+    
+    def splitState(self, b):
         """Called when trace display selection radio buttons are activated """
         if b.text() == "Split traces":
             if b.isChecked() == True:
@@ -409,6 +433,7 @@ class MainWindow(QMainWindow):
             self.saveHistogramsOption = True
         else:
             self.saveHistogramsOption = False
+    
     
     def manualPeakToggle (self, b):
         """disable controls if we are editing peaks manually"""
@@ -461,8 +486,9 @@ class MainWindow(QMainWindow):
             # Remove crosshair from p3.
             self.p3.removeItem(self.vLine)
             self.p3.removeItem(self.hLine)
-            
-    def create_controls_widgets(self):
+     
+     
+    def createControlsWidgets(self):
         """control panel"""
         
         controls = pg.LayoutWidget()
@@ -505,8 +531,8 @@ class MainWindow(QMainWindow):
         self.split_B = QRadioButton("Split traces", self)
         self.combine_B = QRadioButton("Combined traces", self)
         self.combine_B.setChecked(True)
-        self.split_B.toggled.connect(lambda:self.split_state(self.split_B))
-        self.combine_B.toggled.connect(lambda:self.split_state(self.combine_B))
+        self.split_B.toggled.connect(lambda:self.splitState(self.split_B))
+        self.combine_B.toggled.connect(lambda:self.splitState(self.combine_B))
         traceGrid.addWidget(self.combine_B, 0, 0)
         traceGrid.addWidget(self.split_B, 1, 0)
         
@@ -1206,7 +1232,7 @@ class MainWindow(QMainWindow):
         self.setRanges()
         
         #split trace layout can be made now we know how many sets (conditions) we have
-        self.create_split_trace_layout()
+        self.createSplitTraceLayout()
         
         #populate the combobox for choosing which ROI to show
         self.ROI_selectBox.clear()
