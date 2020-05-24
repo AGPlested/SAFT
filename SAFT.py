@@ -1181,8 +1181,9 @@ class MainWindow(QMainWindow):
                 _output = {**self.gpd.pkextracted_by_set, **self.gpd.blacklisted_by_set}
                 
                 for _set in _output:
-                    #in case there are duplicate peaks extracted, remove them and package into dummy variable
-                    _pe = _output[_set].drop_duplicates()
+                    # in case there are duplicate peaks extracted, remove them and package into dummy variable
+                    # [not the duplicates]
+                    _pe = _output[_set].loc[~_output[_set].index.duplicated(keep='first')] #StackOverflow 13035764
                     
                     #skip the first row
                     _pe.to_excel(writer, sheet_name=_set, startrow=1, header=False)
@@ -1191,7 +1192,7 @@ class MainWindow(QMainWindow):
                     _worksheet = writer.sheets[_set]
                     
                     #write header manually so that values can be modified with addition of the sheet (for downstream use)
-                    header_format = _workbook.add_format(_hform)
+                    header_format = _workbook.add_format(self.hform)
                     for col_num, value in enumerate(_pe.columns.values):
                         _worksheet.write(0, col_num + 1, value + " " +_set, header_format)
                 
@@ -1199,6 +1200,8 @@ class MainWindow(QMainWindow):
                     self.save_histograms(writer)
 
     def save_histograms(self, writer):
+        """write out histograms for each ROI to disk"""
+        
         self.doHistograms()
         print (self.hDF.df.head(5))
         #save histograms into new sheet

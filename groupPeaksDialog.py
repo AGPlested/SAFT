@@ -48,6 +48,13 @@ class groupDialog(QDialog):
         _doScrapeBtn.clicked.connect(self.groupPeaks)
         layout.addWidget(_doScrapeBtn, 5, 0, 1, 2)
         
+        self.saveGraphsBtn = QPushButton('Save graphs of grouped peaks')
+        
+        # at first, there is nothing to save
+        self.saveGraphsBtn.setEnabled(False)
+        self.saveGraphsBtn.clicked.connect(self.saveGraphs)
+        layout.addWidget(self.saveGroupsBtn, 7, 0, 1, 2)
+        
         self.saveGroupsBtn = QPushButton('Save grouped peak data')
         
         # at first, there is nothing to save
@@ -90,6 +97,56 @@ class groupDialog(QDialog):
                     for col_num, value in enumerate(_df.columns.values):
                         #print (col_num, value, _set)
                         _worksheet.write(0, col_num + 1, str(value) + " " + _set, header_format)
+                        
+    def saveGraphs(self):
+        """Multipage PDF output of groupData analysis"""
+        self.gfilename = QFileDialog.getSaveFileName(self,
+        "Save Group Analysis figures", os.path.expanduser("~"))[0]
+      
+        if self.gfilename:
+            # from https://stackoverflow.com/a/31133424 Victor Juliet
+            import datetime
+            
+            from matplotlib.backends.backend_pdf import PdfPages
+            import matplotlib.pyplot as plt
+
+            # Create the PdfPages object to which we will save the pages:
+            # The with statement makes sure that the PdfPages object is closed properly at
+            # the end of the block, even if an Exception occurs.
+            with PdfPages(self.gfilename+'.pdf') as pdf:
+                # loop over ROIs
+                # for each, if a group column exists then plot and use SD for shading
+                # title by ROI, 6 per page?
+                
+                """plt.figure(figsize=(3, 3))
+                plt.plot(range(7), [3, 1, 4, 1, 5, 9, 2], 'r-o')
+                plt.title('Page One')
+                pdf.savefig()  # saves the current figure into a pdf page
+                plt.close()
+
+                plt.rc('text', usetex=True)
+                plt.figure(figsize=(8, 6))
+                x = np.arange(0, 5, 0.1)
+                plt.plot(x, np.sin(x), 'b-')
+                plt.title('Page Two')
+                pdf.savefig()
+                plt.close()
+
+                plt.rc('text', usetex=False)
+                fig = plt.figure(figsize=(4, 5))
+                plt.plot(x, x*x, 'ko')
+                plt.title('Page Three')
+                pdf.savefig(fig)  # or you can pass a Figure object to pdf.savefig
+                plt.close()"""
+
+                # We can also set the file's metadata via the PdfPages object:
+                d = pdf.infodict()
+                d['Title'] = 'PDF of graphs from SAFT'
+                #d['Author'] = u'Jouni K. Sepp\xe4nen'
+                d['Subject'] = 'group peak analysis
+                #d['CreationDate'] = datetime.datetime(2009, 11, 13)
+                d['ModDate'] = datetime.datetime.today()
+
     
     def setExternalParameters(self, extPa):
         """extPa is a dictionary of external parameters that can be passed"""
@@ -113,19 +170,27 @@ class groupDialog(QDialog):
     
     def addData(self, data):
         """Bring in external data for analysis"""
-        
+        #data is a dictionary of Pandas DataFrames
         self.peakData = data
         print (self.peakData)
+        
+        #remove any duplicate peaks
+        for k, _v in self.peakData.items():
+            _wasShape = _v.shape
+            self.peakData[k] = _v.loc[~_v.index.duplicated(keep='first')] #StackOverflow 13035764
+            _isShape = _v.shape
+            if _isShape != _wasShape:
+                print ("Removed duplicates, df.shape() was {}, now {}".format(_wasShape, _isShape))
+            
         pdk = self.peakData.keys()
         pdk_display = ", ".join(str(k) for k in pdk)
         N_ROI = [len (self.peakData[d].columns) for d in pdk]
-        
-        self.N_ROI_label.setText("Grouping peaks from {} ROIs \n over the sets named {}".format(N_ROI, pdk_display))
         
         _printable = "{}\n{}\n".format(pdk_display, [self.peakData[d].head() for d in pdk])
         print ("Added data of type {}:\n{}\n".format(type(self.peakData), _printable))
         
         self.dataLoaded = True
+        self.N_ROI_label.setText("Grouping peaks from {} ROIs \n over the sets named {}".format(N_ROI, pdk_display))
         self.updateGrouping()
         
     def groupPeaks(self):
@@ -146,8 +211,8 @@ class groupDialog(QDialog):
             #strange double row writing?
             for p in range(_step):
                 # get pth row group
-                _subset = self.peakData[_set][p::_step]
-                
+                _subset = self.peakData[_set].iloc[p::_step]
+                print ("{0} subset\n {1}".format(p, _subset))
                 # each set of mean, sd results is assigned to a row
                 _means.iloc[p] = _subset.describe().loc['mean']
                 _SDs.iloc[p] = _subset.describe().loc['std']
