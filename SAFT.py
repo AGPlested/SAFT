@@ -227,6 +227,7 @@ class MainWindow(QMainWindow):
     def createMenu(self):
         # Skeleton menu commands
         self.file_menu = self.menuBar().addMenu("File")
+        self.analysis_menu = self.menuBar().addMenu("Analysis")
         self.help_menu = self.menuBar().addMenu("Help")
         
         self.file_menu.addAction("About FSTPA", self.about) #this actually goes straight into the FSTPA menu
@@ -234,6 +235,9 @@ class MainWindow(QMainWindow):
         self.file_menu.addAction("Save Peaks", self.save_peaks)
         
         self.file_menu.addAction("Save baselined", self.save_baselined)
+        
+        self.analysis_menu.addAction("Extract all peaks", self.getResponses)
+        self.analysis_menu.addAction("Grouped peak stats", self.getGroups)
         
         self.help_menu.addAction("Getting Started", self.getStarted)
     
@@ -634,17 +638,6 @@ class MainWindow(QMainWindow):
         self.auto_bs_P_slider.setValue(3)
         self.auto_bs_P_slider.valueChanged.connect(self.ROI_Change)
         
-        base_grid.addWidget(auto_bs_label, 0, 0)
-        base_grid.addWidget(self.autobs_Box, 0, 1)
-        base_grid.addWidget(auto_bs_P_label, 1, 0)
-        base_grid.addWidget(self.auto_bs_P_slider, 1, 1)
-        base_grid.addWidget(auto_bs_lam_label, 2, 0)
-        base_grid.addWidget(self.auto_bs_lam_slider, 2, 1)
-        
-        base_grid.setColumnStretch(0,1)
-        base_grid.setColumnStretch(1,1)
-        baseline.setLayout(base_grid)
-        
         # Savitsky-Golay smoothing is very aggressive and doesn't work well in this case
         SGsmoothing_label = QtGui.QLabel("Savitzky-Golay smoothing")
         SGsmoothing_label.setFixedSize(170,25)
@@ -653,11 +646,28 @@ class MainWindow(QMainWindow):
         self.SGsmoothing_CB.addItems(['Off','On'])
         self.SGsmoothing_CB.currentIndexChanged.connect(self.ROI_Change)
         
-        SG_window_label = QtGui.QLabel("S-G window")
-        SG_window_label.setFixedSize(110,25)
+        SG_window_label = QtGui.QLabel("Window")
+        SG_window_label.setFixedSize(80,25)
         self.SGWin_Spin = pg.SpinBox(value=15, step=2, bounds=[5, 49], delay=0, int=True)
         self.SGWin_Spin.setFixedSize(70, 25)
         self.SGWin_Spin.valueChanged.connect(self.ROI_Change)
+        
+        
+        base_grid.addWidget(auto_bs_label, 0, 0)
+        base_grid.addWidget(self.autobs_Box, 0, 1, 1, 3)
+        base_grid.addWidget(auto_bs_P_label, 1, 0)
+        base_grid.addWidget(self.auto_bs_P_slider, 1, 1, 1, 3)
+        base_grid.addWidget(auto_bs_lam_label, 2, 0)
+        base_grid.addWidget(self.auto_bs_lam_slider, 2, 1, 1, 3)
+        base_grid.addWidget(SGsmoothing_label, 3, 0)
+        base_grid.addWidget(self.SGsmoothing_CB, 3, 1)
+        base_grid.addWidget(SG_window_label, 3, 2)
+        base_grid.addWidget(self.SGWin_Spin, 3, 3)
+        base_grid.setColumnStretch(0,1)
+        base_grid.setColumnStretch(1,1)
+        baseline.setLayout(base_grid)
+        
+
         
         # launch peak extraction wizard dialog
         getResponsesBtn = QtGui.QPushButton('Extract peaks from all ROIs')
@@ -689,10 +699,10 @@ class MainWindow(QMainWindow):
         controls.addWidget(baseline, 1, 0 , 1, -1)
         controls.addWidget(peakFinding, 4, 0 , 2, -1)
         
-        controls.addWidget(SGsmoothing_label, 2, 0, 1, 2)
-        controls.addWidget(self.SGsmoothing_CB, 2, 2, 1, 2)
-        controls.addWidget(SG_window_label, 3, 0, 1, 2)
-        controls.addWidget(self.SGWin_Spin, 3, 2, 1, 2)
+        #controls.addWidget(SGsmoothing_label, 2, 0, 1, 2)
+        #controls.addWidget(self.SGsmoothing_CB, 2, 2, 1, 2)
+        #controls.addWidget(SG_window_label, 3, 0, 1, 2)
+        #controls.addWidget(self.SGWin_Spin, 3, 2, 1, 2)
         
         controls.addWidget(getResponsesBtn, 7, 0, 1, 2)
         controls.addWidget(self.savePSRBtn, 7, 2, 1, 2)

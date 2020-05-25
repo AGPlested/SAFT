@@ -146,11 +146,12 @@ class groupDialog(QDialog):
                 # for each, if a group column exists then plot and use SD for shading
                 # title by ROI, 6 per page?
                     plt.figure(figsize=(4, 3))
+                    plt.axes(ylim=(0, 1))
+                    plt.xticks(fontname = "Helvetica")
+                    plt.yticks(fontname = "Helvetica")
+                    plt.title("ROI " + _ROI, fontproperties=font)
+                    
                     for _set in list(merged.columns.levels[0]):
-                        #print (_set, _ROI)
-                        #print (merged.loc[All, (All, _ROI, 'mean')])
-                        #print (merged.loc[All, (_set, All, 'mean')])
-                        #print (merged.loc[All, (_set, _ROI, All)])
                         
                         #some indexes are not there
                         if (_set, _ROI, 'mean') in list(merged.columns.values):
@@ -160,40 +161,21 @@ class groupDialog(QDialog):
                             yn = pd.to_numeric(m-SD)
                             yp = pd.to_numeric(m+SD)
                         
-                            plt.plot(range(self.step),m, 'o')
-                            plt.plot(range(self.step), m, 'k')
+                            plt.plot(range(self.step), m, 'o-')
+                            #plt.plot(range(self.step), m, 'k')
                             plt.fill_between([float(x) for x in range(self.step)], yn, yp, alpha=0.5, facecolor='#FF9848') #edgecolor='#CC4F1B',
                         
-                            plt.yticks(fontname = "Helvetica")
-                            plt.yticks(fontname = "Helvetica")
-                        #plt.legend(fontname = "Helvetica")
-                    plt.title("ROI " + _ROI, fontproperties=font)
                     pdf.savefig()  # saves the current figure into a pdf page
                     plt.close()
-                """
-                plt.rc('text', usetex=True)
-                plt.figure(figsize=(8, 6))
-                x = np.arange(0, 5, 0.1)
-                plt.plot(x, np.sin(x), 'b-')
-                plt.title('Page Two')
-                pdf.savefig()
-                plt.close()
-
-                plt.rc('text', usetex=False)
-                fig = plt.figure(figsize=(4, 5))
-                plt.plot(x, x*x, 'ko')
-                plt.title('Page Three')
-                pdf.savefig(fig)  # or you can pass a Figure object to pdf.savefig
-                plt.close()"""
 
                 # We can also set the file's metadata via the PdfPages object:
                 d = pdf.infodict()
                 d['Title'] = 'PDF of graphs from SAFT'
-                #d['Author'] = u'Jouni K. Sepp\xe4nen'
+                #d['Author']
                 d['Subject'] = 'group peak analysis'
-                #d['CreationDate'] = datetime.datetime(2009, 11, 13)
+                #d['CreationDate']
                 d['ModDate'] = datetime.datetime.today()
-
+            print ("PDF output complete.")
     
     def setExternalParameters(self, extPa):
         """extPa is a dictionary of external parameters that can be passed"""
