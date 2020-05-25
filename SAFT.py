@@ -660,7 +660,7 @@ class MainWindow(QMainWindow):
         self.SGWin_Spin.valueChanged.connect(self.ROI_Change)
         
         # launch peak extraction wizard dialog
-        getResponsesBtn = QtGui.QPushButton('Extract peaks for all ROIs')
+        getResponsesBtn = QtGui.QPushButton('Extract peaks from all ROIs')
         getResponsesBtn.clicked.connect(self.getResponses)
         
         # should be inactive until extraction
@@ -674,7 +674,7 @@ class MainWindow(QMainWindow):
         self.save_baselined_ROIs_Btn.setDisabled(True)
         
         # should be inactive until extraction
-        self.extractGroupsDialog_Btn = QtGui.QPushButton('Extract group resposes')
+        self.extractGroupsDialog_Btn = QtGui.QPushButton('Average group responses')
         self.extractGroupsDialog_Btn.clicked.connect(self.getGroups)
         self.extractGroupsDialog_Btn.setDisabled(True)
         

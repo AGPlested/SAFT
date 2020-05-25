@@ -1,11 +1,14 @@
 import sys
 import os.path
+import itertools
 from PySide2 import QtCore, QtGui
 from PySide2.QtWidgets import QApplication, QMainWindow, QGridLayout, QWidget, QPushButton, QLayout, QDialog, QLabel, QRadioButton, QVBoxLayout, QFileDialog
 import numpy as np
 import pyqtgraph as pg
 import pandas as pd
 
+def sanitizeList(l):
+    return [x.strip().replace(' ', '_').replace('.', '_').replace('(', '').replace(')', '') for x in l]
 
 class groupDialog(QDialog):
     def __init__(self, *args, **kwargs):
@@ -53,7 +56,7 @@ class groupDialog(QDialog):
         # at first, there is nothing to save
         self.saveGraphsBtn.setEnabled(False)
         self.saveGraphsBtn.clicked.connect(self.saveGraphs)
-        layout.addWidget(self.saveGroupsBtn, 7, 0, 1, 2)
+        layout.addWidget(self.saveGraphsBtn, 7, 0, 1, 2)
         
         self.saveGroupsBtn = QPushButton('Save grouped peak data')
         
@@ -97,7 +100,7 @@ class groupDialog(QDialog):
                     for col_num, value in enumerate(_df.columns.values):
                         #print (col_num, value, _set)
                         _worksheet.write(0, col_num + 1, str(value) + " " + _set, header_format)
-                        
+                    
     def saveGraphs(self):
         """Multipage PDF output of groupData analysis"""
         self.gfilename = QFileDialog.getSaveFileName(self,
@@ -109,21 +112,65 @@ class groupDialog(QDialog):
             
             from matplotlib.backends.backend_pdf import PdfPages
             import matplotlib.pyplot as plt
+            import matplotlib
+            from matplotlib.font_manager import FontProperties
+            
+            matplotlib.rcParams['pdf.fonttype'] = 42
+            matplotlib.rcParams['ps.fonttype'] = 42
+            
+            font = FontProperties()
+            #font.set_family('serif')
+            font.set_name('Helvetica')
 
             # Create the PdfPages object to which we will save the pages:
             # The with statement makes sure that the PdfPages object is closed properly at
             # the end of the block, even if an Exception occurs.
+            
+            #df_list = [ v for k,v in self.groupsextracted_by_set.items()]
+            fixedKeys = sanitizeList(self.groupsextracted_by_set.keys())
+            merged = pd.concat(self.groupsextracted_by_set.values(), axis=1, keys=fixedKeys)
+            
+            #merged.columns.levels[1] = merged.columns.levels[1]
+            #print (merged.shape)
+            #print (merged)
+            #print (merged.columns.values)
+            #print (merged.columns.levels[2])
+            #print (merged.columns.levels[1])
+            #print (merged.columns.levels[0])
+            All = slice(None)
+            
             with PdfPages(self.gfilename+'.pdf') as pdf:
+            
+                for _ROI in list(merged.columns.levels[1]):
                 # loop over ROIs
                 # for each, if a group column exists then plot and use SD for shading
                 # title by ROI, 6 per page?
-                
-                """plt.figure(figsize=(3, 3))
-                plt.plot(range(7), [3, 1, 4, 1, 5, 9, 2], 'r-o')
-                plt.title('Page One')
-                pdf.savefig()  # saves the current figure into a pdf page
-                plt.close()
-
+                    plt.figure(figsize=(4, 3))
+                    for _set in list(merged.columns.levels[0]):
+                        #print (_set, _ROI)
+                        #print (merged.loc[All, (All, _ROI, 'mean')])
+                        #print (merged.loc[All, (_set, All, 'mean')])
+                        #print (merged.loc[All, (_set, _ROI, All)])
+                        
+                        #some indexes are not there
+                        if (_set, _ROI, 'mean') in list(merged.columns.values):
+                            SD = merged.loc[All, (_set, _ROI, 'SD')]
+                            m = merged.loc[All, (_set, _ROI, 'mean')]
+                        
+                            yn = pd.to_numeric(m-SD)
+                            yp = pd.to_numeric(m+SD)
+                        
+                            plt.plot(range(self.step),m, 'o')
+                            plt.plot(range(self.step), m, 'k')
+                            plt.fill_between([float(x) for x in range(self.step)], yn, yp, alpha=0.5, facecolor='#FF9848') #edgecolor='#CC4F1B',
+                        
+                            plt.yticks(fontname = "Helvetica")
+                            plt.yticks(fontname = "Helvetica")
+                        #plt.legend(fontname = "Helvetica")
+                    plt.title("ROI " + _ROI, fontproperties=font)
+                    pdf.savefig()  # saves the current figure into a pdf page
+                    plt.close()
+                """
                 plt.rc('text', usetex=True)
                 plt.figure(figsize=(8, 6))
                 x = np.arange(0, 5, 0.1)
@@ -143,7 +190,7 @@ class groupDialog(QDialog):
                 d = pdf.infodict()
                 d['Title'] = 'PDF of graphs from SAFT'
                 #d['Author'] = u'Jouni K. Sepp\xe4nen'
-                d['Subject'] = 'group peak analysis
+                d['Subject'] = 'group peak analysis'
                 #d['CreationDate'] = datetime.datetime(2009, 11, 13)
                 d['ModDate'] = datetime.datetime.today()
 
@@ -198,30 +245,43 @@ class groupDialog(QDialog):
         
         self.prepGuiParameters()
         self.groupsextracted_by_set = {}
-        _step  = int(self.groupNSB.value())
+        #_step  = int(self.groupNSB.value())
+        All = slice(None)
+       
         
         for _set in self.peakData.keys():
             #prep means and sd frames
-            c = self.peakData[_set].columns
+            _c = self.peakData[_set].columns
             #print (c, _step)
-            # make dataframes
-            _means = pd.DataFrame([], range(_step), c)
-            _SDs = pd.DataFrame([], range(_step), c)
             
-            #strange double row writing?
-            for p in range(_step):
+            
+            _stat = ['mean','SD']
+            _headr = list(itertools.product(_c, _stat))
+            # make dataframe
+            cols = pd.MultiIndex.from_tuples(_headr)
+            _s = pd.DataFrame([], range(self.step), cols)
+            print (_s)
+            
+            for p in range(self.step):
                 # get pth row group
-                _subset = self.peakData[_set].iloc[p::_step]
-                print ("{0} subset\n {1}".format(p, _subset))
-                # each set of mean, sd results is assigned to a row
-                _means.iloc[p] = _subset.describe().loc['mean']
-                _SDs.iloc[p] = _subset.describe().loc['std']
+                _subset = self.peakData[_set].iloc[p::self.step]
+                print ("{0}. subset\n {1}".format(p, _subset))
+                # each set of paired mean, sd results is assigned to two columns
+                pth_row = _s.index.isin(_s.index[p:p+1])
+                #print (pth_row, _s.loc[pth_row, (All, 'mean')] , _subset.describe().loc['mean'])
+                _s.loc[pth_row, (All, 'mean')] = _subset.describe().loc['mean'].values
+                _s.loc[pth_row, (All, 'SD')] = _subset.describe().loc['std'].values
+    
+                #_means.iloc[p] = _subset.describe().loc['mean']
+                #_SDs.iloc[p] = _subset.describe().loc['std']
             
-            self.groupsextracted_by_set[_set + "_m"] = _means
-            self.groupsextracted_by_set[_set + "_sd"] = _SDs
+            #print(_s)
+            self.groupsextracted_by_set[_set] = _s
+            #self.groupsextracted_by_set[_set + "_sd"] = _SDs
         
         # we can save now that we have data
         self.saveGroupsBtn.setEnabled(True)
+        self.saveGraphsBtn.setEnabled(True)
         print (self.groupsextracted_by_set)
         """
         for _set in self.peakdata.keys():
@@ -274,7 +334,7 @@ class groupDialog(QDialog):
                 print ("couldn't find a dataframe in self.peakData")
                 
         self.NRepeats  = int(self.peaksN / self.groupNSB.value())
-        
+        self.step = int(self.groupNSB.value())
         #update dialog
         NrepeatsLabelText = "{0} peaks in each trace and so {1} repeats.".format(self.peaksN, self.NRepeats)
         self.NRepeatsLabel.setText(NrepeatsLabelText)
