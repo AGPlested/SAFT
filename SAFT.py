@@ -6,7 +6,7 @@ import copy
 from PySide2 import QtCore, QtGui
 from PySide2.QtCore import Slot
 from PySide2 import __version__ as pyside_version
-from PySide2.QtWidgets import QApplication, QMainWindow, QWidget, QGridLayout, QMessageBox, QFileDialog, QAction, QGroupBox, QHBoxLayout, QRadioButton, QDialog, QVBoxLayout
+from PySide2.QtWidgets import QApplication, QMainWindow, QWidget, QGridLayout, QMessageBox, QFileDialog, QAction, QGroupBox, QHBoxLayout, QRadioButton, QDialog, QVBoxLayout, QCheckBox
 
 import itertools
 import numpy as np
@@ -21,6 +21,7 @@ from peaksDialog import getPeaksDialog
 from resultsDF import Results
 from histogramDF import HistogramsR
 from groupPeaksDialog import groupDialog
+from quantal import fit_nGaussians, nGaussians_display
 
 import pyqtgraph as pg
 
@@ -438,6 +439,12 @@ class MainWindow(QMainWindow):
         else:
             self.saveHistogramsOption = False
     
+    def fitHistogramsLogic (self, b):
+        if b.isChecked() == True:
+            self.fitHistogramsOption = True
+        else:
+            self.fitHistogramsOption = False
+    
     
     def manualPeakToggle (self, b):
         """disable controls if we are editing peaks manually"""
@@ -517,17 +524,38 @@ class MainWindow(QMainWindow):
         self.sum_hist.addItems(['Separated','Summed'])
         self.sum_hist.currentIndexChanged.connect(self.updateHistograms)
         
-        self.saveHistogramsToggle = QRadioButton("Save Histograms ", self)
+        #toggle fitting
+        self.fitHistogramsToggle = QCheckBox("Fit Histograms ", self)
+        self.fitHistogramsToggle.setChecked(False)
+        self.fitHistogramsToggle.toggled.connect(lambda:self.fitHistogramsLogic(self.fitHistogramsToggle))
+        
+        #fit parameters
+        histnG_label = QtGui.QLabel("No. of Gaussians")
+        self.histo_nG_Spin = pg.SpinBox(value=5, step=1, bounds=[1,10], delay=0, int=True)
+        self.histo_nG_Spin.setFixedSize(80, 25)
+        self.histo_nG_Spin.valueChanged.connect(self.updateHistograms)
+        
+        histw_label = QtGui.QLabel("dF_Q guess")
+        self.histo_q_Spin = pg.SpinBox(value=.05, step=0.01, bounds=[0.01,1], delay=0, int=False)
+        self.histo_q_Spin.setFixedSize(80, 25)
+        self.histo_q_Spin.valueChanged.connect(self.updateHistograms)
+        
+        self.saveHistogramsToggle = QCheckBox("Save Histograms ", self)
         self.saveHistogramsToggle.setChecked(True)
         self.saveHistogramsToggle.toggled.connect(lambda:self.saveHistogramsLogic(self.saveHistogramsToggle))
         
         histGrid.addWidget(NBin_label, 0, 0)
         histGrid.addWidget(histMax_label, 1, 0)
         histGrid.addWidget(histsum_label, 2, 0)
+        histGrid.addWidget(histnG_label, 5, 0)
+        histGrid.addWidget(histw_label, 6, 0)
         histGrid.addWidget(self.histo_NBin_Spin, 0, 1)
         histGrid.addWidget(self.histo_Max_Spin, 1, 1)
         histGrid.addWidget(self.sum_hist, 2, 1)
+        histGrid.addWidget(self.histo_nG_Spin, 5, 1)
+        histGrid.addWidget(self.histo_q_Spin, 6, 1)
         histGrid.addWidget(self.saveHistogramsToggle, 3, 0, 1, 2)
+        histGrid.addWidget(self.fitHistogramsToggle, 4, 0, 1, 2)
         histograms.setLayout(histGrid)
         
         traces = QGroupBox("Trace display")
