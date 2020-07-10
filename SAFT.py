@@ -340,7 +340,13 @@ class MainWindow(QMainWindow):
         #to fix label jiggling about (graphicswidget method)
         self.plots.cursorlabel.setFixedWidth(100)
         
+        self.plots.peakslabel = pg.LabelItem(text='', justify='left')
+        
+        #to fix label jiggling about (graphicswidget method)
+        self.plots.peakslabel.setFixedWidth(100)
+        
         self.plots.addItem(self.plots.cursorlabel, row=4, col=2, rowspan=1, colspan=1)
+        self.plots.addItem(self.plots.peakslabel, row=4, col=0, rowspan=1, colspan=1)
         
         self.central_layout.addWidget(self.plots, row=0, col=0, rowspan=1,colspan=2)
      
@@ -472,9 +478,9 @@ class MainWindow(QMainWindow):
             self.p3.addItem(self.hLine, ignoreBounds=True)
             
             # add a hint - need to find a better way to add it!!! Label at top?
-            self.p3hint = pg.TextItem('left click to add/remove peaks')
-            self.p3hint.setPos(0, .2)
-            self.p3.addItem(self.p3hint)
+            #self.p3hint = pg.TextItem('Manual editing- left click to add/remove peaks')
+            #self.p3hint.setPos(0, .2)
+            self.p3.setTitle('Manual editing- left click to add/remove peaks', color="F0F0F0" , width=300)
             
         else:
             # Enter auto peak mode
@@ -492,7 +498,7 @@ class MainWindow(QMainWindow):
             self.removeSml_Spin.setEnabled(True)
             
             # Remove the hint
-            self.p3.removeItem(self.p3hint)
+            self.p3.setTitle('Auto peak finding', color="a0a0a0", width=300)
             
             # Remove crosshair from p3.
             self.p3.removeItem(self.vLine)
@@ -507,12 +513,12 @@ class MainWindow(QMainWindow):
         histograms = QGroupBox("Histogram options")
         histGrid = QGridLayout()
         
-        NBin_label = QtGui.QLabel("No. of bins")
+        NBin_label = QtGui.QLabel("Number of bins")
         self.histo_NBin_Spin = pg.SpinBox(value=100, step=10, bounds=[0, 250], delay=0)
         self.histo_NBin_Spin.setFixedSize(80, 25)
         self.histo_NBin_Spin.valueChanged.connect(self.updateHistograms)
         
-        histMax_label = QtGui.QLabel("Histogram Max")
+        histMax_label = QtGui.QLabel("Histogram dF/F max")
         self.histo_Max_Spin = pg.SpinBox(value=1, step=0.1, bounds=[0.1, 10], delay=0, int=False)
         self.histo_Max_Spin.setFixedSize(80, 25)
         self.histo_Max_Spin.valueChanged.connect(self.updateHistograms)
@@ -520,27 +526,27 @@ class MainWindow(QMainWindow):
         #toggle show ROI histogram sum
         histsum_label = QtGui.QLabel("Histograms for ROI")
         self.sum_hist = pg.ComboBox()
-        self.sum_hist.setFixedSize(120,25)
+        self.sum_hist.setFixedSize(100,25)
         self.sum_hist.addItems(['Separated','Summed'])
         self.sum_hist.currentIndexChanged.connect(self.updateHistograms)
         
         #toggle fitting
-        self.fitHistogramsToggle = QCheckBox("Fit Histograms ", self)
+        self.fitHistogramsToggle = QCheckBox("Fit Histograms", self)
         self.fitHistogramsToggle.setChecked(False)
         self.fitHistogramsToggle.toggled.connect(lambda:self.fitHistogramsLogic(self.fitHistogramsToggle))
         
         #fit parameters
-        histnG_label = QtGui.QLabel("No. of Gaussians")
+        histnG_label = QtGui.QLabel("Number of Gaussians")
         self.histo_nG_Spin = pg.SpinBox(value=5, step=1, bounds=[1,10], delay=0, int=True)
         self.histo_nG_Spin.setFixedSize(80, 25)
         self.histo_nG_Spin.valueChanged.connect(self.updateHistograms)
         
-        histw_label = QtGui.QLabel("dF_Q guess")
+        histw_label = QtGui.QLabel("dF_'Q' guess")
         self.histo_q_Spin = pg.SpinBox(value=.05, step=0.01, bounds=[0.01,1], delay=0, int=False)
         self.histo_q_Spin.setFixedSize(80, 25)
         self.histo_q_Spin.valueChanged.connect(self.updateHistograms)
         
-        self.saveHistogramsToggle = QCheckBox("Save Histograms ", self)
+        self.saveHistogramsToggle = QCheckBox("Save Histograms", self)
         self.saveHistogramsToggle.setChecked(True)
         self.saveHistogramsToggle.toggled.connect(lambda:self.saveHistogramsLogic(self.saveHistogramsToggle))
         
@@ -826,7 +832,22 @@ class MainWindow(QMainWindow):
                 sumhy += hy
             
             self.p2.plot(hx, sumhy, name="Summed histogram "+_ROI, stepMode=True, fillLevel=0, fillOutline=True, brush='y')
-    
+            
+            if self.fitHistogramsOption:
+                print ("lens hx, hy", len(hx), len(hy))
+                _num = self.histo_nG_Spin.value()
+                _q = self.histo_q_Spin.value()
+                _ws = self.histo_Max_Spin.value() / 20
+                
+                _hxc = np.mean(np.vstack([hx[0:-1], hx[1:]]), axis=0)
+                opti = fit_nGaussians(_num, _q, _ws, sumhy, _hxc)
+                _hx_u, _hy_u = nGaussians_display (_hxc, _num, opti)
+                _qfit = opti.x[0]
+                _c = self.p2.plot(_hx_u, _hy_u, name='Fit of {} Gaussians q: {}'.format(_num,_qfit))
+                #from pyqtgraph.examples
+                _c.setPen('w', width=3)
+                _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
+        
     def getGroups(self):
         """launch group processing dialog"""
         print ('get group responses from all ROIs.')
@@ -974,7 +995,9 @@ class MainWindow(QMainWindow):
             print ('No peaks found in {0} with cwt algorithm, width: {1}, SNR: {2}, cutOff: {4}.'.format(name, self.cwt_width, self.cwt_SNR, _cutOff))
             xpf = []
             ypf = []
-            
+        
+        self.plots.peakslabel.setText("Number of peaks: {}".format(_npeaks))
+        
         return xpf, ypf
     
     def manualUpdate(self):
@@ -1020,6 +1043,7 @@ class MainWindow(QMainWindow):
             else:
                 self.p1.plot(xp, yp, pen=None, symbol="s", symbolBrush=col_series)
             
+            self.plots.peakslabel.setText("Number of peaks in {} set: {}".format(_set, len(yp)))
                 
     def setBaselineParams (self):
         """Get parameters for auto baseline from GUI"""
