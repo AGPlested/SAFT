@@ -514,17 +514,20 @@ class MainWindow(QMainWindow):
         histGrid = QGridLayout()
         
         NBin_label = QtGui.QLabel("Number of bins")
+        NBin_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.histo_NBin_Spin = pg.SpinBox(value=100, step=10, bounds=[0, 250], delay=0)
         self.histo_NBin_Spin.setFixedSize(80, 25)
         self.histo_NBin_Spin.valueChanged.connect(self.updateHistograms)
         
         histMax_label = QtGui.QLabel("Histogram dF/F max")
+        histMax_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.histo_Max_Spin = pg.SpinBox(value=1, step=0.1, bounds=[0.1, 10], delay=0, int=False)
         self.histo_Max_Spin.setFixedSize(80, 25)
         self.histo_Max_Spin.valueChanged.connect(self.updateHistograms)
         
         #toggle show ROI histogram sum
-        histsum_label = QtGui.QLabel("Histograms for ROI")
+        histsum_label = QtGui.QLabel("Histograms are")
+        histsum_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.sum_hist = pg.ComboBox()
         self.sum_hist.setFixedSize(100,25)
         self.sum_hist.addItems(['Separated','Summed'])
@@ -537,11 +540,14 @@ class MainWindow(QMainWindow):
         
         #fit parameters
         histnG_label = QtGui.QLabel("Number of Gaussians")
+        histnG_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        
         self.histo_nG_Spin = pg.SpinBox(value=5, step=1, bounds=[1,10], delay=0, int=True)
         self.histo_nG_Spin.setFixedSize(80, 25)
         self.histo_nG_Spin.valueChanged.connect(self.updateHistograms)
         
         histw_label = QtGui.QLabel("dF_'Q' guess")
+        histw_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.histo_q_Spin = pg.SpinBox(value=.05, step=0.01, bounds=[0.01,1], delay=0, int=False)
         self.histo_q_Spin.setFixedSize(80, 25)
         self.histo_q_Spin.valueChanged.connect(self.updateHistograms)
@@ -550,18 +556,18 @@ class MainWindow(QMainWindow):
         self.saveHistogramsToggle.setChecked(True)
         self.saveHistogramsToggle.toggled.connect(lambda:self.saveHistogramsLogic(self.saveHistogramsToggle))
         
-        histGrid.addWidget(NBin_label, 0, 0)
+        histGrid.addWidget(NBin_label, 2, 0)
         histGrid.addWidget(histMax_label, 1, 0)
-        histGrid.addWidget(histsum_label, 2, 0)
-        histGrid.addWidget(histnG_label, 5, 0)
-        histGrid.addWidget(histw_label, 6, 0)
-        histGrid.addWidget(self.histo_NBin_Spin, 0, 1)
+        histGrid.addWidget(histsum_label, 0, 0)
+        histGrid.addWidget(histnG_label, 4, 0)
+        histGrid.addWidget(histw_label, 5, 0)
+        histGrid.addWidget(self.histo_NBin_Spin, 2, 1)
         histGrid.addWidget(self.histo_Max_Spin, 1, 1)
-        histGrid.addWidget(self.sum_hist, 2, 1)
-        histGrid.addWidget(self.histo_nG_Spin, 5, 1)
-        histGrid.addWidget(self.histo_q_Spin, 6, 1)
-        histGrid.addWidget(self.saveHistogramsToggle, 3, 0, 1, 2)
-        histGrid.addWidget(self.fitHistogramsToggle, 4, 0, 1, 2)
+        histGrid.addWidget(self.sum_hist, 0, 1)
+        histGrid.addWidget(self.histo_nG_Spin, 4, 1)
+        histGrid.addWidget(self.histo_q_Spin, 5, 1)
+        histGrid.addWidget(self.saveHistogramsToggle, 6, 0, 1, 2)
+        histGrid.addWidget(self.fitHistogramsToggle, 3, 0, 1, 2)
         histograms.setLayout(histGrid)
         
         traces = QGroupBox("Trace display")
@@ -576,6 +582,7 @@ class MainWindow(QMainWindow):
         
         # selection of ROI trace, or mean, variance etc
         ROIBox_label = QtGui.QLabel("Select ROI")
+        ROIBox_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         
         self.ROI_selectBox = QtGui.QComboBox()
         self.ROI_selectBox.addItems(['None'])
@@ -602,9 +609,13 @@ class MainWindow(QMainWindow):
                 
         # Toggle between wavelet transform and simple algorithm for peak finding
         peakFind_L_label = QtGui.QLabel("Find peaks with")
+        peakFind_L_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         peakFind_R_label = QtGui.QLabel("algorithm.")
+        peakFind_R_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         cwt_width_label = QtGui.QLabel("Width (wavelet only)")
+        cwt_width_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         SNR_label = QtGui.QLabel("Prominence / SNR")
+        SNR_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         
         self.peak_CB = pg.ComboBox()
         self.peak_CB.setFixedSize(90, 25)
@@ -622,7 +633,9 @@ class MainWindow(QMainWindow):
         
         # Control to exclude small peaks
         removeSml_L_label = QtGui.QLabel("Ignore peaks smaller than")
-        removeSml_R_label = QtGui.QLabel("of the largest peak.")
+        removeSml_L_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        removeSml_R_label = QtGui.QLabel("of largest.")
+        removeSml_R_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         self.removeSml_Spin = pg.SpinBox(value=30, step=10, bounds=[0, 100], suffix='%', delay=0, int=False)
         self.removeSml_Spin.setFixedSize(70, 25)
         self.removeSml_Spin.valueChanged.connect(self.ROI_Change)
@@ -653,6 +666,7 @@ class MainWindow(QMainWindow):
         auto_bs_label = QtGui.QLabel("Baseline removal?")
         self.autobs_Box = pg.ComboBox()
         self.autobs_Box.addItems(['Auto', 'None', 'Lock'])
+        self.autobs_Box.setFixedSize(70, 25)
         self.autobs_Box.currentIndexChanged.connect(self.ROI_Change)
         
         # parameters for the auto baseline algorithm
@@ -662,6 +676,7 @@ class MainWindow(QMainWindow):
         self.auto_bs_lam_slider.setMinimum(2)
         self.auto_bs_lam_slider.setMaximum(9)
         self.auto_bs_lam_slider.setValue(6)
+        self.auto_bs_lam_slider.setFixedSize(100, 25)
         self.auto_bs_lam_slider.valueChanged.connect(self.ROI_Change)
         
         auto_bs_P_label = QtGui.QLabel("p")
@@ -670,11 +685,13 @@ class MainWindow(QMainWindow):
         self.auto_bs_P_slider.setMaximum(20)
         self.auto_bs_P_slider.setTickPosition(QtGui.QSlider.TicksBothSides)
         self.auto_bs_P_slider.setValue(3)
+        self.auto_bs_P_slider.setFixedSize(100, 25)
         self.auto_bs_P_slider.valueChanged.connect(self.ROI_Change)
         
         # Savitsky-Golay smoothing is very aggressive and doesn't work well in this case
         SGsmoothing_label = QtGui.QLabel("Savitzky-Golay smoothing")
-        SGsmoothing_label.setFixedSize(170,25)
+        SGsmoothing_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        #SGsmoothing_label.setFixedSize(170,25)
         self.SGsmoothing_CB = pg.ComboBox()
         self.SGsmoothing_CB.setFixedSize(70, 25)
         self.SGsmoothing_CB.addItems(['Off','On'])
@@ -732,11 +749,6 @@ class MainWindow(QMainWindow):
         
         controls.addWidget(baseline, 1, 0 , 1, -1)
         controls.addWidget(peakFinding, 4, 0 , 2, -1)
-        
-        #controls.addWidget(SGsmoothing_label, 2, 0, 1, 2)
-        #controls.addWidget(self.SGsmoothing_CB, 2, 2, 1, 2)
-        #controls.addWidget(SG_window_label, 3, 0, 1, 2)
-        #controls.addWidget(self.SGWin_Spin, 3, 2, 1, 2)
         
         controls.addWidget(getResponsesBtn, 7, 0, 1, 2)
         controls.addWidget(self.savePSRBtn, 7, 2, 1, 2)
@@ -843,7 +855,7 @@ class MainWindow(QMainWindow):
                 opti = fit_nGaussians(_num, _q, _ws, sumhy, _hxc)
                 _hx_u, _hy_u = nGaussians_display (_hxc, _num, opti)
                 _qfit = opti.x[0]
-                _c = self.p2.plot(_hx_u, _hy_u, name='Fit of {} Gaussians q: {}'.format(_num,_qfit))
+                _c = self.p2.plot(_hx_u, _hy_u, name='Fit of {} Gaussians q: {:.2f}'.format(_num,_qfit))
                 #from pyqtgraph.examples
                 _c.setPen('w', width=3)
                 _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
