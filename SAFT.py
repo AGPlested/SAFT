@@ -718,8 +718,6 @@ class MainWindow(QMainWindow):
         base_grid.setColumnStretch(1,1)
         baseline.setLayout(base_grid)
         
-
-        
         # launch peak extraction wizard dialog
         getResponsesBtn = QtGui.QPushButton('Extract peaks from all ROIs')
         getResponsesBtn.clicked.connect(self.getResponses)

@@ -198,6 +198,8 @@ class getPeaksDialog(QDialog):
         self.skipRB.setText(skipLabelText)
         
 """
+
+#### TEST CODE ####
 class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
