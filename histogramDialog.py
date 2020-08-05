@@ -25,8 +25,61 @@ class testData():
         self.histo_df = pd.read_excel(_f, None, index_col=0)
         #print (self.file_dict)
 
-    
+class ROI_Controls(QtGui.QWidget):
+    #from Stack Overflow : https://stackoverflow.com/questions/56267781/how-to-make-double-arrow-button-in-pyqt
+    #and https://programming.vip/docs/pyqt5-note-7-multiple-class-sharing-signals.html
+    ctrl_signal = QtCore.Signal()
+    def __init__(self, parent, *args):
+        super(ROI_Controls, self).__init__(*args)
+        
+        self.parent = parent
+        self.ROI_box = QGroupBox("ROI")
+        l = QGridLayout()
+        
+        buttonLL = QtGui.QToolButton()
+        buttonLL.setIcon(
+            buttonLL.style().standardIcon(QtGui.QStyle.SP_MediaSeekBackward)
+        )
 
+        buttonL = QtGui.QToolButton()
+        buttonL.setArrowType(QtCore.Qt.LeftArrow)
+
+        self.ROI_label = QtGui.QLabel("-")
+
+        buttonR = QtGui.QToolButton()
+        buttonR.setArrowType(QtCore.Qt.RightArrow)
+
+        buttonRR = QtGui.QToolButton()
+        buttonRR.setIcon(
+            buttonRR.style().standardIcon(QtGui.QStyle.SP_MediaSeekForward)
+        )
+
+        #lay = QtGui.QHBoxLayout(self)
+        buttonList = [buttonLL, buttonL, buttonR, buttonRR]
+        for counter, btn in enumerate(buttonList):
+            print (counter, btn)
+            
+            btn.pressed.connect(lambda val=counter: self.buttonPressed(val))
+            #btn.clicked.connect(self.ctrl_signal.emit)
+            #self.ctrl_signal.connect(parent.ctrl_signal.emit)
+            l.addWidget(btn, 0, counter)
+            
+        l.addWidget(self.ROI_label, 0, 4)
+        self.ROI_box.setLayout(l)
+        
+        #self.ctrl_signal.connect(self.buttonPressed)
+
+    def update_ROI_label(self, t):
+        self.ROI_label.setText (t)
+
+    #@pyqtSlot(int)
+    def buttonPressed(self, _b):
+        print (_b)
+        self.ROI_label.setText(str(_b))
+        self.parent.ROI_change_command (_b)
+        
+    
+    
 class HDisplay():
     def __init__(self, *args, **kwargs):
         
@@ -65,6 +118,7 @@ class txOutput():
 
 class histogramFitDialog(QDialog):
     
+    ctrl_signal = QtCore.Signal()
     
     def __init__(self, *args, **kwargs):
         super(histogramFitDialog, self).__init__(*args, **kwargs)
@@ -73,7 +127,11 @@ class histogramFitDialog(QDialog):
         self.hPlot = HDisplay()
         self.outputF = txOutput(self.outputHeader)
         self.makeDialog()
-        
+    
+    def test(self, sender):
+        print (sender)
+        self.outputF.appendOutText ('ctrl_button was pressed {}'.format(sender))
+    
     def makeDialog(self):
         """Create the controls for the dialog"""
         
@@ -82,10 +140,14 @@ class histogramFitDialog(QDialog):
         w = QWidget()
         w.setLayout(layout)
         
+        self.RC = ROI_Controls(self)        #need to send this instance as parent
+        #self.ctrl_signal.connect(self.test)
+        
         self.resize(1000,500)
-        vbox = QVBoxLayout()
-        vbox.addWidget(w)
-        self.setLayout(vbox)
+        gbox = QGridLayout()
+        gbox.addWidget(self.RC.ROI_box,0,0,1,1)
+        gbox.addWidget(w,1,0,1,-1)
+        self.setLayout(gbox)
         
         #histogram view
     
@@ -153,9 +215,13 @@ class histogramFitDialog(QDialog):
         
         _doFitBtn = QPushButton('Fit')
         _doFitBtn.clicked.connect(self.fitGaussians)
-        layout.addWidget(_doFitBtn, 3, 1)
+        layout.addWidget(_doFitBtn, 3, 0)
         
-        _skipBtn = QPushButton('Skip')
+        _saveAdvBtn = QPushButton('Store Fits and Advance')
+        _doFitBtn.clicked.connect(self.save)
+        layout.addWidget(_saveAdvBtn, 3, 1)
+        
+        _skipBtn = QPushButton('Skip ROI')
         _skipBtn.clicked.connect(self.skipROI)
         layout.addWidget(_skipBtn, row=2, col=1)
         
@@ -254,9 +320,31 @@ class histogramFitDialog(QDialog):
         self.ROI_list = list(self.peakResults[list(tdk)[0]].keys().unique(level=0))
         print (self.ROI_list)
         
-        self.current_ROI = self.ROI_list[0]
+        self.ROI_change()   #default is the first (0).
         self.updateHistograms()
-       
+    
+    def ROI_change_command (self, button_command):
+        print(button_command)
+        if button_command == 0:
+            self.ROI_N = 0
+        elif button_command == 1:
+            self.ROI_N -= 1
+            if self.ROI_N < 0:  self.ROI_N = 0
+        elif button_command == 2:
+            self.ROI_N += 1
+            if self.ROI_N == len(self.ROI_list):  self.ROI_N = len(self.ROI_list) - 1
+        elif button_command == 3:
+            self.ROI_N = len(self.ROI_list) - 1
+        
+        print ("self ROI N:", self.ROI_N)
+        self.ROI_change(self.ROI_N)
+        
+    def ROI_change(self, _ROI=0):
+        self.ROI_N = _ROI
+        self.current_ROI = self.ROI_list[_ROI]
+        self.RC.update_ROI_label("{} : {} of {}".format(self.current_ROI, self.ROI_N + 1, len(self.ROI_list)))
+        self.updateHistograms()
+        
         
     def updateHistograms(self):
         """called when histogram controls are changed"""
