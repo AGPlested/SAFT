@@ -5,7 +5,14 @@ import numpy as np
 import pyqtgraph as pg
 import pandas as pd
 
-from quantal import fit_nGaussians, nGaussians_display
+from quantal import fit_nGaussians, nGaussians_display, fit_nprGaussians, nprGaussians_display
+
+def despace (s):
+    sp = " "
+    if sp in s:
+        return s.split(' ')[0]
+    else:
+        return s
 
 class testData():
     def __init__(self, *args, **kwargs):
@@ -13,14 +20,12 @@ class testData():
         
     def open_file(self):
         _f = "redone13.xlsx"
-        #this reads only the first sheet
-        
-        #need to obtain the sheet names!
-        
-        #how to get the sheet names from pd.xwx
-        self.file = pd.read_excel(_f, index_col=0)
-        # need to read all the sheets
-        
+      
+        #"None" reads all the sheets into a dictionary of data frames
+        self.histo_df = pd.read_excel(_f, None, index_col=0)
+        #print (self.file_dict)
+
+    
 
 class HDisplay():
     def __init__(self, *args, **kwargs):
@@ -34,6 +39,8 @@ class HDisplay():
         
     def updateTitle(self, newTitle):
         self.h.setTitle (newTitle)
+        
+    
 
 class txOutput():
     def __init__(self, initialText, *args, **kwargs):
@@ -57,18 +64,16 @@ class txOutput():
             self.frame.append(str(newOP))
 
 class histogramFitDialog(QDialog):
+    
+    
     def __init__(self, *args, **kwargs):
         super(histogramFitDialog, self).__init__(*args, **kwargs)
         
-        #self.peaksScraped = False
-        #self.small = 3
         self.outputHeader = "logfile [date]" #fix
         self.hPlot = HDisplay()
         self.outputF = txOutput(self.outputHeader)
         self.makeDialog()
         
-        
-
     def makeDialog(self):
         """Create the controls for the dialog"""
         
@@ -217,21 +222,40 @@ class histogramFitDialog(QDialog):
         """Bring in external data for analysis"""
         
         #take all peak lists
-        
-        
-        self.peakResults = data
+    
+        self.peakResults = data # a dict of DataFrames
         #print (self.peakResults)
         
-        #not getting multiple sheets yet - need to fix input
+        #the histograms aren't much use, we might change binning
+        if 'histograms' in self.peakResults:
+            del self.peakResults['histograms']
+        
+        #clean out any low SNR data _ avoid interating over ordered dict
+        for key in self.peakResults.copy():
+            if "SNR<" in key:
+                del self.peakResults[key]
+        
         tdk = self.peakResults.keys()
         tdk_display = ", ".join(str(k) for k in tdk)
+        print (tdk_display)
         N_ROI = [len (self.peakResults[d].columns) for d in tdk]
         
-        self.N_ROI_label.setText("Scraping peaks from {} ROIs \n over the sets named {}".format(N_ROI, tdk_display))
+        self.outputF.appendOutText ("Scraping peaks from {} ROIs \n over the sets named {}".format(N_ROI, tdk_display))
         
-        _printable = "{}\n{}\n".format(tdk_display, [self.tracedata[d].head() for d in tdk])
-        self.outputF.appendOutText ("Added data of type {}:\n{}\n".format(type(self.tracedata), _printable))
+        _printable = "{}\n{}\n".format(tdk_display, [self.peakResults[d].head() for d in tdk])
+        self.outputF.appendOutText ("Added data of type {}:\n{}\n".format(type(self.peakResults), _printable))
         
+        
+        #self.ROI_list = list(k.split()[0] for k in self.ROI_list)
+        
+        for d in self.peakResults:
+            self.peakResults[d].rename(despace, axis='columns', inplace=True)
+            
+        self.ROI_list = list(self.peakResults[list(tdk)[0]].keys().unique(level=0))
+        print (self.ROI_list)
+        
+        self.current_ROI = self.ROI_list[0]
+        self.updateHistograms()
        
         
     def updateHistograms(self):
@@ -239,32 +263,32 @@ class histogramFitDialog(QDialog):
            
         # get controls values and summarise to terminal
         _nbins, _max = self.histogram_parameters()
-        #_ROI = self.ROI_selectBox.currentText()
+        _ROI = self.current_ROI
         _hsum = self.sum_hist.currentText()
         print ('Update {3} Histogram(s) for {2} with Nbins = {0} and maximum dF/F = {1}.'.format(_nbins, _max, _ROI, _hsum))
           
         # clear
-        self.h.clear()
+        self.hPlot.h.clear()
            
         if _hsum == "Separated":
-            for i, _set in enumerate(self.sheets):
+            for i, _set in enumerate(self.peakResults.keys()):
                 # colours
-                col_series = (i, len(self.sheets))
+                col_series = (i, len(self.peakResults.keys()))
                 # get relevant peaks data for displayed histograms
-                _, _pdata = self.peakResults.getPeaks(_ROI, _set)
+                _pdata = self.peakResults[_set][_ROI]
                 # redo histogram
                 hy, hx  = np.histogram(_pdata, bins=_nbins, range=(0., _max))
                 # replot
-                self.h.plot(hx, hy, name="Histogram "+_set, stepMode=True, fillLevel=0, fillOutline=True, brush=col_series)
+                self.hPlot.h.plot(hx, hy, name="Histogram "+_set, stepMode=True, fillLevel=0, fillOutline=True, brush=col_series)
 
         elif _hsum == "Summed":
             sumhy = np.zeros(_nbins)
-            for _set in self.sheets:
-                _, _pdata = self.peakResults.getPeaks(_ROI, _set)
+            for _set in self.peakResults.keys():
+                _pdata = self.peakResults[_set][_ROI]
                 hy, hx  = np.histogram(_pdata, bins=_nbins, range=(0., _max))
                 sumhy += hy
            
-            self.p2.plot(hx, sumhy, name="Summed histogram "+_ROI, stepMode=True, fillLevel=0, fillOutline=True, brush='y')
+            self.hPlot.h.plot(hx, sumhy, name="Summed histogram "+_ROI, stepMode=True, fillLevel=0, fillOutline=True, brush='y')
            
             if self.fitHistogramsOption:
                 print ("lens hx, hy", len(hx), len(hy))
@@ -293,6 +317,6 @@ if __name__ == '__main__':
     
     app = QApplication([])
     main_window = histogramFitDialog()
-    #main_window.addData(tdata.file)
+    main_window.addData(tdata.histo_df)
     main_window.show()
     sys.exit(app.exec_())

@@ -18,6 +18,7 @@ from scipy.sparse.linalg import spsolve
 #SAFT imports
 from clicker import clickAlgebra
 from peaksDialog import getPeaksDialog
+from histogramDialog import histogramFitDialog
 from resultsDF import Results
 from histogramDF import HistogramsR
 from groupPeaksDialog import groupDialog
