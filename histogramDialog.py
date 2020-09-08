@@ -37,22 +37,16 @@ class ROI_Controls(QtGui.QWidget):
         l = QGridLayout()
         
         buttonLL = QtGui.QToolButton()
-        buttonLL.setIcon(
-            buttonLL.style().standardIcon(QtGui.QStyle.SP_MediaSeekBackward)
-        )
+        buttonLL.setIcon(buttonLL.style().standardIcon(QtGui.QStyle.SP_MediaSeekBackward))
 
         buttonL = QtGui.QToolButton()
         buttonL.setArrowType(QtCore.Qt.LeftArrow)
-
-        self.ROI_label = QtGui.QLabel("-")
 
         buttonR = QtGui.QToolButton()
         buttonR.setArrowType(QtCore.Qt.RightArrow)
 
         buttonRR = QtGui.QToolButton()
-        buttonRR.setIcon(
-            buttonRR.style().standardIcon(QtGui.QStyle.SP_MediaSeekForward)
-        )
+        buttonRR.setIcon(buttonRR.style().standardIcon(QtGui.QStyle.SP_MediaSeekForward))
 
         #lay = QtGui.QHBoxLayout(self)
         buttonList = [buttonLL, buttonL, buttonR, buttonRR]
@@ -63,7 +57,8 @@ class ROI_Controls(QtGui.QWidget):
             #btn.clicked.connect(self.ctrl_signal.emit)
             #self.ctrl_signal.connect(parent.ctrl_signal.emit)
             l.addWidget(btn, 0, counter)
-            
+          
+        self.ROI_label = QtGui.QLabel("-")
         l.addWidget(self.ROI_label, 0, 4)
         self.ROI_box.setLayout(l)
         
@@ -122,6 +117,8 @@ class histogramFitDialog(QDialog):
     
     def __init__(self, *args, **kwargs):
         super(histogramFitDialog, self).__init__(*args, **kwargs)
+        
+        self.fitHistogramsOption = False
         
         self.outputHeader = "logfile [date]" #fix
         self.hPlot = HDisplay()
@@ -251,13 +248,14 @@ class histogramFitDialog(QDialog):
     def reFitSeparated(self):
         """obtain Pr using binomial, using q and w from previous fit"""
         
+        self.fitHistogramsOption = True
         
         self.outputF.appendOutText ("refit seperate histograms with fixed q and binomial")
         
         #use last df_Q fit
-        
+        _q = self.fixq
         #need to subclass multiple gaussians to include Pr
-        
+        self.updateHistograms()
             
     def setExternalParameters(self, extPa):
         """extPa is a dictionary of external parameters that can be passed"""
@@ -281,8 +279,13 @@ class histogramFitDialog(QDialog):
         """
     
     def fitGaussians(self):
+        _hsum = self.sum_hist.currentText()
+        if _hsum == "Separated":
+            pass
+        elif _hsum == "Summed":
+            self.fitHistogramsOption = True
         self.updateHistograms()
-    
+        
         
     def addData(self, data):
         """Bring in external data for analysis"""
@@ -343,13 +346,15 @@ class histogramFitDialog(QDialog):
         self.ROI_N = _ROI
         self.current_ROI = self.ROI_list[_ROI]
         self.RC.update_ROI_label("{} : {} of {}".format(self.current_ROI, self.ROI_N + 1, len(self.ROI_list)))
+        
+        #reset fits before calling!
         self.updateHistograms()
         
         
     def updateHistograms(self):
         """called when histogram controls are changed"""
            
-        # get controls values and summarise to terminal
+        # get values from controls and summarise to terminal
         _nbins, _max = self.histogram_parameters()
         _ROI = self.current_ROI
         _hsum = self.sum_hist.currentText()
@@ -358,6 +363,8 @@ class histogramFitDialog(QDialog):
         # clear
         self.hPlot.h.clear()
            
+        #need them split to see
+    
         if _hsum == "Separated":
             for i, _set in enumerate(self.peakResults.keys()):
                 # colours
@@ -368,7 +375,23 @@ class histogramFitDialog(QDialog):
                 hy, hx  = np.histogram(_pdata, bins=_nbins, range=(0., _max))
                 # replot
                 self.hPlot.h.plot(hx, hy, name="Histogram "+_set, stepMode=True, fillLevel=0, fillOutline=True, brush=col_series)
-
+            
+                if self.fitHistogramsOption:
+                    #binomial path
+                    _q = self.fixq
+                    _num = self.histo_nG_Spin.value()
+                    _ws = self.fixws
+                    _hxc = np.mean(np.vstack([hx[0:-1], hx[1:]]), axis=0)
+                    opti = fit_nprGaussians (_num, _q, _ws, hy, _hxc)
+                    _hx_u, _hy_u = nprGaussians_display (_hxc, _num, _q, _ws, opti)
+                    _pr = opti.x[0]
+                    print (opti)
+                    _c = self.hPlot.h.plot(_hx_u, _hy_u, name='Fit of {} Gaussians, Pr: {:.2f}, q: {:.2f}'.format(_num,_pr,_q))
+                    #write out Pr in log!
+                    #from pyqtgraph.examples
+                    _c.setPen('w', width=3)
+                    _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
+                        
         elif _hsum == "Summed":
             sumhy = np.zeros(_nbins)
             for _set in self.peakResults.keys():
@@ -388,7 +411,10 @@ class histogramFitDialog(QDialog):
                 opti = fit_nGaussians(_num, _q, _ws, sumhy, _hxc)
                 _hx_u, _hy_u = nGaussians_display (_hxc, _num, opti)
                 _qfit = opti.x[0]
-                _c = self.p2.plot(_hx_u, _hy_u, name='Fit of {} Gaussians q: {:.2f}'.format(_num,_qfit))
+                _wsfit = opti.x[1]
+                _c = self.hPlot.h.plot(_hx_u, _hy_u, name='Fit of {} Gaussians q: {:.2f}, w: {:.2f}'.format(_num, _qfit, _wsfit))
+                self.fixq = _qfit
+                self.fixws = _wsfit
                 #from pyqtgraph.examples
                 _c.setPen('w', width=3)
                 _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
