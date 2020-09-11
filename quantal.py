@@ -5,10 +5,12 @@ from scipy import optimize
 import pandas as pd
 from scipy.stats import binom
 
-
+def gaussian(x, height, center, width, offset):
+    """x is an array or a scalar"""
+    return height * np.exp(-(x - center)**2 / (2 * width ** 2)) + offset
 
 def nprGaussians(x, n, q, widths, pr, scale):
-    """heights come from binomial (pr) and an optimised scale parameter (number of events)"""
+    """heights come from binomial (Pr) and an optimised scale parameter (number of events)"""
     g = gaussian (x, 0, 0, 1, 0) # create a blank
     for j in range(n):
         b = binom.pmf(j, n-1, pr)
@@ -16,9 +18,6 @@ def nprGaussians(x, n, q, widths, pr, scale):
         #print ("Binomial k {}, n {}, pr {} = {}. q {}, w {}, scale {}".format(j, n-1, pr, b, q, widths, scale))
         
     return g
-    
-def gaussian(x, height, center, width, offset):
-    return height*np.exp(-(x - center)**2 / (2 * width ** 2)) + offset
     
 def nGaussians(x, n, spacing, widths, *heights):
     g = gaussian (x, 0, 0, 1, 0) # create a blank
@@ -51,7 +50,7 @@ def fit_nprGaussians (num, q, ws, hy, hx):
 def nprGaussians_display (hx, num, q, ws, p):
     # oversample the Gaussian functions for a better display
     oversam = int(10 * (hx[1]-hx[0]) / ws) # the ratio of the G. width to the histogram bin width tells us how much to oversample
-    hx_u = np.linspace(0, hx[-1], len(hx)*oversam, endpoint=False)  
+    hx_u = np.linspace(0, hx[-1], len(hx)*oversam, endpoint=False)
     hy_u = nprGaussians(hx_u, num, q, ws, *list(p.x))
     return hx_u, hy_u
     
