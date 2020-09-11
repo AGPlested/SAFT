@@ -49,16 +49,16 @@ def fit_nprGaussians (num, q, ws, hy, hx):
     return optimize.least_squares(errfunc, guesses, bounds = ([0,0], [1, np.inf]), args=(hx, hy))
    
 def nprGaussians_display (hx, num, q, ws, p):
-    #print ("list of opti[x]: {}".format(list(p.x)))
+    # oversample the Gaussian functions for a better display
     oversam = int(10 * (hx[1]-hx[0]) / ws) # the ratio of the G. width to the histogram bin width tells us how much to oversample
-    hx_u = np.linspace(0, hx[-1], len(hx)*oversam, endpoint=False)   #oversample to get nice gaussians
+    hx_u = np.linspace(0, hx[-1], len(hx)*oversam, endpoint=False)  
     hy_u = nprGaussians(hx_u, num, q, ws, *list(p.x))
     return hx_u, hy_u
     
 def nGaussians_display (hx, num, p):
+    # oversample the Gaussian functions for a better display
     oversam = int(10 * (hx[1]-hx[0]) / p.x[1]) # the ratio of the G. width to the histogram bin width tells us how much to oversample
-    hx_u = np.linspace(0, hx[-1], len(hx)*oversam, endpoint=False)   #oversample to get nice gaussians
-    
+    hx_u = np.linspace(0, hx[-1], len(hx)*oversam, endpoint=False)
     hy_u = nGaussians(hx_u, num, *list(p.x))
     return hx_u, hy_u
     
