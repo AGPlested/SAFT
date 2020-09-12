@@ -1,9 +1,11 @@
 import sys
+import os.path
 from PySide2 import QtCore, QtGui
-from PySide2.QtWidgets import QApplication, QMainWindow, QGridLayout, QGroupBox, QWidget, QPushButton, QLayout, QDialog, QLabel, QRadioButton, QVBoxLayout
+from PySide2.QtWidgets import QFileDialog, QApplication, QMainWindow, QGridLayout, QGroupBox, QWidget, QPushButton, QLayout, QDialog, QLabel, QRadioButton, QVBoxLayout
 import numpy as np
 import pyqtgraph as pg
 import pandas as pd
+
 
 from quantal import fit_nGaussians, nGaussians_display, fit_nprGaussians, nprGaussians_display
 
@@ -13,6 +15,10 @@ def despace (s):
         return s.split(' ')[0]
     else:
         return s
+
+
+
+
 
 class testData():
     def __init__(self, *args, **kwargs):
@@ -36,6 +42,7 @@ class ROI_Controls(QtGui.QWidget):
         self.ROI_box = QGroupBox("ROI")
         l = QGridLayout()
         
+        
         buttonLL = QtGui.QToolButton()
         buttonLL.setIcon(buttonLL.style().standardIcon(QtGui.QStyle.SP_MediaSeekBackward))
 
@@ -44,29 +51,42 @@ class ROI_Controls(QtGui.QWidget):
 
         buttonR = QtGui.QToolButton()
         buttonR.setArrowType(QtCore.Qt.RightArrow)
-
+        
         buttonRR = QtGui.QToolButton()
         buttonRR.setIcon(buttonRR.style().standardIcon(QtGui.QStyle.SP_MediaSeekForward))
-
-        #lay = QtGui.QHBoxLayout(self)
+        
         buttonList = [buttonLL, buttonL, buttonR, buttonRR]
+        bsize = (60, 20)
+        for b in buttonList:
+            b.setFixedSize(*bsize)
+        
+        _storeAdvBtn = QPushButton('Next (Keep fit results)')
+        buttonList.append(_storeAdvBtn)
+        
+        _skipBtn = QPushButton('Next (Discard any fits)')
+        buttonList.append(_skipBtn)
+
+        posn = [(0,1), (0,2), (0,3), (0,4), (0,0), (1,0)]
+        
         for counter, btn in enumerate(buttonList):
-            print (counter, btn)
             
             btn.pressed.connect(lambda val=counter: self.buttonPressed(val))
             #btn.clicked.connect(self.ctrl_signal.emit)
             #self.ctrl_signal.connect(parent.ctrl_signal.emit)
-            l.addWidget(btn, 0, counter)
+            l.addWidget(btn, *posn[counter])
           
         self.ROI_label = QtGui.QLabel("-")
-        l.addWidget(self.ROI_label, 0, 4)
+        #self.filename_label = QtGui.QLabel("No file")
+        l.addWidget(self.ROI_label, 1, 1, 1, 4)
+        #l.addWidget(self.filename_label, 0, 5)
         self.ROI_box.setLayout(l)
         
         #self.ctrl_signal.connect(self.buttonPressed)
 
     def update_ROI_label(self, t):
         self.ROI_label.setText (t)
-
+        
+        
     #@pyqtSlot(int)
     def buttonPressed(self, _b):
         print (_b)
@@ -78,17 +98,44 @@ class ROI_Controls(QtGui.QWidget):
 class HDisplay():
     def __init__(self, *args, **kwargs):
         
-        self.plot = pg.GraphicsLayoutWidget()
-        self.h = self.plot.addPlot(title="<empty>", row=0, col=0, rowspan=1, colspan=1)
+        self.glw = pg.GraphicsLayoutWidget()
+        self.hrc = (0, 0, 1, 1) #same as below
+        self.h = self.glw.addPlot(title="<empty>", *self.hrc)
         self.h.setLabel('left', "N")
         self.h.setLabel('bottom', "dF / F")
         self.h.vb.setLimits(xMin=0, yMin=0)
         self.h.addLegend()
-        
+        self.stack = pg.GraphicsLayout()
+          
     def updateTitle(self, newTitle):
         self.h.setTitle (newTitle)
         
-    
+    def createSplitHistLayout(self, keys):
+        """separated view with each Histogram stacked in separate plots"""
+        # adapted from SAFT
+        # Store the plot items in a list - can't seem to get them easily otherwise?
+        data = []   # empty
+        self.stackMembers = []
+        for _set in keys:
+        
+            memberName = _set + " histogram"
+            stack_member = self.stack.addPlot(title=_set, y=data, name=memberName)
+            stack_member.hideAxis('bottom')
+            stack_member.addLegend()
+            stack_member.setLabel('left', "N")
+            self.stackMembers.append(stack_member)
+            self.stack.nextRow()
+            #print (c, len(self.p1stackMembers))
+        
+        #link y-axes - using final member of stack as anchor
+        for s in self.stackMembers:
+            if s != stack_member:
+                s.setXLink(stack_member)
+                s.setYLink(stack_member)
+                
+        #add back bottom axis to the last graph
+        stack_member.showAxis("bottom")
+        stack_member.setLabel('bottom', "dF / F")
 
 class txOutput():
     def __init__(self, initialText, *args, **kwargs):
@@ -100,7 +147,7 @@ class txOutput():
         font.setFixedPitch(True)
         font.setPointSize(10)
         self.frame.setCurrentFont(font)
-        _w, _h = 300, 600
+        _w, _h = 300, 800
         self.frame.resize(_w, _h)
         self.frame.setMinimumSize(_w, _h)
         self.frame.setMaximumSize(_w, _h)
@@ -122,6 +169,7 @@ class histogramFitDialog(QDialog):
         
         self.outputHeader = "logfile [date]" #fix
         self.hPlot = HDisplay()
+        self.filename = None
         self.outputF = txOutput(self.outputHeader)
         self.makeDialog()
     
@@ -132,107 +180,136 @@ class histogramFitDialog(QDialog):
     def makeDialog(self):
         """Create the controls for the dialog"""
         
+        # work through each ROI in turn - fit summed histogram and then convert to quanta from peaks list
+        
         self.setWindowTitle("Fit Quantal Histograms")
-        layout = QGridLayout()
-        w = QWidget()
-        w.setLayout(layout)
+        self.resize(1000, 800)
         
-        self.RC = ROI_Controls(self)        #need to send this instance as parent
-        #self.ctrl_signal.connect(self.test)
+        # panel for file commands and information
+        _fileOptions = QGroupBox("File")
+        _fileOptions.setFixedSize(600,60)
+        _fileGrid = QGridLayout()
         
-        self.resize(1000,500)
-        gbox = QGridLayout()
-        gbox.addWidget(self.RC.ROI_box,0,0,1,1)
-        gbox.addWidget(w,1,0,1,-1)
-        self.setLayout(gbox)
+        _loadBtn = QPushButton('Load')
+        _loadBtn.clicked.connect(self.openData)
+        _saveBtn = QPushButton('Save')
+        _saveBtn.clicked.connect(self.save)
+        self.filename_label = QtGui.QLabel("No file")
         
-        #histogram view
-    
-        #work through each ROI in turn - fit summed histogram and then convert to quanta from peaks list
-        histograms = QGroupBox("Histogram options")
-        histGrid = QGridLayout()
+        _fileGrid.addWidget(_loadBtn, 0, 0, 1, 1)
+        _fileGrid.addWidget(_saveBtn, 0, 1, 1, 1)
+        _fileGrid.addWidget(self.filename_label, 0, 2, 1, 1)
+        _fileOptions.setLayout(_fileGrid)
         
-        NBin_label = QtGui.QLabel("Number of bins")
-        NBin_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        # panel of display options for histograms
+        _histOptions = QGroupBox("Histogram options")
+        _histOptions.setFixedSize(300,150)
+        _histGrid = QGridLayout()
+        
+        _NBin_label = QtGui.QLabel("No. of bins")
+        _NBin_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.histo_NBin_Spin = pg.SpinBox(value=100, step=10, bounds=[0, 250], delay=0)
         self.histo_NBin_Spin.setFixedSize(80, 25)
         self.histo_NBin_Spin.valueChanged.connect(self.updateHistograms)
         
-        histMax_label = QtGui.QLabel("Histogram dF/F max")
-        histMax_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        _histMax_label = QtGui.QLabel("Max dF/F")
+        _histMax_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.histo_Max_Spin = pg.SpinBox(value=1, step=0.1, bounds=[0.1, 10], delay=0, int=False)
         self.histo_Max_Spin.setFixedSize(80, 25)
         self.histo_Max_Spin.valueChanged.connect(self.updateHistograms)
         
-        #toggle show ROI histogram sum
-        histsum_label = QtGui.QLabel("Histograms are")
-        histsum_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        # toggle show ROI histogram sum
+        _histsum_label = QtGui.QLabel("Display histograms")
+        _histsum_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.sum_hist = pg.ComboBox()
         self.sum_hist.setFixedSize(100,25)
         self.sum_hist.addItems(['Summed', 'Separated'])
+        self.split_state = False #because summed is first in list and default
         self.sum_hist.currentIndexChanged.connect(self.updateHistograms)
         
-        histGrid.addWidget(NBin_label, 2, 0)
-        histGrid.addWidget(histMax_label, 1, 0)
-        histGrid.addWidget(histsum_label, 0, 0)
+        _histGrid.addWidget(_NBin_label, 2, 0)
+        _histGrid.addWidget(_histMax_label, 1, 0)
+        _histGrid.addWidget(_histsum_label, 0, 0)
+        _histGrid.addWidget(self.histo_NBin_Spin, 2, 1)
+        _histGrid.addWidget(self.histo_Max_Spin, 1, 1)
+        _histGrid.addWidget(self.sum_hist, 0, 1)
+        _histOptions.setLayout(_histGrid)
         
-        
-        histGrid.addWidget(self.histo_NBin_Spin, 2, 1)
-        histGrid.addWidget(self.histo_Max_Spin, 1, 1)
-        histGrid.addWidget(self.sum_hist, 0, 1)
-        histograms.setLayout(histGrid)
-        
-        
-        fitParams = QGroupBox("Fitting options")
-        fitGrid = QGridLayout()
-        #fit parameters
-        histnG_label = QtGui.QLabel("Number of Gaussians")
-        histnG_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        self.histo_nG_Spin = pg.SpinBox(value=5, step=1, bounds=[1,20], delay=0, int=True)
+        # panel of fit parameters and commands
+        _fittingPanel = QGroupBox("Fitting")
+        _fittingPanel.setFixedSize(300, 150)
+        _fitGrid = QGridLayout()
+
+        _histnG_label = QtGui.QLabel("Gaussian components")
+        _histnG_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        self.histo_nG_Spin = pg.SpinBox(value=9, step=1, bounds=[1,20], delay=0, int=True)
         self.histo_nG_Spin.setFixedSize(80, 25)
         self.histo_nG_Spin.valueChanged.connect(self.updateHistograms)
         
-        histw_label = QtGui.QLabel("dF_'Q' guess")
-        histw_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        _histw_label = QtGui.QLabel("dF (q) guess")
+        _histw_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.histo_q_Spin = pg.SpinBox(value=.05, step=0.005, bounds=[0.005,1], delay=0, int=False)
         self.histo_q_Spin.setFixedSize(80, 25)
         self.histo_q_Spin.valueChanged.connect(self.updateHistograms)
         
-        _reFit_label = QtGui.QLabel("with dF_Q, ws fixed")
+        _reFit_label = QtGui.QLabel("fixed dF (q), w")
         self.reFitSeparateBtn = QPushButton('Fit separated')
         self.reFitSeparateBtn.clicked.connect(self.reFitSeparated)
         self.reFitSeparateBtn.setDisabled(True)
         
-        fitGrid.addWidget(histnG_label, 0, 0)
-        fitGrid.addWidget(self.histo_nG_Spin, 0, 1)
-        fitGrid.addWidget(histw_label, 1, 0)
-        fitGrid.addWidget(self.histo_q_Spin, 1, 1)
-        fitGrid.addWidget(self.reFitSeparateBtn, row=2, col=0)
-        fitGrid.addWidget(_reFit_label, row=2, col=1)
-        fitParams.setLayout(fitGrid)
-        
+        _sumFit_label = QtGui.QLabel("free dF (q), w")
         _doFitBtn = QPushButton('Fit Summed')
         _doFitBtn.clicked.connect(self.fitGaussians)
-        layout.addWidget(_doFitBtn, 3, 0)
         
-        _storeAdvBtn = QPushButton('Store Fit Results and Advance')
-        _storeAdvBtn.clicked.connect(self.storeAdvance)
-        layout.addWidget(_storeAdvBtn, 3, 1)
+        _fitGrid.addWidget(_histnG_label, 0, 0)
+        _fitGrid.addWidget(self.histo_nG_Spin, 0, 1)
+        _fitGrid.addWidget(_histw_label, 1, 0)
+        _fitGrid.addWidget(self.histo_q_Spin, 1, 1)
+        _fitGrid.addWidget(_doFitBtn, row=2, col=0)
+        _fitGrid.addWidget(_sumFit_label, row=2, col=1)
+        _fitGrid.addWidget(self.reFitSeparateBtn, row=3, col=0)
+        _fitGrid.addWidget(_reFit_label, row=3, col=1)
         
-        _skipBtn = QPushButton('Skip ROI')
-        _skipBtn.clicked.connect(self.skipROI)
-        layout.addWidget(_skipBtn, row=2, col=1)
+        _fittingPanel.setLayout(_fitGrid)
         
-        _saveBtn = QPushButton('Save')
-        _saveBtn.clicked.connect(self.save)
-        layout.addWidget(_saveBtn, row=1, col=1)
+        # histogram view layout
+        self.hlayout = QGridLayout()
         
-        layout.addWidget(histograms, 1 , 1, 1, 1)
-        layout.addWidget(fitParams, 1, 0, 1, 1)
-        layout.addWidget(self.hPlot.plot, 0, 0, 1, 2)
-        layout.addWidget(self.outputF.frame, 0, 3, -1, 1)
+        self.hlayout.addWidget(_fileOptions, 0, 0, 1, 2)
+        self.hlayout.addWidget(_histOptions, 2, 1, 1, 1)
+        self.hlayout.addWidget(_fittingPanel, 2, 0, 1, 1)
         
-        self.setLayout(layout)
+        # histogram view
+        self.histogramLayPos = (1, 0, 1, 2)
+        self.hlayout.addWidget(self.hPlot.glw, *self.histogramLayPos)
+        
+        # ROI controls
+        self.RC = ROI_Controls(self)        #need to send this instance as parent
+        self.RC.ROI_box.setFixedSize(600, 100)
+        
+        self.hlayout.addWidget(self.RC.ROI_box, 3, 0, 1, 2)
+        # text output console
+        self.hlayout.addWidget(self.outputF.frame, 0, 3, -1, 3)
+        
+        #_histView = QWidget()
+        self.setLayout(self.hlayout)
+        
+        
+        
+        
+        
+        
+        
+        # grand window layout
+        #_fitQ = QGridLayout()
+        #_fitQ.addWidget(_histView, 0, 0, 1, -1)
+        #fitQ.addWidget(_storeAdvBtn, 1, 0, 2, 1)
+        #_fitQ.addWidget(_skipBtn, 1, 1, 2, 1)
+        #_fitQ.
+        
+        
+        #setLayout(_fitQ)
+
     
     def histogram_parameters(self):
         _nbins = int(self.histo_NBin_Spin.value())
@@ -241,30 +318,31 @@ class histogramFitDialog(QDialog):
         return _nbins, _max
     
     def skipROI(self):
-        self.outputF.appendOutText ("move to the next ROI")
-    
+        self.outputF.appendOutText ("Discard fit results from {}".format(self.current_ROI))
+        self.Pr_by_ROI.pop(self.current_ROI, None)
+            
+        self.ROI_change_command(2)
+        self.outputF.appendOutText ("Advance to next ROI: {}".format(self.current_ROI))
+        
     def save(self):
         self.outputF.appendOutText ("write data out to disk")
     
     def storeAdvance(self):
-        #self.outputF.appendOutText ("")
-        #print (self.Pr_by_ROI)
-        self.outputF.appendOutText ("Store data for ROI : {} --\n Pr : {}".format(self.current_ROI, self.Pr_by_ROI[self.current_ROI]))
+        """storing data and moving forward???"""
+        self.outputF.appendOutText ("Keep results for {} --\n Pr : {}".format(self.current_ROI, self.Pr_by_ROI[self.current_ROI]))
         self.ROI_change_command(2)
         self.outputF.appendOutText ("Advance to next ROI: {}".format(self.current_ROI))
     
     def reFitSeparated(self):
         """obtain Pr using binomial, using q and w from previous fit"""
         
-        self.fitHistogramsOption = True
-        self.sum_hist.setCurrentIndex(1)
-        
-        self.outputF.appendOutText ("refit seperate histograms with fixed q and binomial")
-        
-        #use last df_Q fit
+        # use last df_Q from last summed fit
         _q = self.fixq
-        #need to subclass multiple gaussians to include Pr
-        #self.updateHistograms()
+        self.outputF.appendOutText ("Refit separate histograms ({}) with fixed q {:.3f} and binomial Pr.".format(self.current_ROI, _q))
+        
+        self.fitHistogramsOption = True
+        self.sum_hist.setCurrentIndex(1)    #calls updateHistogram and fit
+    
             
     def setExternalParameters(self, extPa):
         """extPa is a dictionary of external parameters that can be passed"""
@@ -288,34 +366,47 @@ class histogramFitDialog(QDialog):
         """
     
     def fitGaussians(self):
-        # called by the fit button
-        _hsum = self.sum_hist.currentText()
-        if _hsum == "Separated":
-            pass
-        elif _hsum == "Summed":
-            self.fitHistogramsOption = True
-            self.reFitSeparateBtn.setEnabled(True)
-        self.updateHistograms()
+        # called by the fit summed button
         
+        self.fitHistogramsOption = True
+        _fitSum =self.sum_hist.currentIndex()
+        
+        if _fitSum == 0:
+            self.updateHistograms()             # no need to adjust view, just update and fit
+        else:
+            self.sum_hist.setCurrentIndex(0)    # sets view to summed, calls update histograms and performs the fit.
+        
+    def openData(self):
+        self.filename = QFileDialog.getOpenFileName(self, "Open Data", os.path.expanduser("~"))[0]
+        
+        if self.filename:
+            #"None" reads all the sheets into a dictionary of data frames
+            self.histo_df = pd.read_excel(self.filename, None, index_col=0)
+            self.addData (self.histo_df)
+            self.outputF.appendOutText ("Opening file {}".format(self.filename))
         
     def addData(self, data):
         """Bring in external data for analysis"""
         
+        
+        if self.filename:
+            #show only the filename not the entire path
+            _f = os.path.split(self.filename)[1]
+            self.filename_label.setText (_f)
+          
         #take all peak lists
-    
         self.peakResults = data # a dict of DataFrames
-        #print (self.peakResults)
         self.Pr_by_ROI = {}     # dictionary for Pr values from fitting
         
-        #the histograms aren't much use, we might change binning, so remove them
+        # any histograms aren't much use, we will change binning, so remove them
         if 'histograms' in self.peakResults:
             del self.peakResults['histograms']
         
-        #clean out any low SNR data _ avoid interating over ordered dict
+        # clean out any low SNR data _ avoid interating over ordered dict
         for key in self.peakResults.copy():
             if "SNR<" in key:
                 del self.peakResults[key]
-                print ("Removed low SNR data")
+                self.outputF.appendOutText ("Removed low SNR data {}".format(key))
         
         tdk = self.peakResults.keys()
         tdk_display = ", ".join(str(k) for k in tdk)
@@ -336,15 +427,16 @@ class histogramFitDialog(QDialog):
         self.ROI_list = list(self.peakResults[list(tdk)[0]].keys().unique(level=0))
         print (self.ROI_list)
         
+        
+        self.hPlot.createSplitHistLayout(self.peakResults.keys())
+        
         self.ROI_change()   #default is the first (0).
         self.updateHistograms()
     
     def ROI_change_command (self, button_command):
         print("Button command: {}".format(button_command))
         
-        
-        
-        #turn off separate fitting
+        # turn off separate fitting when moving to new ROI
         self.reFitSeparateBtn.setDisabled(True)
         
         if button_command == 0:
@@ -357,8 +449,14 @@ class histogramFitDialog(QDialog):
             if self.ROI_N == len(self.ROI_list):  self.ROI_N = len(self.ROI_list) - 1
         elif button_command == 3:
             self.ROI_N = len(self.ROI_list) - 1
-        
-        print ("self ROI N:", self.ROI_N)
+        elif button_command == 4:
+            self.storeAdvance() # comes back here with b_c = 2
+            return
+        elif button_command == 5:
+            self.skipROI()  # comes back here with b_c = 2
+            return
+            
+        print ("self_ROI_N is ", self.ROI_N)
         self.ROI_change(self.ROI_N)
         
     def ROI_change(self, _ROI=0):
@@ -366,9 +464,13 @@ class histogramFitDialog(QDialog):
         self.current_ROI = self.ROI_list[_ROI]
         self.RC.update_ROI_label("{} : {} of {}".format(self.current_ROI, self.ROI_N + 1, len(self.ROI_list)))
         
-        #for any change of ROI, default to summed histogram
-        self.sum_hist.setCurrentIndex(0)            #this also calls updateHistogram
+        #for any change of ROI, the default view is the sum of all histograms
+        _fitSum =self.sum_hist.currentIndex()
         
+        if _fitSum == 0:
+            self.updateHistograms()             # if the veiw was already "summed", no need to adjust, just update and fit
+        else:
+            self.sum_hist.setCurrentIndex(0)    # sets view to summed, calls update histograms and performs the fit.
         
     def updateHistograms(self):
         """called when histogram controls are changed"""
@@ -377,18 +479,22 @@ class histogramFitDialog(QDialog):
         _nbins, _max = self.histogram_parameters()
         _ROI = self.current_ROI
         _hsum = self.sum_hist.currentText()
-        print ('Update {0} Histogram(s) for {1} with Nbins = {2} and maximum dF/F = {3}.'.format(_hsum, _ROI, _nbins, _max))
-          
-        # clear
-        self.hPlot.h.clear()
-           
-        #need them split to see
+        self.outputF.appendOutText ("Update {0} Histogram(s) for {1} with Nbins = {2} and maximum dF/F = {3}.".format(_hsum, _ROI, _nbins, _max))
     
         if _hsum == "Separated":
             _num = self.histo_nG_Spin.value()
             _pr_results = [_num]
             
-            # need to split
+            if self.split_state == False:
+                # bring in split histogram view
+                # remove single
+                self.hPlot.glw.removeItem(self.hPlot.h)
+                # add multiple
+                self.hPlot.glw.addItem(self.hPlot.stack)
+                # replace in layout *4-tuple has position and size
+                self.hlayout.addWidget(self.hPlot.glw, *self.histogramLayPos)
+                # when complete, toggle to bypass next time
+                self.split_state = True
             
             for i, _set in enumerate(self.peakResults.keys()):
                 # colours
@@ -397,38 +503,54 @@ class histogramFitDialog(QDialog):
                 _pdata = self.peakResults[_set][_ROI]
                 # redo histogram
                 hy, hx  = np.histogram(_pdata, bins=_nbins, range=(0., _max))
-                # replot
-                self.hPlot.h.plot(hx, hy, name="Histogram "+_set, stepMode=True, fillLevel=0, fillOutline=True, brush=col_series)
+                
+                # replot in the right place in the stack
+                target = self.hPlot.stackMembers[i]
+                target.clear()
+                target.plot(hx, hy, name="Histogram "+_set, stepMode=True, fillLevel=0, fillOutline=True, brush=col_series)
             
                 if self.fitHistogramsOption:
-                    #binomial path
+                    # binomial path
                     _q = self.fixq
                     _num = self.histo_nG_Spin.value()
-                    _ws = self.fixws
+                    _ws = self.fixws / 2                # arbitrary but always too fat!
                     _hxc = np.mean(np.vstack([hx[0:-1], hx[1:]]), axis=0)
-                    opti = fit_nprGaussians (_num, _q, _ws, hy, _hxc)
-                    _hx_u, _hy_u = nprGaussians_display (_hxc, _num, _q, _ws, opti)
-                    _pr = opti.x[0]
+                    _opti = fit_nprGaussians (_num, _q, _ws, hy, _hxc)
+                    _hx_u, _hy_u = nprGaussians_display (_hxc, _num, _q, _ws, _opti)
+                    _pr = _opti.x[0]
                     _pr_results.append([_set, _pr])
-                    print ('opti[x]: {}'.format(opti.x))
-                    _c = self.hPlot.h.plot(_hx_u, _hy_u, name='Fit of {} Gaussians, Pr: {:.3f}, q: {:.3f}'.format(_num,_pr,_q))
+                    print ('opti[x]: {}'.format(_opti.x))
                     
-                    #from pyqtgraph.examples
+                    _c = target.plot(_hx_u, _hy_u, name='Fit of {} Gaussians, Pr: {:.3f}, q: {:.3f}'.format(_num,_pr,_q))
+                    
+                    # from pyqtgraph.examples
                     _c.setPen(color=col_series, width=3)
                     _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
-                    self.Pr_by_ROI[self.current_ROI] = _pr_results #continuous updating
-                    print ("self PR by ROI: {}".format(self.Pr_by_ROI))
+                    self.Pr_by_ROI[self.current_ROI] = _pr_results # continuous updating/overwriting
                     
+                self.outputF.appendOutText ("self PR by ROI: {}".format(self.Pr_by_ROI))
+        
         elif _hsum == "Summed":
             
-            # need to unite histogram view
-            
+            # unite histogram view
+            if self.split_state == True:
+                
+                # remove stack
+                self.hPlot.glw.removeItem(self.hPlot.stack)
+                # add single
+                self.hPlot.glw.addItem(self.hPlot.h)
+                # replace in layout *4-tuple has position and size
+                self.hlayout.addWidget(self.hPlot.glw, *self.histogramLayPos)
+                # when complete, toggle to bypass next time
+                self.split_state = False
+                
             sumhy = np.zeros(_nbins)
             for _set in self.peakResults.keys():
                 _pdata = self.peakResults[_set][_ROI]
                 hy, hx  = np.histogram(_pdata, bins=_nbins, range=(0., _max))
                 sumhy += hy
-           
+            
+            self.hPlot.h.clear()
             self.hPlot.h.plot(hx, sumhy, name="Summed histogram "+_ROI, stepMode=True, fillLevel=0, fillOutline=True, brush='y')
            
             if self.fitHistogramsOption:
@@ -438,21 +560,25 @@ class histogramFitDialog(QDialog):
                 _ws = self.histo_Max_Spin.value() / 20
                
                 _hxc = np.mean(np.vstack([hx[0:-1], hx[1:]]), axis=0)
-                opti = fit_nGaussians(_num, _q, _ws, sumhy, _hxc)
-                _hx_u, _hy_u = nGaussians_display (_hxc, _num, opti)
-                _qfit = opti.x[0]
-                _wsfit = opti.x[1]
+                _opti = fit_nGaussians(_num, _q, _ws, sumhy, _hxc)
+                _hx_u, _hy_u = nGaussians_display (_hxc, _num, _opti)
+                _qfit = _opti.x[0]
+                _wsfit = _opti.x[1]
                 _c = self.hPlot.h.plot(_hx_u, _hy_u, name='Fit of {} Gaussians q: {:.3f}, w: {:.3f}'.format(_num, _qfit, _wsfit))
+                
+                # store fitted parameters for use in separated Pr fit
                 self.fixq = _qfit
                 self.fixws = _wsfit
-                #from pyqtgraph.examples
+                
+                # from pyqtgraph.examples
                 _c.setPen('w', width=3)
                 _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
-                #print (opti,"set refit param?")
-                #as long as we have a fit, we can enable the separate fit button
-                if opti.success:
+            
+                # as long as we have a fit, we can enable the separate fit button
+                if _opti.success:
                     self.reFitSeparateBtn.setEnabled(True)
-
+                    self.outputF.appendOutText ("opti.x: {}".format(_opti.x))
+                
 
 
 
@@ -460,11 +586,11 @@ class histogramFitDialog(QDialog):
         
 if __name__ == '__main__':
     
-    tdata = testData()
-    tdata.open_file()
+    #tdata = testData()
+    #tdata.open_file()
     
     app = QApplication([])
     main_window = histogramFitDialog()
-    main_window.addData(tdata.histo_df)
+    #main_window.addData(tdata.histo_df)
     main_window.show()
     sys.exit(app.exec_())
