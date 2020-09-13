@@ -120,10 +120,16 @@ class HDisplay():
         for _set in keys:
         
             memberName = _set + " histogram"
-            stack_member = self.stack.addPlot(title=_set, y=data, name=memberName)
+            stack_member = self.stack.addPlot(y=data, name=memberName)
+            
+            # position the title within the frame of the graph
+            title = pg.TextItem(_set)#, offset=(70,30))
+            title.setPos(60, 5)
+            title.setParentItem(stack_member)
+            
             stack_member.vb.setLimits(xMin=0, yMin=0)
             stack_member.hideAxis('bottom')
-            stack_member.addLegend(offset=(-10,-10))
+            stack_member.addLegend(offset=(-10, 5))
             stack_member.setLabel('left', "N")
             self.stackMembers.append(stack_member)
             self.stack.nextRow()
