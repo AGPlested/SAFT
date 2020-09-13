@@ -123,7 +123,7 @@ class HDisplay():
             stack_member = self.stack.addPlot(y=data, name=memberName)
             
             # position the title within the frame of the graph
-            title = pg.TextItem(_set)#, offset=(70,30))
+            title = pg.TextItem(_set)
             title.setPos(60, 5)
             title.setParentItem(stack_member)
             
@@ -339,7 +339,7 @@ class histogramFitDialog(QDialog):
         self.outputF.appendOutText ("write data out to disk {}".format(_outfile))
     
     def storeAdvance(self):
-        """storing data and moving forward???"""
+        """storing data and moving forward"""
         self.outputF.appendOutText ("Keep results for {} --\n Pr : {}".format(self.current_ROI, self.Pr_by_ROI[self.current_ROI]))
         self.ROI_change_command(2)
         self.outputF.appendOutText ("Advance to next ROI: {}".format(self.current_ROI))
@@ -381,6 +381,7 @@ class histogramFitDialog(QDialog):
         
         self.fitHistogramsOption = True
         _fitSum =self.sum_hist.currentIndex()
+        #self.split_state == False
         
         if _fitSum == 0:
             self.updateHistograms()             # no need to adjust view, just update and fit
@@ -503,7 +504,7 @@ class histogramFitDialog(QDialog):
                 # add multiple
                 self.hPlot.glw.addItem(self.hPlot.stack)
                 # replace in layout *4-tuple has position and size
-                self.hlayout.addWidget(self.hPlot.glw, *self.histogramLayPos)
+                #self.hlayout.addWidget(self.hPlot.glw, *self.histogramLayPos)
                 # when complete, toggle to bypass next time
                 self.split_state = True
             
@@ -517,8 +518,13 @@ class histogramFitDialog(QDialog):
                 
                 # replot in the right place in the stack
                 target = self.hPlot.stackMembers[i]
-                target.clear()
+                target.clear()          # this unfortunately cleans out any text.
                 target.plot(hx, hy, name="Histogram "+_set, stepMode=True, fillLevel=0, fillOutline=True, brush=col_series)
+                
+                #when the following is not commented, split view doesn't get removed...
+                #title = pg.TextItem(_set + "_fit")
+                #title.setPos(60, 5)
+                #title.setParentItem(target)
             
                 if self.fitHistogramsOption:
                     # binomial path
@@ -553,7 +559,7 @@ class histogramFitDialog(QDialog):
                 # add single
                 self.hPlot.glw.addItem(self.hPlot.h)
                 # replace in layout *4-tuple has position and size
-                self.hlayout.addWidget(self.hPlot.glw, *self.histogramLayPos)
+                #self.hlayout.addWidget(self.hPlot.glw, *self.histogramLayPos)
                 # when complete, toggle to bypass next time
                 self.split_state = False
                 
