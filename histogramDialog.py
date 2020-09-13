@@ -1,4 +1,5 @@
 import sys
+import datetime
 import os.path
 from PySide2 import QtCore, QtGui
 from PySide2.QtWidgets import QFileDialog, QApplication, QMainWindow, QGridLayout, QGroupBox, QWidget, QPushButton, QLayout, QDialog, QLabel, QRadioButton, QVBoxLayout
@@ -56,15 +57,17 @@ class ROI_Controls(QtGui.QWidget):
         buttonRR.setIcon(buttonRR.style().standardIcon(QtGui.QStyle.SP_MediaSeekForward))
         
         buttonList = [buttonLL, buttonL, buttonR, buttonRR]
-        bsize = (60, 20)
+        bsize = (75, 25)
         for b in buttonList:
             b.setFixedSize(*bsize)
         
         _storeAdvBtn = QPushButton('Next (Keep fit results)')
         buttonList.append(_storeAdvBtn)
+        _storeAdvBtn.setFixedWidth(200)
         
         _skipBtn = QPushButton('Next (Discard any fits)')
         buttonList.append(_skipBtn)
+        _skipBtn.setFixedWidth(200)
 
         posn = [(0,1), (0,2), (0,3), (0,4), (0,0), (1,0)]
         
@@ -76,6 +79,7 @@ class ROI_Controls(QtGui.QWidget):
             l.addWidget(btn, *posn[counter])
           
         self.ROI_label = QtGui.QLabel("-")
+        self.ROI_label.setFixedSize(300, 25)
         #self.filename_label = QtGui.QLabel("No file")
         l.addWidget(self.ROI_label, 1, 1, 1, 4)
         #l.addWidget(self.filename_label, 0, 5)
@@ -164,10 +168,11 @@ class histogramFitDialog(QDialog):
     
     def __init__(self, *args, **kwargs):
         super(histogramFitDialog, self).__init__(*args, **kwargs)
+        _now = datetime.datetime.now()
         
         self.fitHistogramsOption = False
         
-        self.outputHeader = "logfile [date]" #fix
+        self.outputHeader = "{} Logfile\n".format(_now.strftime("%y%m%d-%H%M%S"))
         self.hPlot = HDisplay()
         self.filename = None
         self.outputF = txOutput(self.outputHeader)
@@ -187,7 +192,7 @@ class histogramFitDialog(QDialog):
         
         # panel for file commands and information
         _fileOptions = QGroupBox("File")
-        _fileOptions.setFixedSize(600,60)
+        _fileOptions.setFixedSize(700, 60)
         _fileGrid = QGridLayout()
         
         _loadBtn = QPushButton('Load')
@@ -203,7 +208,7 @@ class histogramFitDialog(QDialog):
         
         # panel of display options for histograms
         _histOptions = QGroupBox("Histogram options")
-        _histOptions.setFixedSize(300,150)
+        _histOptions.setFixedSize(350, 150)
         _histGrid = QGridLayout()
         
         _NBin_label = QtGui.QLabel("No. of bins")
@@ -237,7 +242,7 @@ class histogramFitDialog(QDialog):
         
         # panel of fit parameters and commands
         _fittingPanel = QGroupBox("Fitting")
-        _fittingPanel.setFixedSize(300, 150)
+        _fittingPanel.setFixedSize(350, 150)
         _fitGrid = QGridLayout()
 
         _histnG_label = QtGui.QLabel("Gaussian components")
@@ -285,7 +290,7 @@ class histogramFitDialog(QDialog):
         
         # ROI controls
         self.RC = ROI_Controls(self)        #need to send this instance as parent
-        self.RC.ROI_box.setFixedSize(600, 100)
+        self.RC.ROI_box.setFixedSize(700, 80)
         
         self.hlayout.addWidget(self.RC.ROI_box, 3, 0, 1, 2)
         # text output console
@@ -295,21 +300,6 @@ class histogramFitDialog(QDialog):
         self.setLayout(self.hlayout)
         
         
-        
-        
-        
-        
-        
-        # grand window layout
-        #_fitQ = QGridLayout()
-        #_fitQ.addWidget(_histView, 0, 0, 1, -1)
-        #fitQ.addWidget(_storeAdvBtn, 1, 0, 2, 1)
-        #_fitQ.addWidget(_skipBtn, 1, 1, 2, 1)
-        #_fitQ.
-        
-        
-        #setLayout(_fitQ)
-
     
     def histogram_parameters(self):
         _nbins = int(self.histo_NBin_Spin.value())
@@ -513,7 +503,7 @@ class histogramFitDialog(QDialog):
                     # binomial path
                     _q = self.fixq
                     _num = self.histo_nG_Spin.value()
-                    _ws = self.fixws / 2                # arbitrary but always too fat!
+                    _ws = self.fixws / 1.5              # arbitrary but always too fat!
                     _hxc = np.mean(np.vstack([hx[0:-1], hx[1:]]), axis=0)
                     _opti = fit_nprGaussians (_num, _q, _ws, hy, _hxc)
                     _hx_u, _hy_u = nprGaussians_display (_hxc, _num, _q, _ws, _opti)
