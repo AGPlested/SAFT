@@ -54,17 +54,17 @@ class ROI_Controls(QtGui.QWidget):
         buttonRR.setIcon(buttonRR.style().standardIcon(QtGui.QStyle.SP_MediaSeekForward))
         
         buttonList = [buttonLL, buttonL, buttonR, buttonRR]
-        bsize = (75, 25)
+        bsize = (75, 20)
         for b in buttonList:
             b.setFixedSize(*bsize)
         
         _storeAdvBtn = QPushButton('Next (Keep fit results)')
         buttonList.append(_storeAdvBtn)
-        _storeAdvBtn.setFixedWidth(200)
+        _storeAdvBtn.setFixedWidth(220)
         
         _skipBtn = QPushButton('Next (Discard any fits)')
         buttonList.append(_skipBtn)
-        _skipBtn.setFixedWidth(200)
+        _skipBtn.setFixedWidth(220)
 
         posn = [(0,1), (0,2), (0,3), (0,4), (0,0), (1,0)]
         
@@ -123,9 +123,9 @@ class HDisplay():
             stack_member = self.stack.addPlot(y=data, name=memberName)
             
             # position the title within the frame of the graph
-            title = pg.TextItem(_set)
-            title.setPos(60, 5)
-            title.setParentItem(stack_member)
+            #title = pg.TextItem(_set)
+            #title.setPos(60, 5)
+            #title.setParentItem(stack_member)
             
             stack_member.vb.setLimits(xMin=0, yMin=0)
             stack_member.hideAxis('bottom')
@@ -194,7 +194,7 @@ class histogramFitDialog(QDialog):
         # work through each ROI in turn - fit summed histogram and then convert to quanta from peaks list
         
         self.setWindowTitle("Fit Quantal Histograms")
-        self.resize(1000, 800)
+        #self.resize(1000, 800)
         
         # panel for file commands and information
         _fileOptions = QGroupBox("File")
@@ -247,7 +247,6 @@ class histogramFitDialog(QDialog):
         
         # panel of fit parameters and commands
         _fittingPanel = QGroupBox("Fitting")
-        
         _fitGrid = QGridLayout()
 
         _histnG_label = QtGui.QLabel("Gaussian components")
@@ -273,42 +272,44 @@ class histogramFitDialog(QDialog):
         
         _fitGrid.addWidget(_histnG_label, 0, 0)
         _fitGrid.addWidget(self.histo_nG_Spin, 0, 1)
-        _fitGrid.addWidget(_histw_label, 1, 0)
-        _fitGrid.addWidget(self.histo_q_Spin, 1, 1)
-        _fitGrid.addWidget(_doFitBtn, row=2, col=0)
-        _fitGrid.addWidget(_sumFit_label, row=2, col=1)
-        _fitGrid.addWidget(self.reFitSeparateBtn, row=3, col=0)
-        _fitGrid.addWidget(_reFit_label, row=3, col=1)
+        _fitGrid.addWidget(_histw_label, 0, 2)
+        _fitGrid.addWidget(self.histo_q_Spin, 0, 3)
+        _fitGrid.addWidget(_doFitBtn, 1, 0, 1, 2)
+        _fitGrid.addWidget(_sumFit_label, 1, 2)
+        _fitGrid.addWidget(self.reFitSeparateBtn, 2, 0, 1, 2)
+        _fitGrid.addWidget(_reFit_label, 2, 2)
         
         _fittingPanel.setLayout(_fitGrid)
         
-        # histogram view layout
+        # histogram analysis layout
         self.hlayout = QGridLayout()
-        
-        _fileOptions.setFixedSize(400, 100)
-        self.hlayout.addWidget(_fileOptions, 0, 2, 1, 2)
-        
-        _histOptions.setFixedSize(250, 150)
-        self.hlayout.addWidget(_histOptions, 2, 1, 1, 1)
-        
-        _fittingPanel.setFixedSize(350, 150)
-        self.hlayout.addWidget(_fittingPanel, 2, 0, 1, 1)
         
         # histogram view
         self.histogramLayPos = (0, 0, 2, 2)
         self.hlayout.addWidget(self.hPlot.glw, *self.histogramLayPos)
         
+        _fittingPanel.setFixedHeight(120)
+        #_fittingPanel.setSize(450,120)
+        self.hlayout.addWidget(_fittingPanel, 2, 0, 1, 1)
+        
+        _histOptions.setFixedHeight(120)
+        #_histOptions.setSize(250,120)
+        self.hlayout.addWidget(_histOptions, 2, 1, 1, 1)
+        
         # ROI controls
         self.RC = ROI_Controls(self)        #need to send this instance as parent
-        self.RC.ROI_box.setFixedSize(600, 80)
+        self.RC.ROI_box.setFixedHeight(90)
         self.hlayout.addWidget(self.RC.ROI_box, 3, 0, 1, 2)
-       
+        
         # text output console
-        self.outputF.size(400,700)
-        self.hlayout.addWidget(self.outputF.frame, 1, 2, -1, 3)
+        self.outputF.frame.setFixedHeight(700)
+        self.outputF.frame.setWidth(400)
+        self.hlayout.addWidget(self.outputF.frame, 0, 2, 3, 3)
+        
+        _fileOptions.setFixedSize(400, 90)
+        self.hlayout.addWidget(_fileOptions, 3, 2, 1, 2)
         
         self.setLayout(self.hlayout)
-        
         
     
     def histogram_parameters(self):
@@ -319,23 +320,22 @@ class histogramFitDialog(QDialog):
     
     def skipROI(self):
         self.outputF.appendOutText ("Discard fit results from {}".format(self.current_ROI))
-        self.Pr_by_ROI.pop(self.current_ROI, None)
+        self.Pr_by_ROI.drop(self.current_ROI, inplace=True)
             
         self.ROI_change_command(2)
         self.outputF.appendOutText ("Advance to next ROI: {}".format(self.current_ROI))
         
     def save(self):
         
-        _output = pd.DataFrame(self.Pr_by_ROI)
-        
         #maybe we just have a filename not a path
         if os.path.split(self.filename)[0] is not None:
             _outfile = os.path.split(self.filename)[0] + "Pr_" + os.path.split(self.filename)[1]
         else :
             _outfile = "Pr_" + self.filename
-            
         print (_outfile)
-        _output.to_excel(_outfile)
+        
+        _output.to_excel(self.Pr_by_ROI)
+        
         self.outputF.appendOutText ("write data out to disk {}".format(_outfile))
     
     def storeAdvance(self):
@@ -408,7 +408,7 @@ class histogramFitDialog(QDialog):
           
         #take all peak lists
         self.peakResults = data # a dict of DataFrames
-        self.Pr_by_ROI = {}     # dictionary for Pr values from fitting
+        self.Pr_by_ROI = pd.DataFrame(data=None)     # dataframe for Pr values from fitting
         
         # any histograms aren't much use, we will change binning, so remove them
         if 'histograms' in self.peakResults:
@@ -518,7 +518,7 @@ class histogramFitDialog(QDialog):
                 
                 # replot in the right place in the stack
                 target = self.hPlot.stackMembers[i]
-                target.clear()          # this unfortunately cleans out any text.
+                target.clear()          # this unfortunately cleans out any text - we should instead remove the hist + fit?
                 target.plot(hx, hy, name="Histogram "+_set, stepMode=True, fillLevel=0, fillOutline=True, brush=col_series)
                 
                 #when the following is not commented, split view doesn't get removed...
