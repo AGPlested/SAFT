@@ -300,10 +300,10 @@ class histogramFitDialog(QDialog):
         self.histogramLayPos = (0, 0, 2, 2)
         self.hlayout.addWidget(self.hPlot.glw, *self.histogramLayPos)
         
-        _fittingPanel.setFixedHeight(180)
+        _fittingPanel.setFixedHeight(140)
         self.hlayout.addWidget(_fittingPanel, 2, 0, 1, 1)
         
-        _histOptions.setFixedHeight(180)
+        _histOptions.setFixedHeight(140)
         self.hlayout.addWidget(_histOptions, 2, 1, 1, 1)
         
         # ROI controls
@@ -316,7 +316,7 @@ class histogramFitDialog(QDialog):
     
         self.hlayout.addWidget(self.outputF.frame, 0, 2, 3, 3)
         
-        _fileOptions.setFixedSize(400, 90)
+        _fileOptions.setFixedSize(400, 80)
         self.hlayout.addWidget(_fileOptions, 3, 2, 1, 2)
         
         self.setLayout(self.hlayout)
@@ -345,7 +345,7 @@ class histogramFitDialog(QDialog):
         
         self.Pr_by_ROI.to_excel(_outfile)
         
-        self.outputF.appendOutText ("write data out to disk {}".format(_outfile))
+        self.outputF.appendOutText ("Write data out to disk {}".format(_outfile))
     
     def storeAdvance(self):
         """storing data and moving forward"""
@@ -364,6 +364,7 @@ class histogramFitDialog(QDialog):
         self.sum_hist.setCurrentIndex(1)    #calls updateHistogram and fit
     
     def PoissonfitGlobalGaussians(self):
+        """obtain mean release rate using Poisson, estimating q, w and scale from global fit"""
         self.fitHistogramsOption = "Global Poisson"
         self.outputF.appendOutText ("Global Poisson Fit")
         _fitSum =self.sum_hist.currentIndex()
@@ -477,7 +478,7 @@ class histogramFitDialog(QDialog):
         self.updateHistograms()
     
     def ROI_change_command (self, button_command):
-        print("Button command: {}".format(button_command))
+        #print("Button command: {}".format(button_command))
         
         # turn off separate fitting when moving to new ROI
         self.reFitSeparateBtn.setDisabled(True)
@@ -591,10 +592,11 @@ class histogramFitDialog(QDialog):
                     self.Pr_by_ROI.loc[self.current_ROI, _set]= _pr_results
                 
             if self.fitHistogramsOption == "Individual":
-                #if fits were done, they are complete so show results
+                # if fits were done, they are complete so show results
                 self.outputF.appendOutText ("self PR by ROI: {}".format(self.Pr_by_ROI.loc[self.current_ROI]))
             
             if "Global" in self.fitHistogramsOption:
+                # put both global options together and use common code
                 _hys = np.vstack(ystack).transpose()
                 _hxs = np.vstack(xstack).transpose()
                 
@@ -636,8 +638,10 @@ class histogramFitDialog(QDialog):
                         _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
                         
                         self.Pr_by_ROI.loc[self.current_ROI, _set]= _globalR
+                    
+                    self.saveBtn.setEnabled(True) # results so we have something to save
                 else :
-                    self.outputF.appendOutText ("global fit failed! cost: {}".format(_opti.cost))
+                    self.outputF.appendOutText ("Global fit failed! reason: {} cost: {}".format(_opti.message, _opti.cost))
                 
                 self.fitHistogramsOption = "None" # to stop cycling but avoid problems with substrings.
                 
