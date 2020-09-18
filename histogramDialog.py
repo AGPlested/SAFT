@@ -6,6 +6,7 @@ from PySide2.QtWidgets import QFileDialog, QApplication, QMainWindow, QGridLayou
 import numpy as np
 import pyqtgraph as pg
 import pandas as pd
+from scipy.stats import chisquare
 
 
 from quantal import fit_nGaussians, nGaussians_display, fit_nprGaussians, fit_PoissonGaussians_global, PoissonGaussians_display, nprGaussians_display, fit_nprGaussians_global
@@ -467,7 +468,7 @@ class histogramFitDialog(QDialog):
         self.ROI_list = list(self.peakResults[list(tdk)[0]].keys().unique(level=0))
         print (self.ROI_list)
         
-        _a = [tdk, ['N', 'Pr', 'cost', 'type']]
+        _a = [tdk, ['N', 'Pr', 'cost', 'ChiSq', 'p_ChiSq', 'type']]
         _in =pd.MultiIndex.from_product(_a, names=('set', 'fits'))
         #print (_in)
         self.Pr_by_ROI = pd.DataFrame(index=self.ROI_list, columns=_in)     # dataframe for Pr values from fitting
@@ -561,11 +562,6 @@ class histogramFitDialog(QDialog):
                 target = self.hPlot.stackMembers[i]
                 target.clear()          # this unfortunately cleans out any text - we should instead remove the hist + fit?
                 target.plot(hx, hy, name="Histogram "+_set, stepMode=True, fillLevel=0, fillOutline=True, brush=col_series)
-                
-                #when the following is not commented, split view doesn't get removed...
-                #title = pg.TextItem(_set + "_fit")
-                #title.setPos(60, 5)
-                #title.setParentItem(target)
             
                 if self.fitHistogramsOption == "Individual":
                     # binomial path
@@ -576,8 +572,10 @@ class histogramFitDialog(QDialog):
                     _opti = fit_nprGaussians (_num, _q, _ws, hy, _hxc)
                     _hx_u, _hy_u = nprGaussians_display (_hxc, _num, _q, _ws, _opti.x)
                     _pr = _opti.x[1]
+                    _resid = _opti.fun
+                    _chiSq = chisquare(_hy, _hy+_resid)
                     #I for individual fit
-                    _pr_results = [_num, _pr, _opti.cost, "I"]
+                    _pr_results = [_num, _pr, _opti.cost, _chiSq[0], _chiSq[1], "I"]
                     self.outputF.appendOutText ('r: {} opti[x]: {}'.format(_pr_results, _opti.x))
                     self.saveBtn.setEnabled(True)
                     
@@ -614,24 +612,25 @@ class histogramFitDialog(QDialog):
                     _q = _opti.x[0]
                     _ws = _opti.x[1]
                     _scale = _opti.x[2]
+                    _resid = _opti.fun.reshape(-1, len(self.peakResults.keys()))
                     for i, _set in enumerate(self.peakResults.keys()):
                         # colours
                         col_series = (i, len(self.peakResults.keys()))
                         _hxr = _hxs[:, i]
                         _hxc = np.mean(np.vstack([_hxr[0:-1], _hxr[1:]]), axis=0)
                         target = self.hPlot.stackMembers[i]
-                        
+                        _chiSq = chisquare(_hys[i], _hys[i] + _resid [i])
                         if "Binom" in self.fitHistogramsOption:
                             _pr = _opti.x[i+3]
                             legend = 'Global Fit {} Gaussians, Pr: {:.3f}, q: {:.3f}\nw: {:.3f}, Events: {:.3f}'.format(_num,_pr,_q, _ws, _scale)
                             _hx_u, _hy_u = nprGaussians_display (_hxc, _num, _q, _ws, [_scale, _pr])
-                            _globalR = [_num, _pr, _opti.cost, "BG"]
+                            _globalR = [_num, _pr, _opti.cost, _chiSq[0], _chiSq[1], "BG"]
                         
                         elif "Poisson" in self.fitHistogramsOption:
                             _mu = _opti.x[i+3]
                             legend = 'Global Fit {} Gaussians, mu: {:.3f}, q: {:.3f}\nw: {:.3f}, Events: {:.3f}'.format(_num,_mu,_q, _ws, _scale)
                             _hx_u, _hy_u = PoissonGaussians_display (_hxc, _num, _q, _ws, [_scale, _mu])
-                            _globalR = [_num, _mu, _opti.cost, "PG"]
+                            _globalR = [_num, _mu, _opti.cost, _chiSq[0], _chiSq[1], "PG"]
                             
                         _c = target.plot(_hx_u, _hy_u, name=legend)
                         _c.setPen(color=col_series, width=3)
@@ -700,7 +699,7 @@ if __name__ == '__main__':
     app = QApplication([])
     main_window = histogramFitDialog()
     main_window.show()
-    
+    """
     ### Test specific code
     tdata = testData()
     tdata.open_file()
@@ -708,5 +707,5 @@ if __name__ == '__main__':
     main_window.loadBtn.setDisabled(True)
     main_window.filename = tdata.filename
     main_window.filename_label.setText("TEST: {}".format(tdata.filename))
-    
+    """
     sys.exit(app.exec_())

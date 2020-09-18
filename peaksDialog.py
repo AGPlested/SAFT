@@ -1,6 +1,6 @@
 import sys
 from PySide2 import QtCore, QtGui
-from PySide2.QtWidgets import QApplication, QMainWindow, QGridLayout, QWidget, QPushButton, QLayout, QDialog, QLabel, QRadioButton, QVBoxLayout
+from PySide2.QtWidgets import QApplication, QMainWindow, QGridLayout, QWidget, QCheckBox, QLayout, QDialog, QLabel, QPushButton, QVBoxLayout
 import numpy as np
 import pyqtgraph as pg
 import pandas as pd
@@ -12,54 +12,77 @@ class getPeaksDialog(QDialog):
         
         self.peaksScraped = False
         self.small = 3
-        
+        self.failures_nulled = False
         self.makeDialog()
     
     def makeDialog(self):
         """Create the controls for the dialog"""
         
-        self.setWindowTitle("Get peaks")
+        self.setWindowTitle("Extract peaks according to temporal pattern")
         layout = QGridLayout()
         w = QWidget()
         w.setLayout(layout)
         
-        self.resize(400,500)
+        self.resize(500,400)
         vbox = QVBoxLayout()
         vbox.addWidget(w)
         self.setLayout(vbox)
         
-        self.N_ROI_label = QLabel('Scraping ROIs for peaks')
-        layout.addWidget(self.N_ROI_label, 0, 0, 1, 2)
+        self.N_ROI_label = QLabel('Extracting peaks')
         
-        SNR_selecter_label = QLabel('Skip ROIs with SNR less than')
-        layout.addWidget(SNR_selecter_label, 1, 0, 1, 2)
-        
-        #SNR selecter and update N_ROI_label
-        self.sbsSB = pg.SpinBox(value=3, step=.2, bounds=[1, 10], delay=0)
-        self.sbsSB.setFixedSize(60, 25)
-        layout.addWidget(self.sbsSB, 1, 2, 1, 1)
-        self.sbsSB.valueChanged.connect(self.maskLowSNR)
         
         #will be altered as soon as data loads
-        self.skipRB = QRadioButton('Skip ROIs')
+        self.skipRB = QCheckBox('Skip ROIs with SNR less than')
         self.skipRB.setChecked(True)
-        layout.addWidget(self.skipRB,2,0,1,3)
+        self.skipRB.setLayoutDirection(QtCore.Qt.LeftToRight)
+        self.skipRB.stateChanged.connect(self.maskLowSNR)
+        
+        self.skipSB = pg.SpinBox(value=3, step=.2, bounds=[1, 10], delay=0)
+        self.skipSB.setFixedSize(60, 25)
+        self.skipSB.valueChanged.connect(self.maskLowSNR)
         
         psr_label = QLabel('Search range around peak (data points)')
-        layout.addWidget(psr_label,  3, 0, 1, 2)
-        
         self.psrSB = pg.SpinBox(value=3, step=2, bounds=[1, 7], delay=0, int=True)
         self.psrSB.setFixedSize(60, 25)
-        layout.addWidget(self.psrSB, row=3, col=2)
+        
+        #will be altered as soon as data loads
+        self.noiseRB = QCheckBox('Treat peaks as failures when < SD x')
+        self.noiseRB.setChecked(False)
+        self.noiseRB.setLayoutDirection(QtCore.Qt.LeftToRight)
+        self.noiseRB.stateChanged.connect(self.setFailures)
+
+        self.noiseSB = pg.SpinBox(value=1.5, step=.1, bounds=[.2, 10], delay=0)
+        self.noiseSB.setFixedSize(60, 25)
+        self.noiseSB.valueChanged.connect(self.setFailures)
+        
+        self.peaksLabel = QLabel('No peaks set to be failures.')
         
         _doScrapeBtn = QPushButton('Extract responses')
         _doScrapeBtn.clicked.connect(self.scrapePeaks)
-        layout.addWidget(_doScrapeBtn, 5, 0, 1, 2)
         
         _cancelBtn = QPushButton('Cancel')
         _cancelBtn.clicked.connect(self.reject)
         
-        layout.addWidget(_cancelBtn, row=5, col=2)
+        self.acceptBtn = QPushButton('Accept and Return')
+        self.acceptBtn.clicked.connect(self.prepareAccept)
+        self.acceptBtn.setDisabled(True)
+        
+        layout.addWidget(self.N_ROI_label, 0, 0, 1, 2)
+        
+        layout.addWidget(self.skipRB, 1, 0, 1, 3)
+        layout.addWidget(self.skipSB, 1, 2, 1, 1)
+        
+        layout.addWidget(psr_label,  2, 0, 1, 2)
+        layout.addWidget(self.psrSB, row=2, col=2)
+        
+        layout.addWidget(self.noiseRB, 3, 0, 1, 3)
+        layout.addWidget(self.noiseSB, 3, 2, 1, 1)
+        layout.addWidget(self.peaksLabel, 4, 0)
+        
+        layout.addWidget(_doScrapeBtn, 5, 0)
+        layout.addWidget(_cancelBtn, row=5, col=1)
+        layout.addWidget(self.acceptBtn, row=5, col=2)
+        
         self.setLayout(layout)
          
     def setExternalParameters(self, extPa):
@@ -78,7 +101,6 @@ class getPeaksDialog(QDialog):
         
         #True if box is checked, otherwise False
         self.ignore =  self.skipRB.isChecked()
-        
         self.psr = self.psrSB.value() // 2          #floor division to get ears
     
     
@@ -88,9 +110,10 @@ class getPeaksDialog(QDialog):
         self.tracedata = data
         tdk = self.tracedata.keys()
         tdk_display = ", ".join(str(k) for k in tdk)
-        N_ROI = [len (self.tracedata[d].columns) for d in tdk]
-        
-        self.N_ROI_label.setText("Scraping peaks from {} ROIs \n over the sets named {}".format(N_ROI, tdk_display))
+        N_ROI = np.array([len (self.tracedata[d].columns) for d in tdk])
+        N_Peaks = len(self.tPeaks)
+        total_peaks = (N_ROI * N_Peaks).sum()
+        self.N_ROI_label.setText("Scraping {} peaks from {} ROIs (total {})\n over the sets named {}".format(N_Peaks, N_ROI, total_peaks, tdk_display))
         
         _printable = "{}\n{}\n".format(tdk_display, [self.tracedata[d].head() for d in tdk])
         print ("Added data of type {}:\n{}\n".format(type(self.tracedata), _printable))
@@ -135,6 +158,7 @@ class getPeaksDialog(QDialog):
     
         # yes, output may be modified below
         self.peaksScraped = True
+        self.acceptBtn.setEnabled(True)
         self.blacklisted_by_set = {}
         
         if self.ignore:
@@ -156,15 +180,57 @@ class getPeaksDialog(QDialog):
                 self.blacklisted_by_set[s + "_SNR<" + str(_cut)] = blacklisted
     
         #close the dialog
+        #self.accept()
+    
+    def prepareAccept(self):
+        if self.failures_nulled:
+            self.pkextracted_by_set = self.pkextracted_with_failures
+        
         self.accept()
     
+    def setFailures(self):
+        self.failures_nulled = True
+        #set failures modifies the output destructively and must retain original!!!
+        self.pkextracted_with_failures = self.pkextracted_by_set.copy() #is that enough?
+        if self.noiseRB.isChecked == False:
+            self.noiseSB.setDisabled(True)
+            return
+        else:
+            self.noiseSB.setEnabled(True)
+            
+        print ("Provide some indication of total peaks altered interactively")
+        # in whitelist traces
+        self.noiseCut = self.noiseSB.value()
+        print ("Self.noisecut {}".format(self.noiseCut))
+        _numberCut = 0
+        for _set in self.tracedata:
+            _peaksDF = self.pkextracted_with_failures[_set]
+            _df = self.tracedata[_set]
+            #print (_df)
+            _noise = _df.std()
+            #print ("NOISE: ", _noise)
+            _peaksDF  =  _peaksDF.where( _peaksDF > _noise * self.noiseCut, 0)
+            #print ("peaksdf",_peaksDF )
+            _bycol = _peaksDF.isin([0.0]).sum()
+            #print ("bycol {} sum {}".format(_bycol, _bycol.sum()))
+            _numberCut += _bycol.sum()
+            self.pkextracted_with_failures[_set] = _peaksDF
+        
+        self.peaksLabel.setText("{} peaks set to failure.".format(_numberCut))
+        
 
+        
     def maskLowSNR(self):
         """split the peak output according to SNR of parent traces"""
         """moving the spinbox for SNR Cutoff also comes here"""
         print ('maskLowSNR')
+        if self.skipRB.isChecked == False:
+            self.skipSB.setDisabled(True)
+            return
+        else:
+            self.skipSB.setEnabled(True)
         
-        self.badSNRcut = self.sbsSB.value()
+        self.badSNRcut = self.skipSB.value()
 
         # use selective region (LR?)
         # or just the whole trace?
@@ -180,8 +246,10 @@ class getPeaksDialog(QDialog):
             _df = self.tracedata[_set]
             
             # find SNR from column-wise Max / SD
-            snr = _df.max() / _df.std()
-            
+            _max = _df.max()
+            _SD = _df.std()
+            snr = _max / _SD
+            print ("max {}, sd {}, snr {}".format(_max, _SD, snr))
             # add histogram of SNR values with 'SNRcut'-off drawn?
             
             self.whitelists[_set] = snr.where(snr >= self.badSNRcut).dropna()

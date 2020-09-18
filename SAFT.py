@@ -889,7 +889,7 @@ class MainWindow(QMainWindow):
             
             _data = baselineIterator(_data, self.auto_bs_lam, self.auto_bs_P)
         
-        self.gpd.addData(_data)
+        
         
         #get the times of the peaks that were selected auto or manually
         _peak_t, _ = self.peakResults.getPeaks('Mean', '4 mM')
@@ -901,6 +901,9 @@ class MainWindow(QMainWindow):
         
         # pass in "external parameters" for the peak extraction via extPa
         self.gpd.setExternalParameters(self.extPa)
+        
+        #reordered because peaks must be put first. 
+        self.gpd.addData(_data)
         
         # returns 1 (works like True) when accept() or 0 (we take for False) otherwise.
         accepted = self.gpd.exec_()
@@ -914,7 +917,7 @@ class MainWindow(QMainWindow):
             
             self.peakResults.readInPeakDialogResults(self.gpd.pkextracted_by_set)
             
-            #make 'save' buttons available
+            #make 'save' and other analysis buttons available
             self.savePSRBtn.setEnabled(True)
             self.save_baselined_ROIs_Btn.setEnabled(True)
             self.extractGroupsDialog_Btn.setEnabled(True)
