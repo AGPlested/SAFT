@@ -78,21 +78,21 @@ class ROI_Controls(QtGui.QWidget):
           
         self.ROI_label = QtGui.QLabel("-")
         self.ROI_label.setFixedSize(300, 25)
-        #self.filename_label = QtGui.QLabel("No file")
+        
         l.addWidget(self.ROI_label, 1, 1, 1, 4)
-        #l.addWidget(self.filename_label, 0, 5)
         self.ROI_box.setLayout(l)
         
         #self.ctrl_signal.connect(self.buttonPressed)
 
     def update_ROI_label(self, t):
         self.ROI_label.setText (t)
+        #with pyside2 5.13 this label (and other GUI items) doesn't update
+        #print ("Change label: {}".format(t))
+        #self.ROI_label.repaint()
         
-        
-    #@pyqtSlot(int)
     def buttonPressed(self, _b):
-        print (_b)
-        self.ROI_label.setText(str(_b))
+        #print (_b)
+        #self.ROI_label.setText(str(_b))
         self.parent.ROI_change_command (_b)
         
     
@@ -576,7 +576,7 @@ class histogramFitDialog(QDialog):
                     _chiSq = chisquare(_hy, _hy+_resid)
                     #I for individual fit
                     _pr_results = [_num, _pr, _opti.cost, _chiSq[0], _chiSq[1], "I"]
-                    self.outputF.appendOutText ('r: {} opti[x]: {}'.format(_pr_results, _opti.x))
+                    self.outputF.appendOutText ('res: {} opti[x]: {}'.format(_pr_results, _opti.x))
                     self.saveBtn.setEnabled(True)
                     
                     # display the fit
@@ -587,7 +587,7 @@ class histogramFitDialog(QDialog):
                     _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
                     
                     # continuous updating/overwriting
-                    self.Pr_by_ROI.loc[self.current_ROI, _set]= _pr_results
+                    self.Pr_by_ROI.loc[self.current_ROI, _set] = _pr_results
                 
             if self.fitHistogramsOption == "Individual":
                 # if fits were done, they are complete so show results
@@ -608,7 +608,7 @@ class histogramFitDialog(QDialog):
                     _opti = fit_PoissonGaussians_global (_num, _q, _ws, _hys, _hxs)
                 
                 if _opti.success:
-                    self.outputF.appendOutText ("global opti.x {}, cost  {}".format(_opti.x, _opti.cost))
+                    self.outputF.appendOutText ("Global _opti.x {}\n .cost = {}".format(_opti.x, _opti.cost))
                     _q = _opti.x[0]
                     _ws = _opti.x[1]
                     _scale = _opti.x[2]
@@ -631,14 +631,16 @@ class histogramFitDialog(QDialog):
                             legend = 'Global Fit {} Gaussians, mu: {:.3f}, q: {:.3f}\nw: {:.3f}, Events: {:.3f}'.format(_num,_mu,_q, _ws, _scale)
                             _hx_u, _hy_u = PoissonGaussians_display (_hxc, _num, _q, _ws, [_scale, _mu])
                             _globalR = [_num, _mu, _opti.cost, _chiSq[0], _chiSq[1], "PG"]
-                            
+                        
+                        self.outputF.appendOutText ("{} _globalR: {}".format(_set, _globalR))
                         _c = target.plot(_hx_u, _hy_u, name=legend)
                         _c.setPen(color=col_series, width=3)
                         _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
                         
                         self.Pr_by_ROI.loc[self.current_ROI, _set]= _globalR
-                    
+                        
                     self.saveBtn.setEnabled(True) # results so we have something to save
+                    
                 else :
                     self.outputF.appendOutText ("Global fit failed! reason: {} cost: {}".format(_opti.message, _opti.cost))
                 
