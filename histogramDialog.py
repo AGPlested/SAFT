@@ -183,8 +183,11 @@ class histogramFitDialog(QDialog):
         self.hPlot = HDisplay()
         self.filename = None
         self.outputF = txOutput(self.outputHeader)
+        self.current_ROI = None
+        self.flag = "Auto max"      #how to find histogram x-axis
         self.makeDialog()
-    
+        
+        
     def test(self, sender):
         print (sender)
         self.outputF.appendOutText ('ctrl_button was pressed {}'.format(sender))
@@ -227,7 +230,7 @@ class histogramFitDialog(QDialog):
         _histMax_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.histo_Max_Spin = pg.SpinBox(value=1, step=0.1, bounds=[0.1, 10], delay=0, int=False)
         self.histo_Max_Spin.setFixedSize(80, 25)
-        self.histo_Max_Spin.valueChanged.connect(self.updateHistograms)
+        self.histo_Max_Spin.valueChanged.connect(self.setManualMax)
         
         # toggle show ROI histogram sum
         _histsum_label = QtGui.QLabel("Display histograms")
@@ -321,7 +324,10 @@ class histogramFitDialog(QDialog):
         self.hlayout.addWidget(_fileOptions, 3, 2, 1, 2)
         
         self.setLayout(self.hlayout)
-        
+    
+    def setManualMax(self):
+        self.flag = "Manual max"
+        self.updateHistograms()
     
     def histogram_parameters(self):
         _nbins = int(self.histo_NBin_Spin.value())
@@ -353,6 +359,7 @@ class histogramFitDialog(QDialog):
         self.outputF.appendOutText ("Keep results for {} --\n Pr : {}".format(self.current_ROI, self.Pr_by_ROI.loc[self.current_ROI]))
         self.ROI_change_command(2)
         self.outputF.appendOutText ("Advance to next ROI: {}".format(self.current_ROI))
+        
     
     def reFitSeparated(self):
         """obtain Pr using binomial, using q and w from previous fit"""
@@ -481,8 +488,9 @@ class histogramFitDialog(QDialog):
     def ROI_change_command (self, button_command):
         #print("Button command: {}".format(button_command))
         
-        # turn off separate fitting when moving to new ROI
+        # turn off separate fitting when moving to new ROI, and get histogram x-range automatically
         self.reFitSeparateBtn.setDisabled(True)
+        self.flag = "Auto max"
         
         if button_command == 0:
             self.ROI_N = 0
@@ -520,10 +528,27 @@ class histogramFitDialog(QDialog):
         
     def updateHistograms(self):
         """called when histogram controls are changed"""
-           
-        # get values from controls and summarise to terminal
-        _nbins, _max = self.histogram_parameters()
+        # * to stop positional arguments being taken for flag
+        # would be none if no data loaded so escape
+        if self.current_ROI == None:
+            return
+        
         _ROI = self.current_ROI
+        # get values from controls and summarise to terminal
+        if self.flag == "Manual max":
+            _nbins, _max = self.histogram_parameters()
+            print ("Manual max triggered {} {}".format(_nbins, _max))
+        else:
+            #auto max of histogram
+            print("self.flag is {}".format(self.flag))
+            _nbins  = self.histogram_parameters()[0]
+            _max = 0
+            for _set in self.peakResults.keys():
+                _pdata = self.peakResults[_set][_ROI]
+                if _pdata.max() > _max * 1.2:
+                    _max = _pdata.max() * 1.2
+            
+        
         _hsum = self.sum_hist.currentText()
         self.outputF.appendOutText ("Update {0} Histogram(s) for {1} with Nbins = {2} and maximum dF/F = {3}.".format(_hsum, _ROI, _nbins, _max))
     

@@ -1,6 +1,7 @@
 import numpy as np
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
+import pyqtgraph as pg
 
 def savitzky_golay(y, window_size, order, deriv=0, rate=1):
     """From SciPy cookbook

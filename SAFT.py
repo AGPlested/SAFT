@@ -27,7 +27,6 @@ import pyqtgraph as pg
 
 # some functions below that could probably go to a module
 
-
 def findCurve(items):
     # assume there is one PG PlotDataItem with curve data and return it
     # the others should be empty
@@ -748,7 +747,7 @@ class MainWindow(QMainWindow):
         
     def getGroups(self):
         """launch group processing dialog"""
-        print ('get group responses from all ROIs.')
+        print ('Get group responses from all ROIs.')
         self.getgroupsDialog = groupDialog()
         self.getgroupsDialog.addData(self.gpd.pkextracted_by_set)
         accepted = self.getgroupsDialog.exec_()
@@ -801,6 +800,7 @@ class MainWindow(QMainWindow):
             self.noPeaks = False
 
             print (self.gpd.pkextracted_by_set) #the whitelist
+            # these should now become available to be viewed (even edited?)
             
             self.peakResults.readInPeakDialogResults(self.gpd.pkextracted_by_set)
             
