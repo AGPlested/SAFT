@@ -5,7 +5,7 @@ class Results():
     """ a data frame for the results """
 
     def __init__(self, ROI_list, set_list, name='All'):
-        #the default results table includes all the ROIs.
+        # the default results table includes all the ROIs.
         
         self.name = name
         self.ROI_list = ROI_list
