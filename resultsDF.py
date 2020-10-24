@@ -20,8 +20,6 @@ class Results():
         self.df = pd.DataFrame([], [0], self.cols)
         print (self.df.head())
     
-    
-    
     def addPeaks (self, _ROI, _set, _times, _peaks):
         # the peaks (and their times) are arrays of values that belong to a ROI and a set (condition).
         
