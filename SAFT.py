@@ -110,6 +110,7 @@ class MainWindow(QMainWindow):
         self.createPlotWidgets()
         self.createControlsWidgets()
         self.createMenu()
+        self.toggleDataSource = False
         
         
     def createMenu(self):
@@ -325,6 +326,15 @@ class MainWindow(QMainWindow):
         # call general update method
         self.ROI_Change()
     
+    def toggleDataLogic (self, b):
+        if b.isChecked() == True:
+            self.showExtracted = True
+            # some hook to take traces and data from extracted etc
+            print ("data from extracted")
+        else:
+            self.showExtracted = False
+            # some hook to take traces and peaks data from searched
+            print ("raw data from search")
     
     def saveHistogramsLogic (self, b):
         if b.isChecked() == True:
@@ -628,6 +638,14 @@ class MainWindow(QMainWindow):
         dataBtn = QtGui.QPushButton('Show current peak data')
         dataBtn.clicked.connect(self.resultsPopUp)
         
+        self.toggleDataChk = QCheckBox("Show extracted", self)
+        self.toggleDataChk.setChecked(False)
+        self.toggleDataChk.toggled.connect(lambda:self.toggleDataLogic(self.toggleDataChk))
+        self.toggleDataChk.setDisabled(True)
+        
+        
+        
+        
         #stack widgets into control panel
         controls.addWidget(traces, 0, 0, 1, -1)
         controls.addWidget(histograms, 6 , 0, 1, -1)
@@ -636,11 +654,14 @@ class MainWindow(QMainWindow):
         controls.addWidget(peakFinding, 4, 0 , 2, -1)
         
         controls.addWidget(getResponsesBtn, 7, 0, 1, 2)
-        controls.addWidget(self.savePSRBtn, 7, 2, 1, 2)
+        controls.addWidget(self.toggleDataChk, 7, 2, 1, 2)
         
         controls.addWidget(self.save_baselined_ROIs_Btn, 8, 0, 1, 2)
-        controls.addWidget(dataBtn, 8, 2, 1, 2)
+        controls.addWidget(self.savePSRBtn, 8, 2, 1, 2)
+        
+        controls.addWidget(dataBtn, 9, 2, 1, 2)
         controls.addWidget(self.extractGroupsDialog_Btn, 9, 0, 1, 2)
+        
         
         self.central_layout.addWidget(controls, 0, 3, -1, 1)
         return
@@ -808,10 +829,16 @@ class MainWindow(QMainWindow):
             self.savePSRBtn.setEnabled(True)
             self.save_baselined_ROIs_Btn.setEnabled(True)
             self.extractGroupsDialog_Btn.setEnabled(True)
+            # allow user to toggle between original and the cleaned data with extracted peaks. 
+            self.toggleDataChk.setEnabled(True)
+            self.toggleDataSource = True
         
         else:
             print ('Returned but not happily: self.gpd.pkextracted_by_set is {}'.format(self.gpd.pkextracted_by_set))
-        
+            
+            # displaying output would make no sense
+            self.toggleDataChk.setEnabled(False)
+            self.toggleDataSource = False
         #ideas:
         #add set to the peaks combobox?!
         #accumulate histogram from individual ROI or store separately

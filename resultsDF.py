@@ -47,7 +47,5 @@ class Results():
 
     def readInPeakDialogResults(self, gpdResults):
         
-        # for each set
-        pass
-        # for each ROI
-            #self.addPeaks(_ROI, _set, _t, _p)
+        print ("readInPeakDialogResults is not used any more")
+        
