@@ -4,3 +4,6 @@ __pycache__/
 *$py.class
 .DS_Store
 *.xlsx
+R47.txt
+signal_trial.py
+.ipynb*
