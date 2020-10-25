@@ -50,11 +50,14 @@ class getPeaksDialog(QDialog):
         self.noiseRB.setChecked(False)
         self.noiseRB.setLayoutDirection(QtCore.Qt.LeftToRight)
         self.noiseRB.stateChanged.connect(self.setFailures)
+        self.noiseRB.setDisabled(True)
+        
 
         self.noiseSB = pg.SpinBox(value=1.5, step=.1, bounds=[.2, 10], delay=0)
         self.noiseSB.setFixedSize(60, 25)
         self.noiseSB.valueChanged.connect(self.setFailures)
-        
+        self.noiseSB.setDisabled(True)
+                
         self.peaksLabel = QLabel('No peaks set to be failures.')
         
         _doScrapeBtn = QPushButton('Extract responses')
@@ -159,6 +162,8 @@ class getPeaksDialog(QDialog):
         # yes, output may be modified below
         self.peaksScraped = True
         self.acceptBtn.setEnabled(True)
+        self.noiseRB.setEnabled(True)
+        self.noiseSB.setEnabled(True)
         self.blacklisted_by_set = {}
         
         if self.ignore:
@@ -190,7 +195,7 @@ class getPeaksDialog(QDialog):
     
     def setFailures(self):
         self.failures_nulled = True
-        #set failures modifies the output destructively and must retain original!!!
+        # setting failures modifies the output destructively and must retain original!!!
         self.pkextracted_with_failures = self.pkextracted_by_set.copy() #is that enough?
         if self.noiseRB.isChecked == False:
             self.noiseSB.setDisabled(True)

@@ -638,6 +638,7 @@ class MainWindow(QMainWindow):
         dataBtn = QtGui.QPushButton('Show current peak data')
         dataBtn.clicked.connect(self.resultsPopUp)
         
+        # this should be a pg spinbox to which we add sets of data
         self.toggleDataChk = QCheckBox("Show extracted", self)
         self.toggleDataChk.setChecked(False)
         self.toggleDataChk.toggled.connect(lambda:self.toggleDataLogic(self.toggleDataChk))
