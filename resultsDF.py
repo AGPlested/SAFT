@@ -1,6 +1,7 @@
 import itertools
 import pandas as pd
 
+
 class Results():
     """ a data frame for the results """
 
