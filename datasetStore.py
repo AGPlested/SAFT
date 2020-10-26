@@ -6,24 +6,29 @@ class DataSet():
     def __init__(self):
         
         self.name = "unnamed"
+        self.isempty = True
     
     def setSetName(self, _name):
         self.name = _name
     
-    def addPeaksToSet(self, _df):
+    
+    
+    def addPeaksToSet(self, _resdf):
         # peaks are ResultsDF objects
-        # some check that it is a data frame?
-        self.peaksDF = _df
+        # some check ?
+        self.resultsDF = _resdf
+        self.isempty = False
         
     def addTracesToSet (self, _traces):
-        #traceDF object?
-        self.tracesDF = _traces
+        #traceDF object? could just be a dictionary of data frames?
+        self.traces = _traces
+        self.isempty = False
 
     def getPeaksFromSet (self, _ROI, _condition):
-        
+        pass
         
     def getTracesFomSet (self, _ROI, _condition):
-    
+        pass
     
 class Store():
     """ a handler for datasets """
@@ -46,16 +51,11 @@ class Store():
         
         self.store[ds.name] = ds
             
-    def giveNames(self):
+    def listNames(self):
         
         if len(self.store) == 0:
-            return ['-']
+            return []
         else:
             return self.store.keys()
    
-    
-
-    def readInPeakDialogResults(self, gpdResults):
-        
-        print ("readInPeakDialogResults is not used any more")
         

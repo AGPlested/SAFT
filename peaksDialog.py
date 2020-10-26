@@ -110,7 +110,8 @@ class getPeaksDialog(QDialog):
     def addData(self, data):
         """Bring in external data for analysis"""
         
-        self.tracedata = data
+        self.tracedata = data.traces
+        self.name = data.name+"_pk"
         tdk = self.tracedata.keys()
         tdk_display = ", ".join(str(k) for k in tdk)
         N_ROI = np.array([len (self.tracedata[d].columns) for d in tdk])

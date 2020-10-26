@@ -2,6 +2,10 @@ import sys
 import os.path
 import platform
 import copy
+import random
+import string
+
+
 
 from PySide2 import QtCore, QtGui
 from PySide2.QtCore import Slot
@@ -22,10 +26,18 @@ from histogramDF import HistogramsR
 from groupPeaksDialog import groupDialog
 from quantal import fit_nGaussians, nGaussians_display
 from baselines import savitzky_golay, baseline_als, baselineIterator
+from datasetStore import Store, DataSet
+import helpMessages
 
 import pyqtgraph as pg
 
 # some functions below that could probably go to a module
+
+def get_random_string(length):
+    ###https://pynative.com/python-generate-random-string/
+    letters = string.ascii_lowercase
+    return ''.join(random.choice(letters) for i in range(length))
+    #print("Random string of length", length, "is:", result_str)
 
 def findCurve(items):
     # assume there is one PG PlotDataItem with curve data and return it
@@ -92,7 +104,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.central_widget)
         self.resize(1500,800)           # works well on MacBook Retina display
         
-        self.df = {}                    # dictionary for trace data frames
+        self.workingDataset = DataSet() # unnamed, empty dataset for traces, pk results and GUI settings
         self.extPa = {}                 # external parameters for the peak scraping dialog
         self.LR_created = False         # was a pg linear region created yet?
         self.filename = None
@@ -105,6 +117,7 @@ class MainWindow(QMainWindow):
         self.split_traces = False
         self.dataLock = True                    # when manual peak editing, lock to trace data
         self.noPeaks = True
+        self.store = Store()
         
         # setup main window widgets and menus
         self.createPlotWidgets()
@@ -146,19 +159,7 @@ class MainWindow(QMainWindow):
     
     def getStarted(self):
         
-        helpful_msg = """
-        \nWelcome to SAFT - Semi-Automatic Fluorescence Trace analysis
-        \n----------------------------
-        \nHere is some advice for novice users
-        \nLoad your data (traces in columns) from Excel. The first row should name the regions of interest (ROI), and each condition should be a separate sheet: 0.5 mM, 2 mM, 4 mM, etc. The ROIs do not have to be the same for each condition.
-        \nAdjust the baseline and find peaks automatically.
-        \nIn the 'Peak editing' window, turn on "Edit peaks with mouse". You can manually add peaks by left-clicking (and left-click on existing peaks to remove). Histogram should update as you go. Your clicks are locked to the data. You can do this manually for every trace if you like.
-        \nBetter: the "Extract peaks for all ROIs" button will open a dialog that uses the positions of the peaks from the 4 mM "mean" trace to get all the peaks from every other ROI. You can optionally blacklist ROIs from analysis that have a bad SNR. You can also select a region around each peak for the search.
-        \nSave the peaks and also the automatically baselined traces from the File menu or buttons. Peaks are sorted in SNR order.
-        \nHistograms (summed for each ROI over conditions or separated) can be saved as well.
-        \nIf traces consist of grouped responses to repeated stimuli, these can be batch analysed with "Extract group stats".
-        """
-        QMessageBox.information(self, "Getting Started", helpful_msg)
+        QMessageBox.information(self, "Getting Started", get_started)
     
     
     def createSplitTraceLayout(self):
@@ -467,15 +468,22 @@ class MainWindow(QMainWindow):
         histGrid.addWidget(self.fitHistogramsToggle, 3, 0, 1, 2)
         histograms.setLayout(histGrid)
         
-        traces = QGroupBox("Trace display")
+        # Data display options panel
+        traces = QGroupBox("Data display options")
         traceGrid = QGridLayout()
         self.split_B = QRadioButton("Split traces", self)
         self.combine_B = QRadioButton("Combined traces", self)
         self.combine_B.setChecked(True)
         self.split_B.toggled.connect(lambda:self.splitState(self.split_B))
         self.combine_B.toggled.connect(lambda:self.splitState(self.combine_B))
-        traceGrid.addWidget(self.combine_B, 0, 0)
-        traceGrid.addWidget(self.split_B, 1, 0)
+        
+        # select working dataset
+        datasetLabel = QtGui.QLabel("Dataset")
+        datasetLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        
+        self.datasetCBx = QtGui.QComboBox()
+        self.datasetCBx.addItems(['-'])
+        self.datasetCBx.currentIndexChanged.connect(self.datasetChange)
         
         # selection of ROI trace, or mean, variance etc
         ROIBox_label = QtGui.QLabel("Select ROI")
@@ -484,8 +492,14 @@ class MainWindow(QMainWindow):
         self.ROI_selectBox = QtGui.QComboBox()
         self.ROI_selectBox.addItems(['None'])
         self.ROI_selectBox.currentIndexChanged.connect(self.ROI_Change)
-        traceGrid.addWidget(ROIBox_label, 0, 2, -1, 1)
-        traceGrid.addWidget(self.ROI_selectBox, 0, 3, -1, 1)
+        
+        traceGrid.addWidget(datasetLabel, 0, 0, 1, 1)
+        traceGrid.addWidget(self.datasetCBx, 0, 2, 1, 1)
+        traceGrid.addWidget(self.combine_B, 2, 2)
+        traceGrid.addWidget(self.split_B, 3, 2)
+        traceGrid.addWidget(ROIBox_label, 1, 0, 1, 1)
+        traceGrid.addWidget(self.ROI_selectBox, 1, 2, 1, 1)
+        
         traces.setLayout(traceGrid)
         
         # peak finding controls box
@@ -616,8 +630,8 @@ class MainWindow(QMainWindow):
         baseline.setLayout(base_grid)
         
         # launch peak extraction wizard dialog
-        getResponsesBtn = QtGui.QPushButton('Extract peaks from all ROIs')
-        getResponsesBtn.clicked.connect(self.getResponses)
+        extractPeaksBtn = QtGui.QPushButton('Extract peaks from all ROIs')
+        extractPeaksBtn.clicked.connect(self.getResponses)
         
         # should be inactive until extraction
         self.savePSRBtn = QtGui.QPushButton('Save peak data')
@@ -625,28 +639,21 @@ class MainWindow(QMainWindow):
         self.savePSRBtn.setDisabled(True)
         
         # should be inactive until extraction
-        self.save_baselined_ROIs_Btn = QtGui.QPushButton('Save baselined ROI data')
+        self.save_baselined_ROIs_Btn = QtGui.QPushButton('Save baselined ROI traces')
         self.save_baselined_ROIs_Btn.clicked.connect(self.save_baselined)
         self.save_baselined_ROIs_Btn.setDisabled(True)
         
         # should be inactive until extraction
-        self.extractGroupsDialog_Btn = QtGui.QPushButton('Average group responses')
+        self.extractGroupsDialog_Btn = QtGui.QPushButton('Extract grouped responses')
         self.extractGroupsDialog_Btn.clicked.connect(self.getGroups)
         self.extractGroupsDialog_Btn.setDisabled(True)
         
         
-        dataBtn = QtGui.QPushButton('Show current peak data')
-        dataBtn.clicked.connect(self.resultsPopUp)
+        showDataBtn = QtGui.QPushButton('Show current peak data')
+        showDataBtn.clicked.connect(self.resultsPopUp)
         
-        # this should be a pg spinbox to which we add sets of data
-        self.toggleDataChk = QCheckBox("Show extracted", self)
-        self.toggleDataChk.setChecked(False)
-        self.toggleDataChk.toggled.connect(lambda:self.toggleDataLogic(self.toggleDataChk))
-        self.toggleDataChk.setDisabled(True)
-        
-        
-        
-        
+
+    
         #stack widgets into control panel
         controls.addWidget(traces, 0, 0, 1, -1)
         controls.addWidget(histograms, 6 , 0, 1, -1)
@@ -654,19 +661,38 @@ class MainWindow(QMainWindow):
         controls.addWidget(baseline, 1, 0 , 1, -1)
         controls.addWidget(peakFinding, 4, 0 , 2, -1)
         
-        controls.addWidget(getResponsesBtn, 7, 0, 1, 2)
-        controls.addWidget(self.toggleDataChk, 7, 2, 1, 2)
+        controls.addWidget(extractPeaksBtn, 7, 0, 1, 2)
         
         controls.addWidget(self.save_baselined_ROIs_Btn, 8, 0, 1, 2)
         controls.addWidget(self.savePSRBtn, 8, 2, 1, 2)
         
-        controls.addWidget(dataBtn, 9, 2, 1, 2)
+        controls.addWidget(showDataBtn, 9, 2, 1, 2)
         controls.addWidget(self.extractGroupsDialog_Btn, 9, 0, 1, 2)
         
         
         self.central_layout.addWidget(controls, 0, 3, -1, 1)
         return
-     
+    
+    def updateDatasetComboBox(self, _name):
+        """Return value indicates a duplicate name was found"""
+        
+        if self.datasetCBx.value() == '-':
+            # the list is empty so reset with current value
+            self.datasetCBx.setItems(_name)
+            return False
+        else:
+            # add new data set to combobox
+            if name in self.datasetCBx.items():
+                #get random 3 letter string and add it
+                _s = getRandomString(3)
+                evade_duplicate = _name+_s
+                self.datasetCBx.addvalue(evade_duplicate)
+                return evade_duplicate
+            else:
+                self.datasetCBx.addvalue(_name)
+                return False
+    
+    
     def resultsPopUp(self):
         """Make a pop up window of the current peak results"""
         _ROI = self.ROI_selectBox.currentText()
@@ -766,7 +792,26 @@ class MainWindow(QMainWindow):
                 #from pyqtgraph.examples
                 _c.setPen('w', width=3)
                 _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
-        
+    
+    def datasetChange(self):
+        if self.datasetCBx.currentText() != self.workingDataSet:
+            # prep current data for store
+            
+            # store GUI settings?
+            
+            # store traces
+            
+            # store peaks
+            
+            self.workingDataset = self.store.retrieveWorkingSet(self.datasetCBx.currentText())
+            
+            # plot new data traces
+            
+            # plot peaks
+            
+            # get GUI settings
+            
+    
     def getGroups(self):
         """launch group processing dialog"""
         print ('Get group responses from all ROIs.')
@@ -783,7 +828,7 @@ class MainWindow(QMainWindow):
         
         # pass the data into the get peaks dialog object
         # we do not want the original trace data modified
-        _data = copy.deepcopy(self.df)
+        _dataset = copy.deepcopy(self.workingDataset)
         
         # automatically reduce baseline (could also do this interactively??)
         # baselineIterator includes a progress indicator.
@@ -795,7 +840,7 @@ class MainWindow(QMainWindow):
                 # populate values for automatic baseline removal from GUI (unless 'Lock')
                 self.setBaselineParams()
             
-            _data = baselineIterator(_data, self.auto_bs_lam, self.auto_bs_P)
+            _dataset.traces = baselineIterator(_dataset.traces, self.auto_bs_lam, self.auto_bs_P)
         
         
         
@@ -811,7 +856,7 @@ class MainWindow(QMainWindow):
         self.gpd.setExternalParameters(self.extPa)
         
         #reordered because peaks must be put first. 
-        self.gpd.addData(_data)
+        self.gpd.addDataset(_dataset)
         
         # returns 1 (works like True) when accept() or 0 (we take for False) otherwise.
         accepted = self.gpd.exec_()
@@ -824,15 +869,32 @@ class MainWindow(QMainWindow):
             print (self.gpd.pkextracted_by_set) #the whitelist
             # these should now become available to be viewed (even edited?)
             
-            self.peakResults.readInPeakDialogResults(self.gpd.pkextracted_by_set)
+            #self.peakResults.readInPeakDialogResults(self.gpd.pkextracted_by_set)
             
             #make 'save' and other analysis buttons available
             self.savePSRBtn.setEnabled(True)
             self.save_baselined_ROIs_Btn.setEnabled(True)
             self.extractGroupsDialog_Btn.setEnabled(True)
-            # allow user to toggle between original and the cleaned data with extracted peaks. 
-            self.toggleDataChk.setEnabled(True)
-            self.toggleDataSource = True
+            
+        
+            # create new data set
+            extracted = Dataset()
+            extracted.name = self.gpd.name
+            # add results to new set
+            extracted.addPeaksToSet(self.gpd.)
+            # add baselined traces to new set
+            extracted.addTracesToSet(self.gpd.tracedata)
+            
+            
+            # update combobox
+            duplicate = self.updateDatasetComboBox(extracted.name)
+            
+            if duplicate:
+                extracted.name = duplicate
+                print ("duplicate name {}".format(duplicate))
+            # store
+            self.store.addDataset(extracted)
+            
         
         else:
             print ('Returned but not happily: self.gpd.pkextracted_by_set is {}'.format(self.gpd.pkextracted_by_set))
@@ -1150,6 +1212,7 @@ class MainWindow(QMainWindow):
     
     def save_peaks(self):
         print ("save_peak data and optionally histograms")
+        #### will have to update for Store
         
         #format for header cells.
         self.hform = {
@@ -1219,17 +1282,40 @@ class MainWindow(QMainWindow):
         if self.filename:
             #very simple and rigid right now - must be an excel file with sheets
             with pg.ProgressDialog("Loading sheets...", 0, len(self.sheets)) as dlg:
-                
+                _traces = {}
                 for _sheet in self.sheets:
                     dlg += 1
                     try:
-                        self.df[_sheet] = pd.read_excel(self.filename, sheet_name=_sheet, index_col=0)
-                        print (self.df[_sheet].head())
+                        _traces[_sheet] = pd.read_excel(self.filename, sheet_name=_sheet, index_col=0)
+                        print (_traces.head())
                     except:
                         print ("Probably: XLDR error- no sheet named exactly {0}. Please check it.".format(_sheet))
                         self.sheets.remove(_sheet)
+                # decide if there is data or not
+        
+        if self.workingDataset.isempty:
+            self.workingDataset.addTracesToSet(_traces)
+            self.workingDataset.name = self.filename
+        
+        else:
+            #store working dataset
+            self.store.addDataset(self.workingDataset.copy())
+            
+            
+            
                     
         print ("Loaded following sheets: ", self.sheets)
+        
+        # set current working set
+        self.workingDataset.name = self.filename
+        
+        _duplicate = self.updateDatasetComboBox((self.workingDataset.name)
+        
+        if _duplicate:
+            self.workingDataset.name = #?????
+        
+    
+        
         
         self.ROI_list = ["Mean", "Variance"]
         #print (self.ROI_list)
@@ -1240,6 +1326,10 @@ class MainWindow(QMainWindow):
         
         #split trace layout can be made now we know how many sets (conditions) we have
         self.createSplitTraceLayout()
+        
+        
+                
+                
         
         #populate the combobox for choosing which ROI to show
         self.ROI_selectBox.clear()

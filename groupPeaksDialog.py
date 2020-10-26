@@ -197,6 +197,32 @@ class groupDialog(QDialog):
         #self.psr = self.psrSB.value() // 2          #floor division to get ears
     
     
+    def addDataset(self, d):
+        """Bring in external dataset for analysis"""
+        self.peakData = d.resultsDF     #resultsDF object
+        self.name = d.name
+        print (self.peakData)
+        
+        #following was designed for dictionary, maybe fails with resultsDF object
+        #remove any duplicate peaks
+        for k, _v in self.peakData.items():
+            _wasShape = _v.shape
+            self.peakData[k] = _v.loc[~_v.index.duplicated(keep='first')] #StackOverflow 13035764
+            _isShape = _v.shape
+            if _isShape != _wasShape:
+                print ("Removed duplicates, df.shape() was {}, now {}".format(_wasShape, _isShape))
+            
+        pdk = self.peakData.keys()
+        pdk_display = ", ".join(str(k) for k in pdk)
+        N_ROI = [len (self.peakData[d].columns) for d in pdk]
+        
+        _printable = "{}\n{}\n".format(pdk_display, [self.peakData[d].head() for d in pdk])
+        print ("Added data {} of type {}:\n{}\n".format(self.name, type(self.peakData), _printable))
+        
+        self.dataLoaded = True
+        self.N_ROI_label.setText("Grouping peaks from {} ROIs \n over the sets named {}".format(N_ROI, pdk_display))
+        self.updateGrouping()
+        
     def addData(self, data):
         """Bring in external data for analysis"""
         #data is a dictionary of Pandas DataFrames
