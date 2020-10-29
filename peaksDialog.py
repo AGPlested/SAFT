@@ -4,6 +4,7 @@ from PySide2.QtWidgets import QApplication, QMainWindow, QGridLayout, QWidget, Q
 import numpy as np
 import pyqtgraph as pg
 import pandas as pd
+import utils
 
 
 class getPeaksDialog(QDialog):
@@ -107,11 +108,11 @@ class getPeaksDialog(QDialog):
         self.psr = self.psrSB.value() // 2          #floor division to get ears
     
     
-    def addData(self, data):
-        """Bring in external data for analysis"""
+    def addDataset(self, data):
+        """Bring in external dataset for analysis"""
         
         self.tracedata = data.traces  # each dataframe in this dictionary could have a different set of ROI
-        self.name = data.name+"_pk"
+        self.name = data.DSname + "_expk"
         tdk = self.tracedata.keys()
         tdk_display = ", ".join(str(k) for k in tdk)
         N_ROI = np.array([len (self.tracedata[d].columns) for d in tdk])
@@ -127,7 +128,7 @@ class getPeaksDialog(QDialog):
         """Some peak-finding function with output filtering based on SNR"""
         
         self.prepGuiParameters()
-        self.pkextracted_by_set = {}
+        self.pk_extracted_by_set = {}
         
         for _set in self.tracedata.keys():
             maxVal = len(self.tPeaks)
@@ -157,7 +158,7 @@ class getPeaksDialog(QDialog):
                 # Overwrite index with the original peak positions
                 # (somewhat inexact because of the 'range')
                 peaksdf.index = self.tPeaks
-                self.pkextracted_by_set[_set] = peaksdf
+                self.pk_extracted_by_set[_set] = peaksdf
         
     
         # yes, output may be modified below
@@ -176,13 +177,13 @@ class getPeaksDialog(QDialog):
             _cut = self.badSNRcut
             
             #split peak data into sets from high and low SNR
-            for s in self.pkextracted_by_set.keys():
+            for s in self.pk_extracted_by_set.keys():
                 wls = self.whitelists[s]
                 bls = self.blacklists[s]
-                pk = self.pkextracted_by_set[s]
+                pk = self.pk_extracted_by_set[s]
                 whitelisted = pk[wls.sort_values(ascending=False).index]
                 blacklisted = pk[bls.sort_values(ascending=False).index]
-                self.pkextracted_by_set[s] = whitelisted
+                self.pk_extracted_by_set[s] = whitelisted
                 self.blacklisted_by_set[s + "_SNR<" + str(_cut)] = blacklisted
     
         #close the dialog
@@ -190,14 +191,14 @@ class getPeaksDialog(QDialog):
     
     def prepareAccept(self):
         if self.failures_nulled:
-            self.pkextracted_by_set = self.pkextracted_with_failures
+            self.pk_extracted_by_set = self.pk_extracted_with_failures
         
         self.accept()
     
     def setFailures(self):
         self.failures_nulled = True
         # setting failures modifies the output destructively and must retain original!!!
-        self.pkextracted_with_failures = self.pkextracted_by_set.copy() #is that enough?
+        self.pk_extracted_with_failures = self.pk_extracted_by_set.copy() #is that enough?
         if self.noiseRB.isChecked == False:
             self.noiseSB.setDisabled(True)
             return
@@ -210,7 +211,7 @@ class getPeaksDialog(QDialog):
         print ("Self.noisecut {}".format(self.noiseCut))
         _numberCut = 0
         for _set in self.tracedata:
-            _peaksDF = self.pkextracted_with_failures[_set]
+            _peaksDF = self.pk_extracted_with_failures[_set]
             _df = self.tracedata[_set]
             #print (_df)
             _noise = _df.std()
@@ -220,7 +221,7 @@ class getPeaksDialog(QDialog):
             _bycol = _peaksDF.isin([0.0]).sum()
             #print ("bycol {} sum {}".format(_bycol, _bycol.sum()))
             _numberCut += _bycol.sum()
-            self.pkextracted_with_failures[_set] = _peaksDF
+            self.pk_extracted_with_failures[_set] = _peaksDF
         
         self.peaksLabel.setText("{} peaks set to failure.".format(_numberCut))
         

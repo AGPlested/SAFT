@@ -1,5 +1,5 @@
-
-get_started = """
+def gettingStarted():
+    return """
 \nWelcome to SAFT - Semi-Automatic Fluorescence Trace analysis
 \n----------------------------
 \nHere is some advice for novice users

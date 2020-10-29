@@ -1,12 +1,14 @@
 import itertools
 import pandas as pd
 
-class DataSet:
+class Dataset:
     """traces and peaks over different ROIs and conditions"""
     def __init__(self, _state="Empty"):
         
         self.DSname = _state
         self.isEmpty = True
+        self.GUIcontrols = {}
+        self.GUIcontrols["autopeaks"] = 'Enable'   # a dataset can activate/deactivate parts of the GUI
     
     def setDSname(self, _name):
         self.DSname = _name

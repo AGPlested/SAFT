@@ -1,5 +1,5 @@
 import sys
-import os.path, os.split
+import os.path
 import platform
 import copy
 import random
@@ -26,57 +26,12 @@ from histogramDF import HistogramsR
 from groupPeaksDialog import groupDialog
 from quantal import fit_nGaussians, nGaussians_display
 from baselines import savitzky_golay, baseline_als, baselineIterator
-from datasetStore import Store, DataSet
-import helpMessages
-
+from datasetStore import Store, Dataset
+from helpMessages import gettingStarted
+import utils            #addFileSuffix, findCurve, findScatter etc
 import pyqtgraph as pg
 
-# some functions below that could probably go to a module
 
-def get_random_string(length):
-    ###https://pynative.com/python-generate-random-string/
-    letters = string.ascii_lowercase
-    return ''.join(random.choice(letters) for i in range(length))
-    #print("Random string of length", length, "is:", result_str)
-
-def findCurve(items):
-    # assume there is one PG PlotDataItem with curve data and return it
-    # the others should be empty
-    PDIs = [d for d in items if isinstance(d, pg.PlotDataItem)]
-
-    # there should be two plot data items, find the curve data
-    for pdi in PDIs:
-        x, _ = pdi.curve.getData()
-        if len(x) > 0:
-            return pdi.curve
-
-def findScatter(items):
-    # assume there is one PG PlotDataItem with scatter data and return it
-    # the other scatter attributes should be empty
-    PDIs = [d for d in items if isinstance(d, pg.PlotDataItem)]
-    
-    # there should be two plot data items, find the scatter data
-    for pdi in PDIs:
-        x, _ = pdi.scatter.getData()
-        if len(x) > 0:
-            return pdi.scatter
-
-def remove_all_scatter(p1):
-    """p1 should be a plot item"""
-    
-    PDIs = [d for d in p1.items if isinstance(d, pg.PlotDataItem)]
-    for pdi in PDIs:
-        
-        x, _ = pdi.scatter.getData()            #scatter data objects have some data points in them
-        if len(x) > 0:
-            print ("Removing: {}".format(pdi))
-            p1.removeItem(pdi)                  #need to use remove item to get rid of it.
-            
-    _rem = p1.listDataItems()
-
-    print("Data items remaining in {0}: {1}".format(p1, len(_rem)))
-            
-            
 class MainWindow(QMainWindow):
     
     ### Methods
@@ -104,7 +59,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.central_widget)
         self.resize(1500,800)           # works well on MacBook Retina display
         
-        self.workingDataset = DataSet("Empty") # unnamed, empty dataset for traces, pk results and GUI settings
+        self.workingDataset = Dataset("Empty") # unnamed, empty dataset for traces, pk results and GUI settings
         #print (self.workingDataset.__dict__)
         self.datasetList_CBX = ['-']    # maintain our own list of datasets
         self.extPa = {}                 # external parameters for the peak scraping dialog
@@ -161,7 +116,7 @@ class MainWindow(QMainWindow):
     
     def getStarted(self):
         
-        QMessageBox.information(self, "Getting Started", get_started)
+        QMessageBox.information(self, "Getting Started", gettingStarted())
     
     
     def createSplitTraceLayout(self):
@@ -287,7 +242,7 @@ class MainWindow(QMainWindow):
                 mousePoint = self.p3vb.mapSceneToView(pos)
                 
                 # there should be two plot data items, find the curve data
-                _c = findCurve(self.p3.items)
+                _c = utils.findCurve(self.p3.items)
                 sx, sy = _c.getData()
             
                 # quantize x to curve, and get corresponding y that is locked to curve
@@ -484,7 +439,7 @@ class MainWindow(QMainWindow):
         datasetLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         
         self.datasetCBx = pg.ComboBox()
-        self.datasetCBx.addItem(self.datasetList_CBX)
+        self.datasetCBx.setItems(self.datasetList_CBX)
         self.datasetCBx.currentIndexChanged.connect(self.datasetChange)
         
         # selection of ROI trace, or mean, variance etc
@@ -677,25 +632,29 @@ class MainWindow(QMainWindow):
     
     def updateDatasetComboBox(self, _name):
         """Return value indicates a duplicate name was found"""
-        self.evasion = False
+        #self.evasion = False
+        print ("self.datasetListCBX {}".format(self.datasetList_CBX))
         if self.datasetList_CBX == ['-']:
             # the list is empty so reset with the passed value
             self.datasetCBx.setItems([_name])
-            
+            self.datasetList_CBX = [_name]
+            return False
         else:
             # add new data set to combobox
             if _name in self.datasetList_CBX:
                 # get random 3 letter string and add it
                 _s = getRandomString(3)
-                # should do some os.split here
-                _name = _s+_name
-                self.datasetCBx.addvalue([evade_duplicate])
-                self.datasetList_CBX.append(evade_duplicate)
-                self.evasion = True
-               
+            
+                _sname = _name + _s
+                self.datasetCBx.addItem(_sname)
+                self.datasetList_CBX.append(_sname)
+                #self.evasion = True
+                return _sname
             else:
-                self.datasetCBx.addvalue([_name])
-                
+                self.datasetCBx.addItem(_name)
+                self.datasetList_CBX.append(_name)
+              
+                return False
        
     
     def resultsPopUp(self):
@@ -739,8 +698,8 @@ class MainWindow(QMainWindow):
         progMsg = "Histogram for {0} traces".format(maxVal)
         with pg.ProgressDialog(progMsg, 0, maxVal) as dlg:
         
-            for _set in self.gpd.pkextracted_by_set.keys():      #from the whitelist, should be from edited internal data?
-                _pe = self.gpd.pkextracted_by_set[_set]
+            for _set in self.gpd.pk_extracted_by_set.keys():      #from the whitelist, should be from edited internal data?
+                _pe = self.gpd.pk_extracted_by_set[_set]
                 print (_set, _pe.columns)
                 for _ROI in _pe.columns:
                     dlg += 1
@@ -800,29 +759,46 @@ class MainWindow(QMainWindow):
     
     def datasetChange(self):
         print ("a (dataset) change is coming")
-        """if self.datasetCBx.currentText() != self.workingDataset:
+        
+        
+        if self.datasetCBx.currentText() != self.workingDataset.DSname:
             # prep current data for store
             
             # store GUI settings?
             
-            # store traces
+            self.store.storeSet(copy.deepcopy(self.workingDataset))
+            print ('Stored {}'.format(self.workingDataset))
             
             # store peaks
             
             self.workingDataset = self.store.retrieveWorkingSet(self.datasetCBx.currentText())
             
             # plot new data traces
-            
+            # print GUI control dict
+            print ("swdsGC {}".format(self.workingDataset.GUIcontrols))
+                
+            for k,v in self.workingDataset.GUIcontrols.items():
+                if k == "autopeaks":
+                    self.autopeaks_switch(v)
+                elif k == "print":
+                    print (v)
             # plot peaks
             
             # get GUI settings
-        """
+  
+    def autopeaks_switch(self, v):
+        if v == "Disable":
+            self.manual.setChecked(True)
+            self.manual.setDisabled(True)
+        elif v == "Enable":
+            self.manual.setChecked(False)
+            self.manual.setEnabled(True)
     
     def getGroups(self):
         """launch group processing dialog"""
         print ('Get group responses from all ROIs.')
         self.getgroupsDialog = groupDialog()
-        self.getgroupsDialog.addData(self.gpd.pkextracted_by_set)
+        self.getgroupsDialog.addData(self.gpd.pk_extracted_by_set)
         accepted = self.getgroupsDialog.exec_()
         
     def getResponses(self):
@@ -872,7 +848,7 @@ class MainWindow(QMainWindow):
         if accepted:
             self.noPeaks = False
 
-            print (self.gpd.pkextracted_by_set) #the whitelist
+            print (self.gpd.pk_extracted_by_set) #the whitelist
             # these should now become available to be viewed (even edited?)
             
             #self.peakResults.readInPeakDialogResults(self.gpd.pkextracted_by_set)
@@ -884,29 +860,29 @@ class MainWindow(QMainWindow):
             
         
             # create new data set
-            extracted = Dataset()
-            extracted.name = self.gpd.name
-            # add results to new set
-            
-            _resdf = self.gpd.peaksExtractedBySet
-            extracted.addPeaksToSet(_resdf)
-            # add baselined traces to new set
-            extracted.addTracesToSet(self.gpd.tracedata)
-            
-            
+            extracted = Dataset(self.gpd.name)
+            #extracted.DSname =
+            extracted.GUIcontrols['print'] = 'here is a GUI command'
+            extracted.GUIcontrols["autopeaks"] = 'Disable'
             # update combobox
-            self.updateDatasetComboBox(str(extracted.name))
+            _duplicate = self.updateDatasetComboBox(str(extracted.DSname))
             
-            if self.evasion:
-                extracted.setDSname = self.evade_duplicate
-                print ("duplicate name {}".format(self.evade_duplicate))
+            if _duplicate:
+                extracted.setDSname(_duplicate)
+                print ("duplicate name {}".format(_duplicate))# add results to new set
+            
+            _resdf = self.gpd.pk_extracted_by_set
+            extracted.addPeaksToDS(_resdf)
+            
+            # add baselined traces to new set
+            extracted.addTracesToDS(self.gpd.tracedata)
             
             # store
             self.store.storeSet(extracted)
             
         
         else:
-            print ('Returned but not happily: self.gpd.pkextracted_by_set is {}'.format(self.gpd.pkextracted_by_set))
+            print ('Returned but not happily: self.gpd.pk_extracted_by_set is {}'.format(self.gpd.pk_extracted_by_set))
             
             # displaying output would make no sense
             self.toggleDataChk.setEnabled(False)
@@ -942,7 +918,7 @@ class MainWindow(QMainWindow):
                 
                 # create the object for parsing clicks in p3
                 self.cA = clickAlgebra(self.p3)
-                _p3_scatter = findScatter(self.p3.items)
+                _p3_scatter = utils.findScatter(self.p3.items)
                 _p3_scatter.sigClicked.connect(self.clickRelay)
                 _p3_scatter.sigPlotChanged.connect(self.manualUpdate)
         
@@ -1008,7 +984,7 @@ class MainWindow(QMainWindow):
         _ROI = self.ROI_selectBox.currentText()
         
         # update the peaks in p1 and histograms only
-        remove_all_scatter(self.p1)
+        utils.removeAllScatter(self.p1)
         
         #update p2 histograms
         self.updateHistograms()
@@ -1018,7 +994,7 @@ class MainWindow(QMainWindow):
             col_series = (i, len(self.sheets))
             
             if _sel_set == _set :
-                _scatter = findScatter(self.p3.items)
+                _scatter = utils.findScatter(self.p3.items)
                 # sometimes a new scatter is made and this "deletes" the old one
                 # retrieve the current manually curated peak data
                 if _scatter is None:
@@ -1037,7 +1013,7 @@ class MainWindow(QMainWindow):
             if self.split_traces:
                 _target = self.p1stackMembers[i]
                 # only one scatter item in each split view
-                _t_scat = findScatter(_target.items)
+                _t_scat = utils.findScatter(_target.items)
                 _t_scat.setData(xp, yp, brush=col_series)
                 
             else:
@@ -1109,8 +1085,8 @@ class MainWindow(QMainWindow):
         
         # Rather than clearing objects in p3, we set their data anew
         _p3_items = self.p3.items
-        _p3_scatter = findScatter(_p3_items)
-        _p3_curve = findCurve(_p3_items)
+        _p3_scatter = utils.findScatter(_p3_items)
+        _p3_curve = utils.findCurve(_p3_items)
         #print (_p3_items, _p3_scatter)
         
         for i, _set in enumerate(self.sheets):
@@ -1243,7 +1219,7 @@ class MainWindow(QMainWindow):
             with pd.ExcelWriter(self.filename) as writer:
                 
                 # combine whitelist and blacklist dictionaries for output
-                _output = {**self.gpd.pkextracted_by_set, **self.gpd.blacklisted_by_set}
+                _output = {**self.gpd.pk_extracted_by_set, **self.gpd.blacklisted_by_set}
                 
                 for _set in _output:
                     # in case there are duplicate peaks extracted, remove them and package into dummy variable
@@ -1314,30 +1290,22 @@ class MainWindow(QMainWindow):
             self.store.storeSet(copy.deepcopy(self.workingDataset))
             print ("Putting {} in the store.".format(self.workingDataset.DSname))
         
-        # set as current working set
+        # overwrite current working set
         self.workingDataset.addTracesToDS(_traces)
         self.workingDataset.isEmpty = False
-        self.workingDataset.setDSname(self.filename)
+        _stem = utils.getFileStem(self.filename)
+        self.workingDataset.setDSname(_stem)
         #print ("2 {}".format(self.workingDataset.__dict__))
     
         _DSname = str(self.workingDataset.getDSname())
-        """
-        if self.datasetCBx.value() == '-':
-            self.datasetCBx.clear()
-            #self.datasetCBx.addItem(_DSname)
-            print ("added {}".format(_DSname))
-        else:
-            print ("NOT EMPTY")
-            #check duplicate
-        """
-        self.updateDatasetComboBox(_DSname)
+   
+        _duplicate = self.updateDatasetComboBox(_DSname)
         #returns either false or the name to avoid duplicates
+        
         #print ("4 {}".format(self.workingDataset.__dict__))
-        if self.evasion:
+        if _duplicate:
             # update
-            self.workingDataset.DSname = self.evade_duplicate
-        
-        
+            self.workingDataset.DSname = _duplicate
         
         
         self.ROI_list = ["Mean", "Variance"]
