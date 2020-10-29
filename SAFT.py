@@ -21,12 +21,11 @@ import scipy.signal as scsig
 from clicker import clickAlgebra
 from peaksDialog import getPeaksDialog
 from histogramDialog import histogramFitDialog
-from resultsDF import Results
 from histogramDF import HistogramsR
 from groupPeaksDialog import groupDialog
 from quantal import fit_nGaussians, nGaussians_display
 from baselines import savitzky_golay, baseline_als, baselineIterator
-from datasetStore import Store, Dataset
+from dataStructures import Store, Dataset, Results
 from helpMessages import gettingStarted
 import utils            #addFileSuffix, findCurve, findScatter etc
 import pyqtgraph as pg
@@ -767,12 +766,12 @@ class MainWindow(QMainWindow):
             # store GUI settings?
             
             self.store.storeSet(copy.deepcopy(self.workingDataset))
-            print ('Stored {}'.format(self.workingDataset))
+            print ('Stored {}'.format(self.workingDataset.DSname))
             
             # store peaks
             
             self.workingDataset = self.store.retrieveWorkingSet(self.datasetCBx.currentText())
-            
+            print ('Retrieved {}'.format(self.workingDataset.DSname))
             # plot new data traces
             # print GUI control dict
             print ("swdsGC {}".format(self.workingDataset.GUIcontrols))
@@ -783,16 +782,25 @@ class MainWindow(QMainWindow):
                 elif k == "print":
                     print (v)
             # plot peaks
+            self.peakResults = self.workingDataset.resultsDF
             
+            
+            self.ROI_Change()
             # get GUI settings
   
     def autopeaks_switch(self, v):
         if v == "Disable":
+            self.autobs_Box.setValue('None')
+            self.auto_bs = False
             self.manual.setChecked(True)
             self.manual.setDisabled(True)
+            
         elif v == "Enable":
+            self.autobs_Box.setValue('Auto')
+            self.auto_bs = True
             self.manual.setChecked(False)
             self.manual.setEnabled(True)
+            
     
     def getGroups(self):
         """launch group processing dialog"""
@@ -871,8 +879,11 @@ class MainWindow(QMainWindow):
                 extracted.setDSname(_duplicate)
                 print ("duplicate name {}".format(_duplicate))# add results to new set
             
+            # add the extracted peaks to a resultsDF instance and place that in the dataset
             _resdf = self.gpd.pk_extracted_by_set
-            extracted.addPeaksToDS(_resdf)
+            extracted_peaksRDF = Results()
+            extracted_peaksRDF.addPeaksExtracted(_resdf)        # conversion
+            extracted.addPeaksToDS (extracted_peaksRDF)
             
             # add baselined traces to new set
             extracted.addTracesToDS(self.gpd.tracedata)
