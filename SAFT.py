@@ -1,5 +1,5 @@
 import sys
-import os.path
+import os.path, os.split
 import platform
 import copy
 import random
@@ -104,7 +104,9 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.central_widget)
         self.resize(1500,800)           # works well on MacBook Retina display
         
-        self.workingDataset = DataSet() # unnamed, empty dataset for traces, pk results and GUI settings
+        self.workingDataset = DataSet("Empty") # unnamed, empty dataset for traces, pk results and GUI settings
+        #print (self.workingDataset.__dict__)
+        self.datasetList_CBX = ['-']    # maintain our own list of datasets
         self.extPa = {}                 # external parameters for the peak scraping dialog
         self.LR_created = False         # was a pg linear region created yet?
         self.filename = None
@@ -481,8 +483,8 @@ class MainWindow(QMainWindow):
         datasetLabel = QtGui.QLabel("Dataset")
         datasetLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         
-        self.datasetCBx = QtGui.QComboBox()
-        self.datasetCBx.addItems(['-'])
+        self.datasetCBx = pg.ComboBox()
+        self.datasetCBx.addItem(self.datasetList_CBX)
         self.datasetCBx.currentIndexChanged.connect(self.datasetChange)
         
         # selection of ROI trace, or mean, variance etc
@@ -675,23 +677,26 @@ class MainWindow(QMainWindow):
     
     def updateDatasetComboBox(self, _name):
         """Return value indicates a duplicate name was found"""
-        
-        if self.datasetCBx.value() == '-':
-            # the list is empty so reset with current value
-            self.datasetCBx.setItems(_name)
-            return False
+        self.evasion = False
+        if self.datasetList_CBX == ['-']:
+            # the list is empty so reset with the passed value
+            self.datasetCBx.setItems([_name])
+            
         else:
             # add new data set to combobox
-            if name in self.datasetCBx.items():
-                #get random 3 letter string and add it
+            if _name in self.datasetList_CBX:
+                # get random 3 letter string and add it
                 _s = getRandomString(3)
-                evade_duplicate = _name+_s
-                self.datasetCBx.addvalue(evade_duplicate)
-                return evade_duplicate
+                # should do some os.split here
+                _name = _s+_name
+                self.datasetCBx.addvalue([evade_duplicate])
+                self.datasetList_CBX.append(evade_duplicate)
+                self.evasion = True
+               
             else:
-                self.datasetCBx.addvalue(_name)
-                return False
-    
+                self.datasetCBx.addvalue([_name])
+                
+       
     
     def resultsPopUp(self):
         """Make a pop up window of the current peak results"""
@@ -794,7 +799,8 @@ class MainWindow(QMainWindow):
                 _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
     
     def datasetChange(self):
-        if self.datasetCBx.currentText() != self.workingDataSet:
+        print ("a (dataset) change is coming")
+        """if self.datasetCBx.currentText() != self.workingDataset:
             # prep current data for store
             
             # store GUI settings?
@@ -810,7 +816,7 @@ class MainWindow(QMainWindow):
             # plot peaks
             
             # get GUI settings
-            
+        """
     
     def getGroups(self):
         """launch group processing dialog"""
@@ -881,19 +887,22 @@ class MainWindow(QMainWindow):
             extracted = Dataset()
             extracted.name = self.gpd.name
             # add results to new set
-            extracted.addPeaksToSet(self.gpd.)
+            
+            _resdf = self.gpd.peaksExtractedBySet
+            extracted.addPeaksToSet(_resdf)
             # add baselined traces to new set
             extracted.addTracesToSet(self.gpd.tracedata)
             
             
             # update combobox
-            duplicate = self.updateDatasetComboBox(extracted.name)
+            self.updateDatasetComboBox(str(extracted.name))
             
-            if duplicate:
-                extracted.name = duplicate
-                print ("duplicate name {}".format(duplicate))
+            if self.evasion:
+                extracted.setDSname = self.evade_duplicate
+                print ("duplicate name {}".format(self.evade_duplicate))
+            
             # store
-            self.store.addDataset(extracted)
+            self.store.storeSet(extracted)
             
         
         else:
@@ -917,8 +926,8 @@ class MainWindow(QMainWindow):
         self.p3.clear()
         
         for i, _set in enumerate(self.sheets):
-            x = self.df[_set].index
-            y[i] = self.df[_set].mean(axis=1).to_numpy()
+            x = self.workingDataset.traces[_set].index
+            y[i] = self.workingDataset.traces[_set].mean(axis=1).to_numpy()
 
             self.p1.plot(x, y[i], pen=(i,3))
         
@@ -1106,19 +1115,19 @@ class MainWindow(QMainWindow):
         
         for i, _set in enumerate(self.sheets):
             col_series = (i, len(self.sheets))
-            x = np.array(self.df[_set].index)
+            x = np.array(self.workingDataset.traces[_set].index)
             
             if _ROI == "Mean":
-                y[i] = self.df[_set].mean(axis=1).to_numpy()
+                y[i] = self.workingDataset.traces[_set].mean(axis=1).to_numpy()
                 
             elif _ROI == "Variance":
-                y[i] = self.df[_set].var(axis=1).to_numpy()
+                y[i] = self.workingDataset.traces[_set].var(axis=1).to_numpy()
                 # we never want to subtract the steady state variance
                 self.auto_bs = False
                 print ('No baseline subtraction for variance trace')
                 
             else:
-                y[i] = self.df[_set][_ROI].to_numpy()
+                y[i] = self.workingDataset.traces[_set][_ROI].to_numpy()
             
             if self.auto_bs:
                 # baseline
@@ -1192,13 +1201,15 @@ class MainWindow(QMainWindow):
     def setRanges(self):
         """ Collect the extremities of data over a set of sheets """
         self.ranges = {}
-        self.ranges['xmin'] = self.df[self.sheets[0]].index.min()
-        self.ranges['xmax'] = self.df[self.sheets[0]].index.max()
-        self.ranges['ymin'] = self.df[self.sheets[0]].min().min()
-        self.ranges['ymax'] = self.df[self.sheets[0]].max().max()
+        # use the first condition (sheet) as a basis
+        _df = self.workingDataset.traces[self.sheets[0]]
+        self.ranges['xmin'] = _df.index.min()
+        self.ranges['xmax'] = _df.index.max()
+        self.ranges['ymin'] = _df.min().min()
+        self.ranges['ymax'] = _df.max().max()
         
-        #lazily compare across all sheets
-        for sheet in self.df.values():
+        # lazily compare across all sheets (including the first)
+        for sheet in self.workingDataset.traces.values():
             if sheet.min().min() < self.ranges['ymin']:
                 self.ranges['ymin'] = sheet.min().min()
             if sheet.max().max() > self.ranges['ymax']:
@@ -1236,7 +1247,7 @@ class MainWindow(QMainWindow):
                 
                 for _set in _output:
                     # in case there are duplicate peaks extracted, remove them and package into dummy variable
-                    # [not the duplicates]
+                    # loc["not" the duplicates]
                     _pe = _output[_set].loc[~_output[_set].index.duplicated(keep='first')] #StackOverflow 13035764
                     
                     #skip the first row
@@ -1287,39 +1298,53 @@ class MainWindow(QMainWindow):
                     dlg += 1
                     try:
                         _traces[_sheet] = pd.read_excel(self.filename, sheet_name=_sheet, index_col=0)
-                        print (_traces.head())
+                        print ("XLDR: From spreadsheet- {}\n{}".format(_sheet, _traces[_sheet].head()))
                     except:
                         print ("Probably: XLDR error- no sheet named exactly {0}. Please check it.".format(_sheet))
                         self.sheets.remove(_sheet)
                 # decide if there is data or not
         
-        if self.workingDataset.isempty:
-            self.workingDataset.addTracesToSet(_traces)
-            self.workingDataset.name = self.filename
-        
-        else:
-            #store working dataset
-            self.store.addDataset(self.workingDataset.copy())
-            
-            
-            
-                    
         print ("Loaded following sheets: ", self.sheets)
         
-        # set current working set
-        self.workingDataset.name = self.filename
+        if self.workingDataset.isEmpty:
+            print ("First data set loaded")
         
-        _duplicate = self.updateDatasetComboBox((self.workingDataset.name)
+        else:
+            #store existing working dataset
+            self.store.storeSet(copy.deepcopy(self.workingDataset))
+            print ("Putting {} in the store.".format(self.workingDataset.DSname))
         
-        if _duplicate:
-            self.workingDataset.name = #?????
-        
+        # set as current working set
+        self.workingDataset.addTracesToDS(_traces)
+        self.workingDataset.isEmpty = False
+        self.workingDataset.setDSname(self.filename)
+        #print ("2 {}".format(self.workingDataset.__dict__))
     
+        _DSname = str(self.workingDataset.getDSname())
+        """
+        if self.datasetCBx.value() == '-':
+            self.datasetCBx.clear()
+            #self.datasetCBx.addItem(_DSname)
+            print ("added {}".format(_DSname))
+        else:
+            print ("NOT EMPTY")
+            #check duplicate
+        """
+        self.updateDatasetComboBox(_DSname)
+        #returns either false or the name to avoid duplicates
+        #print ("4 {}".format(self.workingDataset.__dict__))
+        if self.evasion:
+            # update
+            self.workingDataset.DSname = self.evade_duplicate
+        
+        
         
         
         self.ROI_list = ["Mean", "Variance"]
         #print (self.ROI_list)
-        self.ROI_list.extend(self.df[self.sheets[0]].columns.tolist())
+        first = self.sheets[0]
+        #print (self.workingDataset.__dict__)
+        self.ROI_list.extend(self.workingDataset.traces[first].columns.tolist())
         
         #find out and store the size of the data
         self.setRanges()
