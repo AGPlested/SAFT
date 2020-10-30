@@ -331,8 +331,8 @@ class MainWindow(QMainWindow):
             self.p3.addItem(self.vLine, ignoreBounds=True)
             self.p3.addItem(self.hLine, ignoreBounds=True)
             
-            # add a hint - need to find a better way to add it!!! Label at top?
-            self.p3.setTitle('Manual peak editing : left-click to add/remove peaks', color="F0F0F0" , width=300)
+            # add a hint
+            self.p3.setTitle('Manual peak mode: l-click to add/remove peaks', color="F0F0F0" , width=300)
             
         else:
             # Enter auto peak mode
