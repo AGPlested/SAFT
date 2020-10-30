@@ -16,7 +16,7 @@ def addFileSuffix(_name, _suffix):
     _split = os.path.split(_name)
     _path = _split[0]
     _tail = _split[1]
-    _stem = _tail.rsplit(".", 1)          #from "file.txt" -> "file", "text"
+    _stem = _tail.rsplit(".", 1)     #from "file.txt" -> "file", "text"
     
     return _path + _stem[0] + _suffix + "." + _stem[1]
 
