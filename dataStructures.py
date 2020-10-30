@@ -72,7 +72,7 @@ class Results:
         # overwrite or add column if new
         self.df[_ROI, _condition, 't'] = pd.Series(_times)
         self.df[_ROI, _condition, 'peak'] = pd.Series(_peaks)
-        print (self.df[_ROI, _condition, 'peak'])
+        #print (self.df[_ROI, _condition, 'peak'])
 
 
     def getPeaks (self, _ROI, _condition):
@@ -95,6 +95,7 @@ class Dataset:
         self.isEmpty = True
         self.GUIcontrols = {}
         self.GUIcontrols["autopeaks"] = 'Enable'   # a dataset can activate/deactivate parts of the GUI
+        self.ROI_list = []
     
     def setDSname(self, _name):
         self.DSname = _name

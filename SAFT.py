@@ -64,7 +64,7 @@ class MainWindow(QMainWindow):
         self.extPa = {}                 # external parameters for the peak scraping dialog
         self.LR_created = False         # was a pg linear region created yet?
         self.filename = None
-        self.ROI_list = None
+        self.workingDataset.ROI_list = None
         self.dataLoaded = False
         self.simplePeaks = False            # choice of peak finding algorithm
         self.autoPeaks = True                  # find peaks automatically or manually
@@ -94,7 +94,7 @@ class MainWindow(QMainWindow):
         
         self.file_menu.addAction("Save baselined", self.save_baselined)
         
-        self.analysis_menu.addAction("Extract all peaks", self.getResponses)
+        self.analysis_menu.addAction("Extract all peaks", self.extractAllPeaks)
         self.analysis_menu.addAction("Grouped peak stats", self.getGroups)
         
         self.help_menu.addAction("Getting Started", self.getStarted)
@@ -168,7 +168,7 @@ class MainWindow(QMainWindow):
         self.p2.addLegend()
         
         # zoomed editing region
-        self.p3 = self.plots.addPlot(title="Peak editing", y=data, row=0, col=1, rowspan=4, colspan=2)
+        self.p3 = self.plots.addPlot(title="Auto Peak Mode", y=data, row=0, col=1, rowspan=4, colspan=2)
         self.p3.setLabel('left', "dF / F")
         self.p3.setLabel('bottom', "Time (s)")
         self.p3vb = self.p3.vb
@@ -332,9 +332,7 @@ class MainWindow(QMainWindow):
             self.p3.addItem(self.hLine, ignoreBounds=True)
             
             # add a hint - need to find a better way to add it!!! Label at top?
-            #self.p3hint = pg.TextItem('Manual editing- left click to add/remove peaks')
-            #self.p3hint.setPos(0, .2)
-            self.p3.setTitle('Manual editing- left click to add/remove peaks', color="F0F0F0" , width=300)
+            self.p3.setTitle('Manual peak editing : left-click to add/remove peaks', color="F0F0F0" , width=300)
             
         else:
             # Enter auto peak mode
@@ -352,7 +350,7 @@ class MainWindow(QMainWindow):
             self.removeSml_Spin.setEnabled(True)
             
             # Remove the hint
-            self.p3.setTitle('Auto peak finding', color="a0a0a0", width=300)
+            self.p3.setTitle('Auto peak mode', color="a0a0a0", width=300)
             
             # Remove crosshair from p3.
             self.p3.removeItem(self.vLine)
@@ -587,7 +585,7 @@ class MainWindow(QMainWindow):
         
         # launch peak extraction wizard dialog
         extractPeaksBtn = QtGui.QPushButton('Extract peaks from all ROIs')
-        extractPeaksBtn.clicked.connect(self.getResponses)
+        extractPeaksBtn.clicked.connect(self.extractAllPeaks)
         
         # should be inactive until extraction
         self.savePSRBtn = QtGui.QPushButton('Save peak data')
@@ -691,9 +689,9 @@ class MainWindow(QMainWindow):
         _setList = self.sheets + ["Sum"]
         
         # create a dataframe to put the results in
-        self.hDF = HistogramsR(self.ROI_list, _setList, _nbins, 0., _max)
+        self.hDF = HistogramsR(self.workingDataset.ROI_list, _setList, _nbins, 0., _max)
         
-        maxVal = len (self.ROI_list) * len (_setList)
+        maxVal = len (self.workingDataset.ROI_list) * len (_setList)
         progMsg = "Histogram for {0} traces".format(maxVal)
         with pg.ProgressDialog(progMsg, 0, maxVal) as dlg:
         
@@ -759,60 +757,56 @@ class MainWindow(QMainWindow):
     def datasetChange(self):
         print ("a (dataset) change is coming")
         
-        
         if self.datasetCBx.currentText() != self.workingDataset.DSname:
             # prep current data for store
-           
-        
             # store GUI settings?
-            
-            
-            
             self.store.storeSet(copy.copy(self.workingDataset))
             print ('Stored {}'.format(self.workingDataset.DSname))
             
-            # store peaks
-            
             self.workingDataset = self.store.retrieveWorkingSet(self.datasetCBx.currentText())
             print ('Retrieved {}'.format(self.workingDataset.DSname))
-            # plot new data traces
+        
             # print GUI control dict
             print ("swdsGC {}".format(self.workingDataset.GUIcontrols))
-                
+            
+            # execute GUI controls specified in the retrieved Dataset
             for k,v in self.workingDataset.GUIcontrols.items():
                 if k == "autopeaks":
                     self.autopeaks_switch(v)
                 elif k == "print":
                     print (v)
-            # plot peaks
+
+            # update the ROI list combobox, should have a list
             
-            
-            
+            self.updateROI_list_Box()
             self.ROI_Change()
-            # get GUI settings
+        
   
     def autopeaks_switch(self, v):
         if v == "Disable":
+            print ("autopeaks_switch : Disable")
             self.autobs_Box.setValue('None')
             self.auto_bs = False
             self.manual.setChecked(True)
             self.manual.setDisabled(True)
+            set.autoPeaks = False
             
         elif v == "Enable":
+            print ("autopeaks_switch : Enable")
             self.autobs_Box.setValue('Auto')
             self.auto_bs = True
             self.manual.setChecked(False)
             self.manual.setEnabled(True)
-            
+            set.autoPeaks = True
     
     def getGroups(self):
         """launch group processing dialog"""
-        print ('Get group responses from all ROIs.')
+        print ('Process grouped peaks from all ROIs.')
         self.getgroupsDialog = groupDialog()
         self.getgroupsDialog.addData(self.gpd.pk_extracted_by_set)
         accepted = self.getgroupsDialog.exec_()
         
-    def getResponses(self):
+    def extractAllPeaks(self):
         """Wrapping function to get peak data from the dialog"""
         print ('Opening dialog for getting peaks from all ROIs.')
         # if the QDialog object is instantiated in __init__, it persists in state....
@@ -835,11 +829,9 @@ class MainWindow(QMainWindow):
             
             _dataset.traces = baselineIterator(_dataset.traces, self.auto_bs_lam, self.auto_bs_P)
         
-        
-        
-        #get the times of the peaks that were selected auto or manually
+        #get the times of the peaks from the "best" trace, that were selected auto or manually
         _peak_t, _ = self.workingDataset.resultsDF.getPeaks('Mean', '4 mM')
-        print (_peak_t, type(_peak_t))      # pd.series
+        #print (_peak_t, type(_peak_t))      # pd.series
         _sorted_peak_t = _peak_t.sort_values(ascending=True)    # list is not sorted until now
         _sorted_peak_t.dropna(inplace=True)                     # if there are 'empty' NaN, remove them
         
@@ -852,9 +844,8 @@ class MainWindow(QMainWindow):
         self.gpd.addDataset(_dataset)
         
         # returns 1 (works like True) when accept() or 0 (we take for False) otherwise.
-        accepted = self.gpd.exec_()
-        
         # data from dialog is stored in the attributes of self.gpd
+        accepted = self.gpd.exec_()
         
         if accepted:
             self.noPeaks = False
@@ -862,48 +853,44 @@ class MainWindow(QMainWindow):
             print (self.gpd.pk_extracted_by_set) #the whitelist
             # these should now become available to be viewed (even edited?)
             
-            #self.workingDataset.resultsDF.readInPeakDialogResults(self.gpd.pkextracted_by_set)
-            
             #make 'save' and other analysis buttons available
             self.savePSRBtn.setEnabled(True)
             self.save_baselined_ROIs_Btn.setEnabled(True)
             self.extractGroupsDialog_Btn.setEnabled(True)
-            
         
             # create new data set
             extracted = Dataset(self.gpd.name)
-            #extracted.DSname =
-            extracted.GUIcontrols['print'] = 'here is a GUI command'
-            extracted.GUIcontrols["autopeaks"] = 'Disable'
+          
+            # specify GUI state for extracted peaks
+            #extracted.GUIcontrols['print'] = 'here is a GUI command'
+            extracted.GUIcontrols["autoPeaks"] = 'Disable'
+            
             # update combobox
             _duplicate = self.updateDatasetComboBox(str(extracted.DSname))
-            
             if _duplicate:
-                extracted.setDSname(_duplicate)
-                print ("duplicate name {}".format(_duplicate))# add results to new set
+                extracted.setDSname(_duplicate)                 #fix name if it was a duplicate
+                print ("duplicate name {}".format(_duplicate))  # add results to new set
             
             # add the extracted peaks to a resultsDF instance and place that in the dataset
             _resdf = self.gpd.pk_extracted_by_set
-            extracted_peaksRDF = Results()
+            extracted_peaksRDF = Results()                      # generate empty resultsDF object
             extracted_peaksRDF.addPeaksExtracted(_resdf)        # conversion
             extracted.addPeaksToDS (extracted_peaksRDF)
-            
+            extracted.ROI_list = copy.copy(extracted_peaksRDF.ROI_list)
             # add baselined traces to new set
             extracted.addTracesToDS(self.gpd.tracedata)
             
             # store
             self.store.storeSet(extracted)
-            
         
         else:
             print ('Returned but not happily: self.gpd.pk_extracted_by_set is {}'.format(self.gpd.pk_extracted_by_set))
             
             # displaying output would make no sense
-            self.toggleDataChk.setEnabled(False)
-            self.toggleDataSource = False
+            
         #ideas:
-        #add set to the peaks combobox?!
-        #accumulate histogram from individual ROI or store separately
+        
+        # accumulate histogram from individual ROI or store separately
         
     def plotNewData(self):
         """Do some setup immediately after data is loaded"""
@@ -925,7 +912,8 @@ class MainWindow(QMainWindow):
                 # curve
                 self.p3.plot(x, y[i], pen=(i,3))
                 
-                xp, yp = self.peaksWrapper(x, y[i], _set)
+                if self.autoPeaks:
+                    xp, yp = self.peaksWrapper(x, y[i], _set)
                 
                 # need to add something to p3 scatter
                 self.p3.plot(xp, yp, name="Peaks "+_set, pen=None, symbol="s", symbolBrush=(i,3))
@@ -937,12 +925,11 @@ class MainWindow(QMainWindow):
                 _p3_scatter.sigPlotChanged.connect(self.manualUpdate)
         
         self.createLinearRegion()
-        return
+        #return
         
     def findSimplePeaks(self, xdat, ydat, name='unnamed'):
         """Simple and dumb peak finding algorithm"""
         # cut_off is not implemented here
-        
         # SNR is used as a proxy for 'prominence' in the simple algorithm.
         self.cwt_SNR = self.cwt_SNR_Spin.value()
         
@@ -965,8 +952,7 @@ class MainWindow(QMainWindow):
         
     def findcwtPeaks(self, xdat, ydat, name='unnamed'):
         """Find peaks using continuous wavelet transform"""
-        # think about storing per ROI peak data
-        # indexes in peakcwt are not zero-biased
+        # indices in peakcwt are not zero-biased
         self.cwt_width = self.cwt_w_Spin.value()
         self.cwt_SNR = self.cwt_SNR_Spin.value()
         peakcwt = scsig.find_peaks_cwt(ydat, np.arange(1, self.cwt_width), min_snr=self.cwt_SNR) - 1
@@ -1051,7 +1037,11 @@ class MainWindow(QMainWindow):
     
         return xp, yp
         
-        
+    def updateROI_list_Box(self):
+        """populate the combobox for choosing which ROI to show"""
+        self.ROI_selectBox.clear()
+        self.ROI_selectBox.addItems(self.workingDataset.ROI_list)
+    
     def ROI_Change(self):
         """General 'Update' method"""
         # called when ROI/trace is changed but
@@ -1078,8 +1068,6 @@ class MainWindow(QMainWindow):
             # populate values for automatic baseline removal from GUI
             if self.autobs_Box.value() == 'Auto':
                 self.setBaselineParams()
-            # print (self.auto_bs_lam_slider.value(), self.auto_bs_P_slider.value())
-            
         else:
             self.auto_bs = False
             
@@ -1101,7 +1089,6 @@ class MainWindow(QMainWindow):
         _p3_items = self.p3.items
         _p3_scatter = utils.findScatter(_p3_items)
         _p3_curve = utils.findCurve(_p3_items)
-        #print (_p3_items, _p3_scatter)
         
         for i, _set in enumerate(self.sheets):
             col_series = (i, len(self.sheets))
@@ -1128,8 +1115,6 @@ class MainWindow(QMainWindow):
                 
                 # plotting is done below
                 
-                
-                
             if self.sgSmooth:
                 print ('Savitsky Golay smoothing with window: {0}'.format(self.sgWin))
                 y[i] = savitzky_golay(y[i], window_size=self.sgWin, order=4)
@@ -1141,36 +1126,29 @@ class MainWindow(QMainWindow):
                 
                 #write autopeaks into results
                 self.workingDataset.resultsDF.addPeaks(_ROI, _set, xp, yp)
-            #
-            else:
-                #read in peak data from results (might be empty if it's new ROI)
+            
+            else: # we are in manual peaks
+                
+                # read back existing peak data from results (might be empty if it's new ROI)
                 xp, yp = self.workingDataset.resultsDF.getPeaks(_ROI, _set)
                 
-                if len(xp) == 0:
-                    # Even though we are in manual peaks, the ROI was changed and there is no fit data.
-                    print ("Peak results are empty, running auto peaks for {0} {1}".format(_ROI, _set))
-                    
-                    xp, yp = self.peaksWrapper(x, y[i], _set)
-                    
-                else:
-                    # we are in manual peaks and there was data, so don't overwrite it
-                    print ("Retrieved: ", xp, yp)
+                if len(xp) == 0: print ("Peak results for {} {} are empty".format( _ROI, _set))
+                else : print ("Retrieved: {} {} first xp,yp : {}, {}".format( _ROI, _set, xp[0], yp[0]))
             
             # draw p1 traces and scatter
             if self.split_traces:
                 target = self.p1stackMembers[i]
                 target.clear()
                 target.plot(x, y[i], pen=col_series)
-                target.plot(xp, yp, pen=None, symbol="s", symbolBrush=col_series)
+                if len(xp) > 0 : target.plot(xp, yp, pen=None, symbol="s", symbolBrush=col_series)
             else:
                 self.p1.plot(x, y[i], pen=col_series)
-                self.p1.plot(xp, yp, pen=None, symbol="s", symbolBrush=col_series)
+                if len(xp) > 0 : self.p1.plot(xp, yp, pen=None, symbol="s", symbolBrush=col_series)
                 
                 #plot baseline, offset by the signal max.
                 if self.auto_bs:
                     self.p1.plot(x, z[i]-y[i].max(), pen=(255,255,255,80))
             
-    
             #p3: plot only the chosen trace
             if self.p3Selection.currentText() == _set:
                 if _p3_scatter is None:
@@ -1311,7 +1289,6 @@ class MainWindow(QMainWindow):
         self.workingDataset.isEmpty = False
         _stem = utils.getFileStem(self.filename)
         self.workingDataset.setDSname(_stem)
-        #print ("2 {}".format(self.workingDataset.__dict__))
     
         _DSname = str(self.workingDataset.getDSname())
    
@@ -1323,34 +1300,28 @@ class MainWindow(QMainWindow):
             # update
             self.workingDataset.DSname = _duplicate
         
+        self.workingDataset.ROI_list = ["Mean", "Variance"]
         
-        self.ROI_list = ["Mean", "Variance"]
-        #print (self.ROI_list)
-        first = self.sheets[0]
+        _first = self.sheets[0]
         #print (self.workingDataset.__dict__)
-        self.ROI_list.extend(self.workingDataset.traces[first].columns.tolist())
+        self.workingDataset.ROI_list.extend(self.workingDataset.traces[_first].columns.tolist())
+        self.updateROI_list_Box()
         
         #find out and store the size of the data
         self.setRanges()
         
         #split trace layout can be made now we know how many sets (conditions) we have
         self.createSplitTraceLayout()
+    
         
-        
-                
-                
-        
-        #populate the combobox for choosing which ROI to show
-        self.ROI_selectBox.clear()
-        self.ROI_selectBox.addItems(self.ROI_list)
         
         #populate the combobox for choosing the data shown in the zoom view
         self.p3Selection.clear()
         self.p3Selection.addItems(self.sheets)
         
         #create a dataframe for peak measurements
-        self.workingDataset.resultsDF = Results(self.ROI_list, self.sheets)
-        print ("peakResults object created", self.workingDataset.resultsDF, self.ROI_list)
+        self.workingDataset.resultsDF = Results(self.workingDataset.ROI_list, self.sheets)
+        print ("peakResults object created", self.workingDataset.resultsDF, self.workingDataset.ROI_list)
         
         self.plotNewData()
         
