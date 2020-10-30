@@ -1,5 +1,7 @@
 import os.path
 import pyqtgraph as pg
+import string
+import random
 
 def getFileStem(_name):
 
@@ -18,7 +20,7 @@ def addFileSuffix(_name, _suffix):
     
     return _path + _stem[0] + _suffix + "." + _stem[1]
 
-def get_random_string(length):
+def getRandomString(length):
     ###https://pynative.com/python-generate-random-string/
     letters = string.ascii_lowercase
     return ''.join(random.choice(letters) for i in range(length))

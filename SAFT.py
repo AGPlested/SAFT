@@ -2,17 +2,15 @@ import sys
 import os.path
 import platform
 import copy
-import random
-import string
+import itertools
 
-
-
+#PySide2 imports
 from PySide2 import QtCore, QtGui
 from PySide2.QtCore import Slot
 from PySide2 import __version__ as pyside_version
 from PySide2.QtWidgets import QApplication, QMainWindow, QWidget, QGridLayout, QMessageBox, QFileDialog, QAction, QGroupBox, QHBoxLayout, QRadioButton, QDialog, QVBoxLayout, QCheckBox
 
-import itertools
+#package imports
 import numpy as np
 import pandas as pd
 import scipy.signal as scsig
@@ -28,6 +26,8 @@ from baselines import savitzky_golay, baseline_als, baselineIterator
 from dataStructures import Store, Dataset, Results
 from helpMessages import gettingStarted
 import utils            #addFileSuffix, findCurve, findScatter etc
+
+#Import pg last to avoid namespace-overwrite problems?
 import pyqtgraph as pg
 
 
@@ -642,7 +642,7 @@ class MainWindow(QMainWindow):
             # add new data set to combobox
             if _name in self.datasetList_CBX:
                 # get random 3 letter string and add it
-                _s = getRandomString(3)
+                _s = utils.getRandomString(3)
             
                 _sname = _name + _s
                 self.datasetCBx.addItem(_sname)
@@ -659,7 +659,7 @@ class MainWindow(QMainWindow):
     def resultsPopUp(self):
         """Make a pop up window of the current peak results"""
         _ROI = self.ROI_selectBox.currentText()
-        _r = self.peakResults.df[_ROI]
+        _r = self.workingDataset.resultsDF.df[_ROI]
         #print (_r, type(_r))
         qmb = QDialog()
         qmb.setWindowTitle('Peaks from {}'.format(_ROI))
@@ -726,7 +726,7 @@ class MainWindow(QMainWindow):
                 # colours
                 col_series = (i, len(self.sheets))
                 # get relevant peaks data for displayed histograms
-                _, _pdata = self.peakResults.getPeaks(_ROI, _set)
+                _, _pdata = self.workingDataset.resultsDF.getPeaks(_ROI, _set)
                 # redo histogram
                 hy, hx  = np.histogram(_pdata, bins=_nbins, range=(0., _max))
                 # replot
@@ -735,7 +735,7 @@ class MainWindow(QMainWindow):
         elif _hsum == "Summed":
             sumhy = np.zeros(_nbins)
             for _set in self.sheets:
-                _, _pdata = self.peakResults.getPeaks(_ROI, _set)
+                _, _pdata = self.workingDataset.resultsDF.getPeaks(_ROI, _set)
                 hy, hx  = np.histogram(_pdata, bins=_nbins, range=(0., _max))
                 sumhy += hy
             
@@ -762,10 +762,13 @@ class MainWindow(QMainWindow):
         
         if self.datasetCBx.currentText() != self.workingDataset.DSname:
             # prep current data for store
-            
+           
+        
             # store GUI settings?
             
-            self.store.storeSet(copy.deepcopy(self.workingDataset))
+            
+            
+            self.store.storeSet(copy.copy(self.workingDataset))
             print ('Stored {}'.format(self.workingDataset.DSname))
             
             # store peaks
@@ -782,7 +785,7 @@ class MainWindow(QMainWindow):
                 elif k == "print":
                     print (v)
             # plot peaks
-            self.peakResults = self.workingDataset.resultsDF
+            
             
             
             self.ROI_Change()
@@ -818,7 +821,7 @@ class MainWindow(QMainWindow):
         
         # pass the data into the get peaks dialog object
         # we do not want the original trace data modified
-        _dataset = copy.deepcopy(self.workingDataset)
+        _dataset = copy.copy(self.workingDataset)
         
         # automatically reduce baseline (could also do this interactively??)
         # baselineIterator includes a progress indicator.
@@ -835,7 +838,7 @@ class MainWindow(QMainWindow):
         
         
         #get the times of the peaks that were selected auto or manually
-        _peak_t, _ = self.peakResults.getPeaks('Mean', '4 mM')
+        _peak_t, _ = self.workingDataset.resultsDF.getPeaks('Mean', '4 mM')
         print (_peak_t, type(_peak_t))      # pd.series
         _sorted_peak_t = _peak_t.sort_values(ascending=True)    # list is not sorted until now
         _sorted_peak_t.dropna(inplace=True)                     # if there are 'empty' NaN, remove them
@@ -859,7 +862,7 @@ class MainWindow(QMainWindow):
             print (self.gpd.pk_extracted_by_set) #the whitelist
             # these should now become available to be viewed (even edited?)
             
-            #self.peakResults.readInPeakDialogResults(self.gpd.pkextracted_by_set)
+            #self.workingDataset.resultsDF.readInPeakDialogResults(self.gpd.pkextracted_by_set)
             
             #make 'save' and other analysis buttons available
             self.savePSRBtn.setEnabled(True)
@@ -1016,10 +1019,10 @@ class MainWindow(QMainWindow):
                     xp, yp = _scatter.getData()
                 
                 # write peaks into results
-                self.peakResults.addPeaks(_ROI, _sel_set, xp, yp)
-                #print (self.peakResults.df[_ROI])
+                self.workingDataset.resultsDF.addPeaks(_ROI, _sel_set, xp, yp)
+                # print (self.workingDataset.resultsDF.df[_ROI])
              
-            xp, yp = self.peakResults.getPeaks(_ROI, _set)
+            xp, yp = self.workingDataset.resultsDF.getPeaks(_ROI, _set)
             
             if self.split_traces:
                 _target = self.p1stackMembers[i]
@@ -1137,11 +1140,11 @@ class MainWindow(QMainWindow):
                 xp, yp = self.peaksWrapper(x, y[i], _set)
                 
                 #write autopeaks into results
-                self.peakResults.addPeaks(_ROI, _set, xp, yp)
+                self.workingDataset.resultsDF.addPeaks(_ROI, _set, xp, yp)
             #
             else:
                 #read in peak data from results (might be empty if it's new ROI)
-                xp, yp = self.peakResults.getPeaks(_ROI, _set)
+                xp, yp = self.workingDataset.resultsDF.getPeaks(_ROI, _set)
                 
                 if len(xp) == 0:
                     # Even though we are in manual peaks, the ROI was changed and there is no fit data.
@@ -1164,7 +1167,8 @@ class MainWindow(QMainWindow):
                 self.p1.plot(xp, yp, pen=None, symbol="s", symbolBrush=col_series)
                 
                 #plot baseline, offset by the signal max.
-                self.p1.plot(x, z[i]-y[i].max(), pen=(255,255,255,80))
+                if self.auto_bs:
+                    self.p1.plot(x, z[i]-y[i].max(), pen=(255,255,255,80))
             
     
             #p3: plot only the chosen trace
@@ -1279,6 +1283,7 @@ class MainWindow(QMainWindow):
         
         if self.filename:
             #very simple and rigid right now - must be an excel file with sheets
+            #should be made generic - load all sheets into dictionary of dataframes no matter what
             with pg.ProgressDialog("Loading sheets...", 0, len(self.sheets)) as dlg:
                 _traces = {}
                 for _sheet in self.sheets:
@@ -1298,7 +1303,7 @@ class MainWindow(QMainWindow):
         
         else:
             #store existing working dataset
-            self.store.storeSet(copy.deepcopy(self.workingDataset))
+            self.store.storeSet(copy.copy(self.workingDataset))
             print ("Putting {} in the store.".format(self.workingDataset.DSname))
         
         # overwrite current working set
@@ -1344,8 +1349,8 @@ class MainWindow(QMainWindow):
         self.p3Selection.addItems(self.sheets)
         
         #create a dataframe for peak measurements
-        self.peakResults = Results(self.ROI_list, self.sheets)
-        print ("peakResults object created", self.peakResults, self.ROI_list)
+        self.workingDataset.resultsDF = Results(self.ROI_list, self.sheets)
+        print ("peakResults object created", self.workingDataset.resultsDF, self.ROI_list)
         
         self.plotNewData()
         

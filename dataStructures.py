@@ -10,43 +10,54 @@ class Results:
         self.name = name
         self.ROI_list = ROI_list
         self.condition_list = condition_list
-        self.extracted = ['t', 'peak']
+        self.pairs = ['t', 'peak']
         
-        #print (self.ROI_list, self.condition_list, self.extracted, self.headr)
-        #print (type(self.ROI_list), type(self.condition_list), type(self.extracted), type(self.headr))
+        #print (self.ROI_list, self.condition_list, self.pairs, self.headr)
+        #print (type(self.ROI_list), type(self.condition_list), type(self.pairs), type(self.headr))
         if self.ROI_list and self.condition_list:
             self.makeDF()
     
-    def makeDF(self):
+    def makeDF(self, _index=[0]):
         self.makeCols()
-        self.df = pd.DataFrame([], [0], self.cols)
+        self.df = pd.DataFrame([], _index, self.cols)
         #print (self.df.head())
     
     def makeCols(self):
-        self.headr = list(itertools.product(self.ROI_list, self.condition_list, self.extracted))
+        self.headr = list(itertools.product(self.ROI_list, self.condition_list, self.pairs))
         self.cols = pd.MultiIndex.from_tuples(self.headr)
                 
     def addPeaksExtracted (self, _peakDict, _name=None):
-        
+        for d in _peakDict.values():
+            print ("dhead\n\n{}".format(d.head(5)))
         if _name:
             self.name = _name
         
-        self.condition_list = _peakDict.keys()
+        self.condition_list = list(_peakDict.keys())
         
-        #self.ROI_list = []
-        
-        for l in _peakDict.values():
-            _ROIs = l.columns()
-            self.ROI_list = list(set(ROIs+self.ROI_list))   #take only unique ROIs
+        # reset in case
+        self.ROI_list = []
+        for df in _peakDict.values():
+            _ROIs = df.columns
+            self.ROI_list = list(set(list(_ROIs) + list(self.ROI_list)))   #take only unique ROIs
         
         #what about order?
-        print (self.ROI_list)
-        self.makeDF()
-        for k, v in _peakDict:
-            for r in v.columns():
-                self.df[r][k] = v[r]
         
+        # in extracted data they should be all the same.
+        # could check that
+        _index=_peakDict[self.condition_list[0]].index
+        self.makeDF(_index)
         
+        rs = self.df.columns.get_level_values(0).unique()
+        condi = self.df.columns.get_level_values(1).unique()
+
+        for rx in rs:
+            for c , d  in _peakDict.items():
+                self.df.loc(axis=1)[rx, c, 't'] = _index.to_series().values
+                self.df.loc(axis=1)[rx, c, 'peak'] = d[rx]
+        
+        self.df.reset_index(drop=True, inplace=True)
+        
+        print ("selfdfhead\n\n{}".format(self.df.head(5)))
     
     def addPeaks (self, _ROI, _condition, _times, _peaks):
         # the peaks (and their times) are arrays of values that belong to a ROI and a condition.
