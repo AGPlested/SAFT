@@ -2,6 +2,27 @@ import os.path
 import pyqtgraph as pg
 import string
 import random
+import pandas as pd
+
+def decomposeRDF(rdf):
+    """decompose MultiIndex dataframe R-C-(t-pk-pairs)
+    into dictionary with C as keys and dataframes as values
+    Each dataframe with t as index and pk as columns named by R"""
+    decomposed = {}
+    for co in rdf.columns.get_level_values(1).unique():
+        # take the sub-dataframe for each condition
+        inter = rdf.loc(axis=1)[:,co,:]
+        # remove condition index
+        inter.columns = inter.columns.droplevel(1)
+        # set first 't' column as index
+        inter.set_index(inter.columns[0])
+        # remove 't' columns
+        inter = inter.drop(columns='t', level = 1)
+        # remove 'p' level
+        inter.columns = inter.columns.droplevel(1)
+        decomposed [co] = inter
+
+    return decomposed
 
 def getFileStem(_name):
 

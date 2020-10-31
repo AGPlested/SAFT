@@ -423,7 +423,7 @@ class histogramFitDialog(QDialog):
             self.updateHistograms()             # no need to adjust view, just update and fit
         else:
             self.sum_hist.setCurrentIndex(0)    # sets view to summed, calls update histograms and performs the fit.
-        
+
     def openData(self):
         self.filename = QFileDialog.getOpenFileName(self, "Open Data", os.path.expanduser("~"))[0]
         
@@ -461,7 +461,7 @@ class histogramFitDialog(QDialog):
         print (tdk_display)
         N_ROI = [len (self.peakResults[d].columns) for d in tdk]
         
-        self.outputF.appendOutText ("Scraping peaks from {} ROIs \n over the sets named {}".format(N_ROI, tdk_display))
+        #self.outputF.appendOutText ("Scraping peaks from {} ROIs \n over the sets named {}".format(N_ROI, tdk_display))
         
         _printable = "{}\n{}\n".format(tdk_display, [self.peakResults[d].head() for d in tdk])
         self.outputF.appendOutText ("Added data of type {}:\n{}\n".format(type(self.peakResults), _printable))

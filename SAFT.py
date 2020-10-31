@@ -18,7 +18,7 @@ import scipy.signal as scsig
 #SAFT imports
 from clicker import clickAlgebra
 from peaksDialog import getPeaksDialog
-from histogramDialog import histogramFitDialog
+from histogramFitDialog import histogramFitDialog
 from histogramDF import HistogramsR
 from groupPeaksDialog import groupDialog
 from quantal import fit_nGaussians, nGaussians_display
@@ -26,6 +26,7 @@ from baselines import savitzky_golay, baseline_als, baselineIterator
 from dataStructures import Store, Dataset, Results
 from helpMessages import gettingStarted
 import utils            #addFileSuffix, findCurve, findScatter etc
+#import histogramFitDialog
 
 #Import pg last to avoid namespace-overwrite problems?
 import pyqtgraph as pg
@@ -97,6 +98,7 @@ class MainWindow(QMainWindow):
         
         self.analysis_menu.addAction("Extract all peaks", self.extractAllPeaks)
         self.analysis_menu.addAction("Grouped peak stats", self.getGroups)
+        self.analysis_menu.addAction("Launch Histogram Fit", self.launchHistogramFit)
         
         self.help_menu.addAction("Getting Started", self.getStarted)
     
@@ -823,6 +825,16 @@ class MainWindow(QMainWindow):
         self.getgroupsDialog = groupDialog()
         self.getgroupsDialog.addData(self.gpd.pk_extracted_by_set)
         accepted = self.getgroupsDialog.exec_()
+      
+    def launchHistogramFit(self):
+        """Wrapping function to launch histogram fit dialog"""
+        
+        self.hfd = histogramFitDialog()
+        #send current peak data
+        _dataset = copy.copy(self.workingDataset)
+        ddf = utils.decomposeRDF(_dataset.resultsDF.df)
+        self.hfd.addData(ddf)
+        accepted = self.hfd.exec_()
         
     def extractAllPeaks(self):
         """Wrapping function to get peak data from the dialog"""
@@ -1208,7 +1220,7 @@ class MainWindow(QMainWindow):
         return
     
     def save_peaks(self):
-        print ("save_peak data and optionally histograms")
+        print ("save extracted peak data and optionally histograms")
         #### will have to update for Store
         
         #format for header cells.
