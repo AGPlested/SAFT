@@ -351,7 +351,7 @@ class histogramFitDialog(QDialog):
         self.outputF.appendOutText ("Write data out to disk {}".format(_outfile))
     
     def storeAdvance(self):
-        """storing data and moving forward"""
+        """storing data and moving forward one ROI"""
         self.outputF.appendOutText ("Keep results for {} --\n Pr : {}".format(self.current_ROI, self.Pr_by_ROI.loc[self.current_ROI]))
         self.ROI_change_command(2)
         self.outputF.appendOutText ("Advance to next ROI: {}".format(self.current_ROI))
@@ -390,7 +390,7 @@ class histogramFitDialog(QDialog):
         
     def prepGuiParameters(self):
         """Take parameters specified by GUI"""
-        
+        pass
         """
         #True if box is checked, otherwise False
         self.ignore =  self.skipRB.isChecked()
@@ -399,7 +399,7 @@ class histogramFitDialog(QDialog):
         """
     
     def fitGlobalGaussians(self):
-        # called by the global fit button
+        """Target of the global fit button"""
         self.fitHistogramsOption = "Global Binom"
         self.outputF.appendOutText ("Global Binomial Fit")
         _fitSum =self.sum_hist.currentIndex()
@@ -409,7 +409,7 @@ class histogramFitDialog(QDialog):
             self.sum_hist.setCurrentIndex(1)    # sets view to summed, calls update histograms and performs the fit.
         
     def fitGaussians(self):
-        # called by the fit summed button
+        """Target of the fit summed button"""
         
         self.fitHistogramsOption = "Summed"
         _fitSum =self.sum_hist.currentIndex()
@@ -470,7 +470,7 @@ class histogramFitDialog(QDialog):
         for d in self.peakResults:
             self.peakResults[d].rename(despace, axis='columns', inplace=True)
            
-        #minimal approach, consider exhaustive list as in SAFT.py
+        # minimal approach, consider exhaustive list as in SAFT.py
         self.ROI_list = list(self.peakResults[list(tdk)[0]].keys().unique(level=0))
         print (self.ROI_list)
         
@@ -481,7 +481,7 @@ class histogramFitDialog(QDialog):
         
         self.hPlot.createSplitHistLayout(self.peakResults.keys())
         
-        self.ROI_change()   #default is the first (0).
+        self.ROI_change()   # default is the first (0).
         self.updateHistograms()
     
     def ROI_change_command (self, button_command):
@@ -512,6 +512,7 @@ class histogramFitDialog(QDialog):
         self.ROI_change(self.ROI_N)
         
     def ROI_change(self, _ROI=0):
+        """ update on ROI change"""
         self.ROI_N = _ROI
         self.current_ROI = self.ROI_list[_ROI]
         self.RC.update_ROI_label("{} : {} of {}".format(self.current_ROI, self.ROI_N + 1, len(self.ROI_list)))
@@ -526,7 +527,9 @@ class histogramFitDialog(QDialog):
             self.sum_hist.setCurrentIndex(0)    # sets view to summed, calls update histograms and performs the fit.
         
     def updateHistograms(self):
-        """called when histogram controls are changed"""
+        """Histogram controls were changed,
+        redo the fit.
+        """
         
         # would be None if no data loaded so escape
         if self.current_ROI == None:

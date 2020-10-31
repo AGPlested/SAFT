@@ -32,7 +32,7 @@ import utils            #addFileSuffix, findCurve, findScatter etc
 import pyqtgraph as pg
 
 
-class MainWindow(QMainWindow):
+class SAFTMainWindow(QMainWindow):
     
     ### Methods
     ###
@@ -50,7 +50,7 @@ class MainWindow(QMainWindow):
     ###
     
     def __init__(self, *args, **kwargs):
-        super(MainWindow, self).__init__(*args, **kwargs)
+        super(SAFTMainWindow, self).__init__(*args, **kwargs)
         
         self.setWindowTitle("Semi-Automatic Fluorescence Trace analysis")
         self.central_widget = QWidget()
@@ -59,23 +59,25 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(self.central_widget)
         self.resize(1500,800)           # works well on MacBook Retina display
         
-        self.workingDataset = Dataset("Empty") # unnamed, empty dataset for traces, pk results and GUI settings
-        #print (self.workingDataset.__dict__)
-        self.datasetList_CBX = ['-']    # maintain our own list of datasets
-        self.extPa = {}                 # external parameters for the peak scraping dialog
-        self.LR_created = False         # was a pg linear region created yet?
-        self.filename = None
-        self.workingDataset.ROI_list = None
-        self.dataLoaded = False
+        self.split_traces = False
+        self.LR_created = False                 # was a pg linear region created yet?
         self.wasManualOnce = False
         self.simplePeaks = False            # choice of peak finding algorithm
         self.autoPeaks = True                  # find peaks automatically or manually
         self.cwt_width = 5                # width of the continuous wavelet transform peak finding
-        self.sheets = ['0.5 mM', '2 mM', '4 mM', '8 mM'] # example with one too many
-        self.split_traces = False
+        
+        self.store = Store()
+        self.dataLoaded = False
+        self.workingDataset = Dataset("Empty") # unnamed, empty dataset for traces, pk results and GUI settings
+        self.workingDataset.ROI_list = None
+        self.filename = None
+        
+        self.conditions = ['0.5 mM', '2 mM', '4 mM', '8 mM']    # example with one too many, conditions are sheet names from xlsx
+        self.datasetList_CBX = ['-']            # maintain our own list of datasets
+        self.extPa = {}                         # external parameters for the peak scraping dialog
         self.dataLock = True                    # when manual peak editing, lock to trace data
         self.noPeaks = True
-        self.store = Store()
+        
         
         # setup main window widgets and menus
         self.createPlotWidgets()
@@ -127,7 +129,7 @@ class MainWindow(QMainWindow):
         # Store the plot items in a list - can't seem to get them easily otherwise?
         data = []
         self.p1stackMembers = []
-        for c in self.sheets:
+        for c in self.conditions:
             memberName = c + " trace"
             p1_stack_member = self.p1stack.addPlot(title=c, y=data, name=memberName)
             p1_stack_member.hideAxis('bottom')
@@ -705,23 +707,23 @@ class MainWindow(QMainWindow):
     def doHistograms(self):
         """called for histogram output"""
         _nbins, _max = self.histogram_parameters()
-        _setList = self.sheets + ["Sum"]
+        _condList = self.conditions + ["Sum"]
         
         # create a dataframe to put the results in
-        self.hDF = HistogramsR(self.workingDataset.ROI_list, _setList, _nbins, 0., _max)
+        self.hDF = HistogramsR(self.workingDataset.ROI_list, _condiList, _nbins, 0., _max)
         
-        maxVal = len (self.workingDataset.ROI_list) * len (_setList)
+        maxVal = len (self.workingDataset.ROI_list) * len (_condList)
         progMsg = "Histogram for {0} traces".format(maxVal)
         with pg.ProgressDialog(progMsg, 0, maxVal) as dlg:
         
-            for _set in self.gpd.pk_extracted_by_set.keys():      #from the whitelist, should be from edited internal data?
-                _pe = self.gpd.pk_extracted_by_set[_set]
-                print (_set, _pe.columns)
+            for _condi in self.gpd.pk_extracted_by_condi.keys():      #from the whitelist, should be from edited internal data?
+                _pe = self.gpd.pk_extracted_by_condi[_condi]
+                print (_condi, _pe.columns)
                 for _ROI in _pe.columns:
                     dlg += 1
                     # calculate individual histograms and add to dataframe
                     hy, hx = np.histogram(_pe[_ROI], bins=_nbins, range=(0., _max))
-                    self.hDF.addHist(_ROI, _set, hy)
+                    self.hDF.addHist(_ROI, _condi, hy)
                     
         # add sum columns
         self.hDF.ROI_sum()
@@ -739,20 +741,20 @@ class MainWindow(QMainWindow):
         self.p2.clear()
         
         if _hsum == "Separated":
-            for i, _set in enumerate(self.sheets):
+            for i, _condi in enumerate(self.conditions):
                 # colours
-                col_series = (i, len(self.sheets))
+                col_series = (i, len(self.conditions))
                 # get relevant peaks data for displayed histograms
-                _, _pdata = self.workingDataset.resultsDF.getPeaks(_ROI, _set)
+                _, _pdata = self.workingDataset.resultsDF.getPeaks(_ROI, _condi)
                 # redo histogram
                 hy, hx  = np.histogram(_pdata, bins=_nbins, range=(0., _max))
                 # replot
-                self.p2.plot(hx, hy, name="Histogram "+_set, stepMode=True, fillLevel=0, fillOutline=True, brush=col_series)
+                self.p2.plot(hx, hy, name="Histogram "+_condi, stepMode=True, fillLevel=0, fillOutline=True, brush=col_series)
         
         elif _hsum == "Summed":
             sumhy = np.zeros(_nbins)
-            for _set in self.sheets:
-                _, _pdata = self.workingDataset.resultsDF.getPeaks(_ROI, _set)
+            for _condi in self.conditions:
+                _, _pdata = self.workingDataset.resultsDF.getPeaks(_ROI, _condi)
                 hy, hx  = np.histogram(_pdata, bins=_nbins, range=(0., _max))
                 sumhy += hy
             
@@ -823,7 +825,7 @@ class MainWindow(QMainWindow):
         """launch group processing dialog"""
         print ('Process grouped peaks from all ROIs.')
         self.getgroupsDialog = groupDialog()
-        self.getgroupsDialog.addData(self.gpd.pk_extracted_by_set)
+        self.getgroupsDialog.addData(self.gpd.pk_extracted_by_condi)
         accepted = self.getgroupsDialog.exec_()
       
     def launchHistogramFit(self):
@@ -880,7 +882,7 @@ class MainWindow(QMainWindow):
         if accepted:
             self.noPeaks = False
 
-            print (self.gpd.pk_extracted_by_set) #the whitelist
+            print (self.gpd.pk_extracted_by_condi) #the whitelist
             # these should now become available to be viewed (even edited?)
             
             #make 'save' and other analysis buttons available
@@ -902,7 +904,7 @@ class MainWindow(QMainWindow):
                 print ("duplicate name {}".format(_duplicate))  # add results to new set
             
             # add the extracted peaks to a resultsDF instance and place that in the dataset
-            _resdf = self.gpd.pk_extracted_by_set
+            _resdf = self.gpd.pk_extracted_by_condi
             extracted_peaksRDF = Results()                      # generate empty resultsDF object
             extracted_peaksRDF.addPeaksExtracted(_resdf)        # conversion
             extracted.addPeaksToDS (extracted_peaksRDF)
@@ -914,7 +916,7 @@ class MainWindow(QMainWindow):
             self.store.storeSet(extracted)
         
         else:
-            print ('Returned but not happily: self.gpd.pk_extracted_by_set is {}'.format(self.gpd.pk_extracted_by_set))
+            print ('Returned but not happily: self.gpd.pk_extracted_by_condi is {}'.format(self.gpd.pk_extracted_by_condi))
             
             # displaying output would make no sense
             
@@ -925,28 +927,28 @@ class MainWindow(QMainWindow):
     def plotNewData(self):
         """Do some setup immediately after data is loaded"""
         
-        _sel_set = self.p3Selection.currentText()
-        print ("Plot New Data with the p3 selector set for: ", _sel_set)
+        _sel_condi = self.p3Selection.currentText()
+        print ("Plot New Data with the p3 selector set for: ", _sel_condi)
         y = {}
         
         self.p1.clear()
         self.p3.clear()
         
-        for i, _set in enumerate(self.sheets):
-            x = self.workingDataset.traces[_set].index
-            y[i] = self.workingDataset.traces[_set].mean(axis=1).to_numpy()
+        for i, _condi in enumerate(self.conditions):
+            x = self.workingDataset.traces[_condi].index
+            y[i] = self.workingDataset.traces[_condi].mean(axis=1).to_numpy()
 
             self.p1.plot(x, y[i], pen=(i,3))
         
-            if _sel_set == _set:
+            if _sel_condi == _condi:
                 # curve
                 self.p3.plot(x, y[i], pen=(i,3))
                 
                 if self.autoPeaks:
-                    xp, yp = self.peaksWrapper(x, y[i], _set)
+                    xp, yp = self.peaksWrapper(x, y[i], _condi)
                 
                 # need to add something to p3 scatter
-                self.p3.plot(xp, yp, name="Peaks "+_set, pen=None, symbol="s", symbolBrush=(i,3))
+                self.p3.plot(xp, yp, name="Peaks "+_condi, pen=None, symbol="s", symbolBrush=(i,3))
                 
                 # create the object for parsing clicks in p3
                 self.cA = clickAlgebra(self.p3)
@@ -1010,7 +1012,7 @@ class MainWindow(QMainWindow):
         """Some editing was done in p3, so update other windows accordingly"""
         print ('Peak data in p3 changed manually')
        
-        _sel_set = self.p3Selection.currentText()
+        _sel_condi = self.p3Selection.currentText()
         _ROI = self.ROI_selectBox.currentText()
         
         # update the peaks in p1 and histograms only
@@ -1019,11 +1021,11 @@ class MainWindow(QMainWindow):
         #update p2 histograms
         self.updateHistograms()
         
-        for i, _set in enumerate(self.sheets):
+        for i, _condi in enumerate(self.conditions):
             #colours
-            col_series = (i, len(self.sheets))
+            col_series = (i, len(self.conditions))
             
-            if _sel_set == _set :
+            if _sel_condi == _condi :
                 _scatter = utils.findScatter(self.p3.items)
                 # sometimes a new scatter is made and this "deletes" the old one
                 # retrieve the current manually curated peak data
@@ -1035,10 +1037,10 @@ class MainWindow(QMainWindow):
                     xp, yp = _scatter.getData()
                 
                 # write peaks into results
-                self.workingDataset.resultsDF.addPeaks(_ROI, _sel_set, xp, yp)
+                self.workingDataset.resultsDF.addPeaks(_ROI, _sel_condi, xp, yp)
                 # print (self.workingDataset.resultsDF.df[_ROI])
              
-            xp, yp = self.workingDataset.resultsDF.getPeaks(_ROI, _set)
+            xp, yp = self.workingDataset.resultsDF.getPeaks(_ROI, _condi)
             
             if self.split_traces:
                 _target = self.p1stackMembers[i]
@@ -1049,7 +1051,7 @@ class MainWindow(QMainWindow):
             else:
                 self.p1.plot(xp, yp, pen=None, symbol="s", symbolBrush=col_series)
             
-            self.plots.peakslabel.setText("Number of peaks in {} set: {}".format(_set, len(yp)))
+            self.plots.peakslabel.setText("Number of peaks in {} set: {}".format(_condi, len(yp)))
                 
     def setBaselineParams (self):
         """Get parameters for auto baseline from GUI"""
@@ -1120,21 +1122,21 @@ class MainWindow(QMainWindow):
         _p3_scatter = utils.findScatter(_p3_items)
         _p3_curve = utils.findCurve(_p3_items)
         
-        for i, _set in enumerate(self.sheets):
-            col_series = (i, len(self.sheets))
-            x = np.array(self.workingDataset.traces[_set].index)
+        for i, _condi in enumerate(self.conditions):
+            col_series = (i, len(self.conditions))
+            x = np.array(self.workingDataset.traces[_condi].index)
             
             if _ROI == "Mean":
-                y[i] = self.workingDataset.traces[_set].mean(axis=1).to_numpy()
+                y[i] = self.workingDataset.traces[_condi].mean(axis=1).to_numpy()
                 
             elif _ROI == "Variance":
-                y[i] = self.workingDataset.traces[_set].var(axis=1).to_numpy()
+                y[i] = self.workingDataset.traces[_condi].var(axis=1).to_numpy()
                 # we never want to subtract the steady state variance
                 self.auto_bs = False
                 print ('No baseline subtraction for variance trace')
                 
             else:
-                y[i] = self.workingDataset.traces[_set][_ROI].to_numpy()
+                y[i] = self.workingDataset.traces[_condi][_ROI].to_numpy()
             
             if self.auto_bs:
                 # baseline
@@ -1152,17 +1154,17 @@ class MainWindow(QMainWindow):
             if self.autoPeaks:
                 
                 # call the relevant peak finding algorithm
-                xp, yp = self.peaksWrapper(x, y[i], _set)
+                xp, yp = self.peaksWrapper(x, y[i], _condi)
                 
                 # write automatically found peaks into results
-                self.workingDataset.resultsDF.addPeaks(_ROI, _set, xp, yp)
+                self.workingDataset.resultsDF.addPeaks(_ROI, _condi, xp, yp)
             
             else: # we are in manual peaks
                 
                 # read back existing peak data from results (might be empty if it's new ROI)
-                xp, yp = self.workingDataset.resultsDF.getPeaks(_ROI, _set)
-                if len(xp) == 0: print ("Peak results for {} {} are empty".format( _ROI, _set))
-                else : print ("Retrieved: {} {} first xp,yp : {}, {}".format( _ROI, _set, xp[0], yp[0]))
+                xp, yp = self.workingDataset.resultsDF.getPeaks(_ROI, _condi)
+                if len(xp) == 0: print ("Peak results for {} {} are empty".format( _ROI, _condi))
+                else : print ("Retrieved: {} {} first xp,yp : {}, {}".format( _ROI, _condi, xp[0], yp[0]))
             
             # draw p1 traces and scatter
             if self.split_traces:
@@ -1179,7 +1181,7 @@ class MainWindow(QMainWindow):
                     self.p1.plot(x, z[i]-y[i].max(), pen=(255,255,255,80))
             
             #p3: plot only the chosen trace
-            if self.p3Selection.currentText() == _set:
+            if self.p3Selection.currentText() == _condi:
                 if _p3_scatter is None:
                     # Do something about it, there are no peaks!
                     self.p3.addPlot(xp, yp, pen=None, brush=col_series)
@@ -1197,16 +1199,16 @@ class MainWindow(QMainWindow):
         return
         
     def setRanges(self):
-        """ Collect the extremities of data over a set of sheets """
+        """ Collect the extremities of data over a set of conditions """
         self.ranges = {}
         # use the first condition (sheet) as a basis
-        _df = self.workingDataset.traces[self.sheets[0]]
+        _df = self.workingDataset.traces[self.conditions[0]]
         self.ranges['xmin'] = _df.index.min()
         self.ranges['xmax'] = _df.index.max()
         self.ranges['ymin'] = _df.min().min()
         self.ranges['ymax'] = _df.max().max()
         
-        # lazily compare across all sheets (including the first)
+        # lazily compare across all conditions (including the first)
         for sheet in self.workingDataset.traces.values():
             if sheet.min().min() < self.ranges['ymin']:
                 self.ranges['ymin'] = sheet.min().min()
@@ -1241,23 +1243,23 @@ class MainWindow(QMainWindow):
             with pd.ExcelWriter(self.filename) as writer:
                 
                 # combine whitelist and blacklist dictionaries for output
-                _output = {**self.gpd.pk_extracted_by_set, **self.gpd.blacklisted_by_set}
+                _output = {**self.gpd.pk_extracted_by_condi, **self.gpd.blacklisted_by_condi}
                 
-                for _set in _output:
+                for _condi in _output:
                     # in case there are duplicate peaks extracted, remove them and package into dummy variable
                     # loc["not" the duplicates]
-                    _pe = _output[_set].loc[~_output[_set].index.duplicated(keep='first')] #StackOverflow 13035764
+                    _pe = _output[_condi].loc[~_output[_condi].index.duplicated(keep='first')] #StackOverflow 13035764
                     
                     #skip the first row
-                    _pe.to_excel(writer, sheet_name=_set, startrow=1, header=False)
+                    _pe.to_excel(writer, sheet_name=_condi, startrow=1, header=False)
                     
                     _workbook  = writer.book
-                    _worksheet = writer.sheets[_set]
+                    _worksheet = writer.conditions[_condi]
                     
                     #write header manually so that values can be modified with addition of the sheet (for downstream use)
                     header_format = _workbook.add_format(self.hform)
                     for col_num, value in enumerate(_pe.columns.values):
-                        _worksheet.write(0, col_num + 1, value + " " +_set, header_format)
+                        _worksheet.write(0, col_num + 1, value + " " +_condi, header_format)
                 
                 if self.saveHistogramsOption:
                     self.save_histograms(writer)
@@ -1270,7 +1272,7 @@ class MainWindow(QMainWindow):
         #save histograms into new sheet
         self.hDF.df.to_excel(writer, sheet_name="histograms",startrow=1, header=False)
         _workbook  = writer.book
-        _worksheet = writer.sheets["histograms"]
+        _worksheet = writer.conditions["histograms"]
         header_format = _workbook.add_format(self.hform)
         for col_num, value in enumerate(_pe.columns.values):
             _worksheet.write(0, col_num + 1, value + " hi", header_format)
@@ -1289,21 +1291,21 @@ class MainWindow(QMainWindow):
             "Open Data", os.path.expanduser("~"))[0]
         
         if self.filename:
-            #very simple and rigid right now - must be an excel file with sheets
-            #should be made generic - load all sheets into dictionary of dataframes no matter what
-            with pg.ProgressDialog("Loading sheets...", 0, len(self.sheets)) as dlg:
+            #very simple and rigid right now - must be an excel file with conditions
+            #should be made generic - load all conditions into dictionary of dataframes no matter what
+            with pg.ProgressDialog("Loading conditions...", 0, len(self.conditions)) as dlg:
                 _traces = {}
-                for _sheet in self.sheets:
+                for _sheet in self.conditions:
                     dlg += 1
                     try:
                         _traces[_sheet] = pd.read_excel(self.filename, sheet_name=_sheet, index_col=0)
                         print ("XLDR: From spreadsheet- {}\n{}".format(_sheet, _traces[_sheet].head()))
                     except:
                         print ("Probably: XLDR error- no sheet named exactly {0}. Please check it.".format(_sheet))
-                        self.sheets.remove(_sheet)
+                        self.conditions.remove(_sheet)
                 # decide if there is data or not
         
-        print ("Loaded following sheets: ", self.sheets)
+        print ("Loaded following conditions: ", self.conditions)
         
         if self.workingDataset.isEmpty:
             print ("First data set loaded")
@@ -1331,7 +1333,7 @@ class MainWindow(QMainWindow):
         
         self.workingDataset.ROI_list = ["Mean", "Variance"]
         
-        _first = self.sheets[0]
+        _first = self.conditions[0]
         #print (self.workingDataset.__dict__)
         self.workingDataset.ROI_list.extend(self.workingDataset.traces[_first].columns.tolist())
         self.updateROI_list_Box()
@@ -1346,10 +1348,10 @@ class MainWindow(QMainWindow):
         
         #populate the combobox for choosing the data shown in the zoom view
         self.p3Selection.clear()
-        self.p3Selection.addItems(self.sheets)
+        self.p3Selection.addItems(self.conditions)
         
         #create a dataframe for peak measurements
-        self.workingDataset.resultsDF = Results(self.workingDataset.ROI_list, self.sheets)
+        self.workingDataset.resultsDF = Results(self.workingDataset.ROI_list, self.conditions)
         print ("peakResults object created", self.workingDataset.resultsDF, self.workingDataset.ROI_list)
         
         self.plotNewData()
@@ -1379,7 +1381,7 @@ if __name__ == "__main__":
     
     __version__ = "v. 0.2"
     app = QApplication([])
-    main_window = MainWindow()
-    main_window.show()
+    smw = SAFTMainWindow()
+    smw.show()
     sys.exit(app.exec_())
 
