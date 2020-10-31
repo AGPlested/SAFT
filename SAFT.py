@@ -794,7 +794,6 @@ class MainWindow(QMainWindow):
                     print (v)
 
             # update the ROI list combobox, should have a list
-            
             self.updateROI_list_Box()
             self.ROI_Change()
         
