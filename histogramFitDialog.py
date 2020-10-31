@@ -19,7 +19,7 @@ def despace (s):
         return s
 
 class testData():
-    # at the moment, if test data is loaded automatically, you can't load any more data
+    # if test data is loaded automatically, you can't load any more data
     def __init__(self, *args, **kwargs):
         self.open_file()
         
@@ -92,7 +92,6 @@ class ROI_Controls(QtGui.QWidget):
         
     def buttonPressed(self, _b):
         #print (_b)
-        #self.ROI_label.setText(str(_b))
         self.parent.ROI_change_command (_b)
         
     
@@ -123,11 +122,6 @@ class HDisplay():
             memberName = _set + " histogram"
             stack_member = self.stack.addPlot(y=data, name=memberName)
             
-            # position the title within the frame of the graph
-            #title = pg.TextItem(_set)
-            #title.setPos(60, 5)
-            #title.setParentItem(stack_member)
-            
             stack_member.vb.setLimits(xMin=0, yMin=0)
             stack_member.hideAxis('bottom')
             stack_member.addLegend(offset=(-10, 5))
@@ -147,6 +141,7 @@ class HDisplay():
         stack_member.setLabel('bottom', "dF / F")
 
 class txOutput():
+    """Console frame"""
     def __init__(self, initialText, *args, **kwargs):
         
         self.text = initialText
@@ -186,11 +181,12 @@ class histogramFitDialog(QDialog):
         self.current_ROI = None
         self.flag = "Auto max"      #how to find histogram x-axis
         self.makeDialog()
-        
-        
+    
+    """
     def test(self, sender):
         print (sender)
         self.outputF.appendOutText ('ctrl_button was pressed {}'.format(sender))
+    """
     
     def makeDialog(self):
         """Create the controls for the dialog"""
@@ -429,13 +425,18 @@ class histogramFitDialog(QDialog):
         
         if self.filename:
             #"None" reads all the sheets into a dictionary of data frames
-            self.histo_df = pd.read_excel(self.filename, None, index_col=0)
-            self.addData (self.histo_df)
+            self.open_df = pd.read_excel(self.filename, None, index_col=0)
+            self.addData (self.open_df)
             self.outputF.appendOutText ("Opening file {}".format(self.filename))
         
-    def addData(self, data):
-        """Bring in external data for analysis"""
-        
+    def addData(self, _data):
+        """
+        Bring in external data for analysis
+        _data should be a dictionary of dataframes
+        keys are conditions
+        values are dataframes with times as indices (ignored)
+        and peak amplitudes as columns named by ROIs
+        """
         
         if self.filename:
             #show only the filename not the entire path
@@ -443,14 +444,14 @@ class histogramFitDialog(QDialog):
             self.filename_label.setText (_f)
           
         #take all peak lists
-        self.peakResults = data # a dict of DataFrames
-        
+        self.peakResults = _data # a dict of DataFrames
+
         
         # any histograms aren't much use, we will change binning, so remove them
         if 'histograms' in self.peakResults:
             del self.peakResults['histograms']
         
-        # clean out any low SNR data _ avoid interating over ordered dict
+        # clean out any low SNR data _ avoid interating over an ordered dict
         for key in self.peakResults.copy():
             if "SNR<" in key:
                 del self.peakResults[key]
@@ -466,12 +467,10 @@ class histogramFitDialog(QDialog):
         _printable = "{}\n{}\n".format(tdk_display, [self.peakResults[d].head() for d in tdk])
         self.outputF.appendOutText ("Added data of type {}:\n{}\n".format(type(self.peakResults), _printable))
         
-        
-        #self.ROI_list = list(k.split()[0] for k in self.ROI_list)
-        
         for d in self.peakResults:
             self.peakResults[d].rename(despace, axis='columns', inplace=True)
-            
+           
+        #minimal approach, consider exhaustive list as in SAFT.py
         self.ROI_list = list(self.peakResults[list(tdk)[0]].keys().unique(level=0))
         print (self.ROI_list)
         
@@ -528,13 +527,13 @@ class histogramFitDialog(QDialog):
         
     def updateHistograms(self):
         """called when histogram controls are changed"""
-        # * to stop positional arguments being taken for flag
-        # would be none if no data loaded so escape
+        
+        # would be None if no data loaded so escape
         if self.current_ROI == None:
             return
         
         _ROI = self.current_ROI
-        # get values from controls and summarise to terminal
+        # get values from controls and summarise them to terminal
         if self.flag == "Manual max":
             _nbins, _max = self.histogram_parameters()
             print ("Manual max triggered {} {}".format(_nbins, _max))
@@ -727,7 +726,7 @@ if __name__ == '__main__':
     main_window = histogramFitDialog()
     main_window.show()
     """
-    ### Test specific code
+    ### Test code
     tdata = testData()
     tdata.open_file()
     main_window.addData(tdata.histo_df)
