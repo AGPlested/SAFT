@@ -1,7 +1,7 @@
 # SAFT
 Semi Automatic Fluorescent Trace analysis
 
-# Requirements
+## Requirements
 python 3.7.6
 
 PySide2==5.14.0
