@@ -8,7 +8,7 @@ import itertools
 from PySide2 import QtCore, QtGui
 from PySide2.QtCore import Slot
 from PySide2 import __version__ as pyside_version
-from PySide2.QtWidgets import QApplication, QMainWindow, QWidget, QGridLayout, QMessageBox, QFileDialog, QAction, QGroupBox, QHBoxLayout, QRadioButton, QDialog, QVBoxLayout, QCheckBox
+from PySide2.QtWidgets import QApplication, QMainWindow, QWidget, QGridLayout, QMessageBox, QFileDialog, QAction, QGroupBox, QHBoxLayout, QRadioButton, QDialog, QVBoxLayout, QCheckBox, QButtonGroup
 
 #package imports
 import numpy as np
@@ -51,7 +51,7 @@ class MainWindow(QMainWindow):
     def __init__(self, *args, **kwargs):
         super(MainWindow, self).__init__(*args, **kwargs)
         
-        self.setWindowTitle("Semi-Auto Fluorescence Trace analysis")
+        self.setWindowTitle("Semi-Automatic Fluorescence Trace analysis")
         self.central_widget = QWidget()
         self.central_layout = QGridLayout()
         self.central_widget.setLayout(self.central_layout)
@@ -66,6 +66,7 @@ class MainWindow(QMainWindow):
         self.filename = None
         self.workingDataset.ROI_list = None
         self.dataLoaded = False
+        self.wasManualOnce = False
         self.simplePeaks = False            # choice of peak finding algorithm
         self.autoPeaks = True                  # find peaks automatically or manually
         self.cwt_width = 5                # width of the continuous wavelet transform peak finding
@@ -167,8 +168,9 @@ class MainWindow(QMainWindow):
         self.p2.vb.setLimits(xMin=0, yMin=0)
         self.p2.addLegend()
         
-        # zoomed editing region
-        self.p3 = self.plots.addPlot(title="Auto Peak Mode", y=data, row=0, col=1, rowspan=4, colspan=2)
+        # zoomed editing region , start in auto peak mode
+        self.p3 = self.plots.addPlot(y=data, row=0, col=1, rowspan=4, colspan=2)
+        self.p3.setTitle('Auto peak mode', color="a0a0a0", width=450)
         self.p3.setLabel('left', "dF / F")
         self.p3.setLabel('bottom', "Time (s)")
         self.p3vb = self.p3.vb
@@ -308,11 +310,12 @@ class MainWindow(QMainWindow):
     
     def manualPeakToggle (self, b):
         """disable controls if we are editing peaks manually"""
-        
-        if b.isChecked() == True:
+        print ("MPT {}".format(b))
+        if self.manual.isChecked() == True:
             # enter manual mode
             print ("Manual peak editing")
             self.autoPeaks = False
+            self.wasManualOnce = True
             
             # disable all controls that could trigger auto peak finding
             self.peak_CB.setDisabled(True)
@@ -332,9 +335,9 @@ class MainWindow(QMainWindow):
             self.p3.addItem(self.hLine, ignoreBounds=True)
             
             # add a hint
-            self.p3.setTitle('Manual peak mode: l-click to add/remove peaks', color="F0F0F0" , width=300)
+            self.p3.setTitle('Manual peak mode: l-click to add/remove peaks', color="F0F0F0" , width=450)
             
-        else:
+        elif self.wasManualOnce:
             # Enter auto peak mode
             print ("Auto peak finding")
             self.autoPeaks = True
@@ -349,8 +352,8 @@ class MainWindow(QMainWindow):
             self.autobs_Box.setEnabled(True)
             self.removeSml_Spin.setEnabled(True)
             
-            # Remove the hint
-            self.p3.setTitle('Auto peak mode', color="a0a0a0", width=300)
+            # Change the hint
+            self.p3.setTitle('Auto peak mode', color="a0a0a0", width=450)
             
             # Remove crosshair from p3.
             self.p3.removeItem(self.vLine)
@@ -456,75 +459,6 @@ class MainWindow(QMainWindow):
         
         traces.setLayout(traceGrid)
         
-        # peak finding controls box
-        peakFinding = QGroupBox("Peak finding and editing")
-        pkF_grid = QGridLayout()
-        
-        # Switch for manual peak finding
-        self.manual = QRadioButton("Edit peaks with mouse", self)
-        if self.autoPeaks:
-            self.manual.setChecked(False)
-        self.manual.toggled.connect(lambda:self.manualPeakToggle(self.manual))
-        
-        p3_select_label = QtGui.QLabel("Show in Peak editing/zoom")
-        self.p3Selection = QtGui.QComboBox()
-        self.p3Selection.setFixedSize(90, 25)       # only width seems to work
-        self.p3Selection.addItems(['-'])
-        self.p3Selection.currentIndexChanged.connect(self.ROI_Change)
-                
-        # Toggle between wavelet transform and simple algorithm for peak finding
-        peakFind_L_label = QtGui.QLabel("Find peaks with")
-        peakFind_L_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        peakFind_R_label = QtGui.QLabel("algorithm.")
-        peakFind_R_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        cwt_width_label = QtGui.QLabel("Width (wavelet only)")
-        cwt_width_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        SNR_label = QtGui.QLabel("Prominence / SNR")
-        SNR_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        
-        self.peak_CB = pg.ComboBox()
-        self.peak_CB.setFixedSize(90, 25)
-        self.peak_CB.addItems(['wavelet','simple'])
-        self.peak_CB.currentIndexChanged.connect(self.ROI_Change)
-        
-        # spin boxes for CWT algorithm parameters
-        self.cwt_SNR_Spin = pg.SpinBox(value=1.5, step=.1, bounds=[.1, 4], delay=0, int=False)
-        self.cwt_SNR_Spin.setFixedSize(70, 25)
-        self.cwt_SNR_Spin.valueChanged.connect(self.ROI_Change)
-        
-        self.cwt_w_Spin = pg.SpinBox(value=6, step=1, bounds=[2, 20], delay=0, int=True)
-        self.cwt_w_Spin.setFixedSize(70, 25)
-        self.cwt_w_Spin.valueChanged.connect(self.ROI_Change)
-        
-        # Control to exclude small peaks
-        removeSml_L_label = QtGui.QLabel("Ignore peaks smaller than")
-        removeSml_L_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        removeSml_R_label = QtGui.QLabel("of largest.")
-        removeSml_R_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
-        self.removeSml_Spin = pg.SpinBox(value=30, step=10, bounds=[0, 100], suffix='%', delay=0, int=False)
-        self.removeSml_Spin.setFixedSize(70, 25)
-        self.removeSml_Spin.valueChanged.connect(self.ROI_Change)
-        
-        pkF_grid.addWidget(self.manual, 0, 0)
-        pkF_grid.addWidget(p3_select_label, 1, 0)
-        pkF_grid.addWidget(self.p3Selection, 1 , 1)
-        pkF_grid.addWidget(peakFind_L_label, 2, 0)
-        pkF_grid.addWidget(self.peak_CB, 2, 1)
-        pkF_grid.addWidget(peakFind_R_label, 2, 2)
-        
-        pkF_grid.addWidget(cwt_width_label, 4, 0)
-        pkF_grid.addWidget(self.cwt_w_Spin, 4, 1)
-        pkF_grid.addWidget(SNR_label, 3, 0)
-        pkF_grid.addWidget(self.cwt_SNR_Spin, 3, 1)
-        
-        pkF_grid.addWidget(removeSml_L_label, 5, 0)
-        pkF_grid.addWidget(removeSml_R_label, 5, 2)
-        pkF_grid.addWidget(self.removeSml_Spin, 5, 1)
-        pkF_grid.setSpacing(10)
-        pkF_grid.setColumnStretch(0,3)
-        pkF_grid.setColumnStretch(2,2)
-        peakFinding.setLayout(pkF_grid)
-        
         # Baseline controls box
         baseline = QGroupBox("Automatic baseline cleanup")
         base_grid = QGridLayout()
@@ -582,6 +516,89 @@ class MainWindow(QMainWindow):
         base_grid.setColumnStretch(0,1)
         base_grid.setColumnStretch(1,1)
         baseline.setLayout(base_grid)
+        
+        
+        # peak finding controls box
+        peakFinding = QGroupBox("Peak finding and editing")
+        pkF_grid = QGridLayout()
+        
+        # Switch for manual peak finding
+        self.manual = QRadioButton("Manually edit peaks with mouse", self)
+        self.auto = QRadioButton("Auto find peaks", self)
+        self.man_auto_group = QButtonGroup()
+        self.man_auto_group.addButton(self.manual)
+        self.man_auto_group.addButton(self.auto)
+        
+        if self.autoPeaks:
+            self.auto.setChecked(True)
+            
+        self.man_auto_group.buttonClicked.connect(self.manualPeakToggle)
+        
+        p3_show_label = QtGui.QLabel("Show")
+        p3_show_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        p3_select_label = QtGui.QLabel("in Peak editing/zoom")
+        self.p3Selection = QtGui.QComboBox()
+        self.p3Selection.setFixedSize(90, 25)       # only width seems to work
+        self.p3Selection.addItems(['-'])
+        self.p3Selection.currentIndexChanged.connect(self.ROI_Change)
+                
+        # Toggle between wavelet transform and simple algorithm for peak finding
+        peakFind_L_label = QtGui.QLabel("Find peaks with")
+        peakFind_L_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        peakFind_R_label = QtGui.QLabel("algorithm.")
+        peakFind_R_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        cwt_width_label = QtGui.QLabel("Width (wavelet only)")
+        cwt_width_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        SNR_label = QtGui.QLabel("Prominence / SNR")
+        SNR_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        
+        self.peak_CB = pg.ComboBox()
+        self.peak_CB.setFixedSize(90, 25)
+        self.peak_CB.addItems(['wavelet','simple'])
+        self.peak_CB.currentIndexChanged.connect(self.ROI_Change)
+        
+        # spin boxes for CWT algorithm parameters
+        self.cwt_SNR_Spin = pg.SpinBox(value=1.5, step=.1, bounds=[.1, 4], delay=0, int=False)
+        self.cwt_SNR_Spin.setFixedSize(70, 25)
+        self.cwt_SNR_Spin.valueChanged.connect(self.ROI_Change)
+        
+        self.cwt_w_Spin = pg.SpinBox(value=6, step=1, bounds=[2, 20], delay=0, int=True)
+        self.cwt_w_Spin.setFixedSize(70, 25)
+        self.cwt_w_Spin.valueChanged.connect(self.ROI_Change)
+        
+        # Control to exclude small peaks
+        removeSml_L_label = QtGui.QLabel("Ignore peaks smaller than")
+        removeSml_L_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        removeSml_R_label = QtGui.QLabel("of largest.")
+        removeSml_R_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
+        self.removeSml_Spin = pg.SpinBox(value=30, step=10, bounds=[0, 100], suffix='%', delay=0, int=False)
+        self.removeSml_Spin.setFixedSize(70, 25)
+        self.removeSml_Spin.valueChanged.connect(self.ROI_Change)
+        
+        
+        pkF_grid.addWidget(self.manual, 0, 1, 1, 3)
+        pkF_grid.addWidget(self.auto, 0, 0, 1, 1)
+        pkF_grid.addWidget(p3_show_label, 1, 0)
+        pkF_grid.addWidget(p3_select_label, 1, 2)
+        pkF_grid.addWidget(self.p3Selection, 1 , 1)
+        pkF_grid.addWidget(peakFind_L_label, 2, 0)
+        pkF_grid.addWidget(self.peak_CB, 2, 1)
+        pkF_grid.addWidget(peakFind_R_label, 2, 2)
+        
+        pkF_grid.addWidget(cwt_width_label, 4, 0)
+        pkF_grid.addWidget(self.cwt_w_Spin, 4, 1)
+        pkF_grid.addWidget(SNR_label, 3, 0)
+        pkF_grid.addWidget(self.cwt_SNR_Spin, 3, 1)
+        
+        pkF_grid.addWidget(removeSml_L_label, 5, 0)
+        pkF_grid.addWidget(removeSml_R_label, 5, 2)
+        pkF_grid.addWidget(self.removeSml_Spin, 5, 1)
+        pkF_grid.setSpacing(10)
+        pkF_grid.setColumnStretch(0,3)
+        pkF_grid.setColumnStretch(2,2)
+        peakFinding.setLayout(pkF_grid)
+        
+        
         
         # launch peak extraction wizard dialog
         extractPeaksBtn = QtGui.QPushButton('Extract peaks from all ROIs')
@@ -771,8 +788,8 @@ class MainWindow(QMainWindow):
             
             # execute GUI controls specified in the retrieved Dataset
             for k,v in self.workingDataset.GUIcontrols.items():
-                if k == "autopeaks":
-                    self.autopeaks_switch(v)
+                if k == "autoPeaks":
+                    self.autoPeaks_GUI_switch(v)
                 elif k == "print":
                     print (v)
 
@@ -782,22 +799,24 @@ class MainWindow(QMainWindow):
             self.ROI_Change()
         
   
-    def autopeaks_switch(self, v):
+    def autoPeaks_GUI_switch(self, v):
         if v == "Disable":
-            print ("autopeaks_switch : Disable")
+            print ("autoPeaks_GUI_switch : Disable")
             self.autobs_Box.setValue('None')
             self.auto_bs = False
             self.manual.setChecked(True)
             self.manual.setDisabled(True)
-            set.autoPeaks = False
+            self.auto.setDisabled(True)
+            self.autoPeaks = False
             
         elif v == "Enable":
-            print ("autopeaks_switch : Enable")
+            print ("autoPeaks_GUI_switch : Enable")
             self.autobs_Box.setValue('Auto')
             self.auto_bs = True
             self.manual.setChecked(False)
             self.manual.setEnabled(True)
-            set.autoPeaks = True
+            self.auto.setEnabled(True)
+            self.autoPeaks = True
     
     def getGroups(self):
         """launch group processing dialog"""
@@ -1121,17 +1140,16 @@ class MainWindow(QMainWindow):
 
             if self.autoPeaks:
                 
-                #call the relevant peak finding algorithm
+                # call the relevant peak finding algorithm
                 xp, yp = self.peaksWrapper(x, y[i], _set)
                 
-                #write autopeaks into results
+                # write automatically found peaks into results
                 self.workingDataset.resultsDF.addPeaks(_ROI, _set, xp, yp)
             
             else: # we are in manual peaks
                 
                 # read back existing peak data from results (might be empty if it's new ROI)
                 xp, yp = self.workingDataset.resultsDF.getPeaks(_ROI, _set)
-                
                 if len(xp) == 0: print ("Peak results for {} {} are empty".format( _ROI, _set))
                 else : print ("Retrieved: {} {} first xp,yp : {}, {}".format( _ROI, _set, xp[0], yp[0]))
             
