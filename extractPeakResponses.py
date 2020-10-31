@@ -7,7 +7,7 @@ import pandas as pd
 import utils
 
 
-class getPeaksDialog(QDialog):
+class extractPeaksDialog(QDialog):
     def __init__(self, *args, **kwargs):
         super(getPeaksDialog, self).__init__(*args, **kwargs)
         

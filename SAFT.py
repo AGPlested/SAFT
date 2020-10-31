@@ -18,12 +18,11 @@ import scipy.signal as scsig
 #SAFT imports
 from clicker import clickAlgebra
 from extractPeakResponses import extractPeaksDialog
-from histogramFitDialog import histogramFitDialog
-from histogramDF import HistogramsR
-from groupPeaksDialog import groupDialog
+from fitHistograms import histogramFitDialog
+from processGroupedPeaks import groupPeakDialog
 from quantal import fit_nGaussians, nGaussians_display
 from baselines import savitzky_golay, baseline_als, baselineIterator
-from dataStructures import Store, Dataset, Results
+from dataStructures import Store, Dataset, Results, HistogramsR
 from helpMessages import gettingStarted
 import utils            #addFileSuffix, findCurve, findScatter etc
 
@@ -438,7 +437,7 @@ class SAFTMainWindow(QMainWindow):
         histograms.setLayout(histGrid)
         
         # Data display options panel
-        dataPanel = QGroupBox("Data display options")
+        dataPanel = QGroupBox("Data display and processing")
         dataGrid = QGridLayout()
         self.split_B = QRadioButton("Split traces", self)
         self.combine_B = QRadioButton("Combined traces", self)
@@ -499,18 +498,17 @@ class SAFTMainWindow(QMainWindow):
         
         dataGrid.addWidget(datasetLabel, 0, 0, 1, 1)
         dataGrid.addWidget(self.datasetCBx, 0, 1, 1, 3)
-        dataGrid.addWidget(ROIBox_label, 1, 0, 1, 1)
-        dataGrid.addWidget(self.ROI_selectBox, 1, 1, 1, 3)
-        dataGrid.addWidget(self.combine_B, 2, 0, 1, 2)
+        dataGrid.addWidget(ROIBox_label, 1, 0)
+        dataGrid.addWidget(self.ROI_selectBox, 1, 1)
+        dataGrid.addWidget(self.combine_B, 1, 2, 1, 2)
         dataGrid.addWidget(self.split_B, 2, 2, 1, 2)
         
-        
         dataGrid.addWidget(extractPeaksBtn, 4, 0, 1, 2)
-        dataGrid.addWidget(self.fitHistDialogBtn, 4, 2, 1, 2)
-        dataGrid.addWidget(self.save_baselined_ROIs_Btn, 5, 0, 1, 2)
-        dataGrid.addWidget(self.savePSRBtn, 5, 2, 1, 2)
-        dataGrid.addWidget(showDataBtn, 6, 2, 1, 2)
-        dataGrid.addWidget(self.extractGroupsDialog_Btn, 6, 0, 1, 2)
+        dataGrid.addWidget(self.extractGroupsDialog_Btn, 5, 0, 1, 2)
+        dataGrid.addWidget(self.fitHistDialogBtn, 6, 0, 1, 2)
+        dataGrid.addWidget(showDataBtn, 4, 2, 1, 2)
+        dataGrid.addWidget(self.save_baselined_ROIs_Btn, 5, 2, 1, 2)
+        dataGrid.addWidget(self.savePSRBtn, 6, 2, 1, 2)
         
         dataPanel.setLayout(dataGrid)
         
@@ -624,9 +622,9 @@ class SAFTMainWindow(QMainWindow):
         self.cwt_w_Spin.valueChanged.connect(self.ROI_Change)
         
         # Control to exclude small peaks
-        removeSml_L_label = QtGui.QLabel("Ignore peaks smaller than")
+        removeSml_L_label = QtGui.QLabel("Ignore peaks < ")
         removeSml_L_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        removeSml_R_label = QtGui.QLabel("of largest.")
+        removeSml_R_label = QtGui.QLabel(" of largest.")
         removeSml_R_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
         self.removeSml_Spin = pg.SpinBox(value=30, step=10, bounds=[0, 100], suffix='%', delay=0, int=False)
         self.removeSml_Spin.setFixedSize(70, 25)
@@ -664,7 +662,7 @@ class SAFTMainWindow(QMainWindow):
         
         controls.addWidget(baseline, 1, 0 , 1, -1)
         controls.addWidget(peakFinding, 4, 0 , 2, -1)
-        controls.setFixedWidth(450)
+        controls.setFixedWidth(420)
         
         self.central_layout.addWidget(controls, 0, 3, -1, 1)
         return
@@ -845,7 +843,7 @@ class SAFTMainWindow(QMainWindow):
     def getGroups(self):
         """launch group processing dialog"""
         print ('Process grouped peaks from all ROIs.')
-        self.getgroupsDialog = groupDialog()
+        self.getgroupsDialog = groupPeakDialog()
         self.getgroupsDialog.addData(self.gpd.pk_extracted_by_condi)
         accepted = self.getgroupsDialog.exec_()
       
