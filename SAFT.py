@@ -17,7 +17,7 @@ import scipy.signal as scsig
 
 #SAFT imports
 from clicker import clickAlgebra
-from peaksDialog import getPeaksDialog
+from extractPeakResponses import extractPeaksDialog
 from histogramFitDialog import histogramFitDialog
 from histogramDF import HistogramsR
 from groupPeaksDialog import groupDialog
@@ -26,7 +26,7 @@ from baselines import savitzky_golay, baseline_als, baselineIterator
 from dataStructures import Store, Dataset, Results
 from helpMessages import gettingStarted
 import utils            #addFileSuffix, findCurve, findScatter etc
-#import histogramFitDialog
+
 
 #Import pg last to avoid namespace-overwrite problems?
 import pyqtgraph as pg
@@ -372,20 +372,20 @@ class SAFTMainWindow(QMainWindow):
         histograms = QGroupBox("Histogram options")
         histGrid = QGridLayout()
         
-        NBin_label = QtGui.QLabel("Number of bins")
+        NBin_label = QtGui.QLabel("No. of bins")
         NBin_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.histo_NBin_Spin = pg.SpinBox(value=100, step=10, bounds=[0, 250], delay=0)
-        self.histo_NBin_Spin.setFixedSize(80, 25)
+        self.histo_NBin_Spin.setFixedSize(60, 25)
         self.histo_NBin_Spin.valueChanged.connect(self.updateHistograms)
         
-        histMax_label = QtGui.QLabel("Histogram dF/F max")
+        histMax_label = QtGui.QLabel("dF/F max")
         histMax_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.histo_Max_Spin = pg.SpinBox(value=1, step=0.1, bounds=[0.1, 10], delay=0, int=False)
-        self.histo_Max_Spin.setFixedSize(80, 25)
+        self.histo_Max_Spin.setFixedSize(60, 25)
         self.histo_Max_Spin.valueChanged.connect(self.updateHistograms)
         
         #toggle show ROI histogram sum
-        histsum_label = QtGui.QLabel("Histograms are")
+        histsum_label = QtGui.QLabel("Show histograms")
         histsum_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.sum_hist = pg.ComboBox()
         self.sum_hist.setFixedSize(100,25)
@@ -394,44 +394,52 @@ class SAFTMainWindow(QMainWindow):
         
         #toggle fitting
         self.fitHistogramsToggle = QCheckBox("Fit Histograms", self)
+        #self.fitHistogramsToggle.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.fitHistogramsToggle.setChecked(False)
         self.fitHistogramsToggle.toggled.connect(lambda:self.fitHistogramsLogic(self.fitHistogramsToggle))
         
         #fit parameters
-        histnG_label = QtGui.QLabel("Number of Gaussians")
+        histnG_label = QtGui.QLabel("No. of Gaussians")
         histnG_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         
         self.histo_nG_Spin = pg.SpinBox(value=5, step=1, bounds=[1,10], delay=0, int=True)
-        self.histo_nG_Spin.setFixedSize(80, 25)
+        self.histo_nG_Spin.setFixedSize(60, 25)
         self.histo_nG_Spin.valueChanged.connect(self.updateHistograms)
         
-        histw_label = QtGui.QLabel("dF_'Q' guess")
-        histw_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        histq_label = QtGui.QLabel("dF ('q') guess")
+        histq_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.histo_q_Spin = pg.SpinBox(value=.05, step=0.01, bounds=[0.01,1], delay=0, int=False)
-        self.histo_q_Spin.setFixedSize(80, 25)
+        self.histo_q_Spin.setFixedSize(60, 25)
         self.histo_q_Spin.valueChanged.connect(self.updateHistograms)
         
         self.saveHistogramsToggle = QCheckBox("Save Histograms", self)
         self.saveHistogramsToggle.setChecked(True)
         self.saveHistogramsToggle.toggled.connect(lambda:self.saveHistogramsLogic(self.saveHistogramsToggle))
         
-        histGrid.addWidget(NBin_label, 2, 0)
-        histGrid.addWidget(histMax_label, 1, 0)
+        
+        
         histGrid.addWidget(histsum_label, 0, 0)
-        histGrid.addWidget(histnG_label, 4, 0)
-        histGrid.addWidget(histw_label, 5, 0)
-        histGrid.addWidget(self.histo_NBin_Spin, 2, 1)
-        histGrid.addWidget(self.histo_Max_Spin, 1, 1)
         histGrid.addWidget(self.sum_hist, 0, 1)
-        histGrid.addWidget(self.histo_nG_Spin, 4, 1)
-        histGrid.addWidget(self.histo_q_Spin, 5, 1)
-        histGrid.addWidget(self.saveHistogramsToggle, 6, 0, 1, 2)
-        histGrid.addWidget(self.fitHistogramsToggle, 3, 0, 1, 2)
+        
+        histGrid.addWidget(histnG_label, 1, 2, 1, 2)
+        histGrid.addWidget(self.histo_nG_Spin, 1, 4)
+        
+        histGrid.addWidget(histq_label, 2, 2, 1, 2)
+        histGrid.addWidget(self.histo_q_Spin, 2, 4)
+                
+        histGrid.addWidget(histMax_label, 1, 0)
+        histGrid.addWidget(self.histo_Max_Spin, 1, 1)
+        
+        histGrid.addWidget(NBin_label, 2, 0)
+        histGrid.addWidget(self.histo_NBin_Spin, 2, 1)
+        
+        histGrid.addWidget(self.saveHistogramsToggle, 3, 1, 1, 4)
+        histGrid.addWidget(self.fitHistogramsToggle, 0, 3, 1, 2)
         histograms.setLayout(histGrid)
         
         # Data display options panel
-        traces = QGroupBox("Data display options")
-        traceGrid = QGridLayout()
+        dataPanel = QGroupBox("Data display options")
+        dataGrid = QGridLayout()
         self.split_B = QRadioButton("Split traces", self)
         self.combine_B = QRadioButton("Combined traces", self)
         self.combine_B.setChecked(True)
@@ -454,19 +462,63 @@ class SAFTMainWindow(QMainWindow):
         self.ROI_selectBox.addItems(['None'])
         self.ROI_selectBox.currentIndexChanged.connect(self.ROI_Change)
         
-        traceGrid.addWidget(datasetLabel, 0, 0, 1, 1)
-        traceGrid.addWidget(self.datasetCBx, 0, 2, 1, 1)
-        traceGrid.addWidget(self.combine_B, 2, 2)
-        traceGrid.addWidget(self.split_B, 3, 2)
-        traceGrid.addWidget(ROIBox_label, 1, 0, 1, 1)
-        traceGrid.addWidget(self.ROI_selectBox, 1, 2, 1, 1)
+    
+        # launch histogram fitting dialog
+        # should be inactive until extraction
+        self.fitHistDialogBtn = QtGui.QPushButton('Launch Histogram Fit')
+        self.fitHistDialogBtn.clicked.connect(self.launchHistogramFit)
+        self.fitHistDialogBtn.setDisabled(True)
         
-        traces.setLayout(traceGrid)
+        # launch peak extraction wizard dialog
+        extractPeaksBtn = QtGui.QPushButton('Extract peaks from all ROIs')
+        extractPeaksBtn.clicked.connect(self.extractAllPeaks)
+        
+        # should be inactive until extraction
+        self.savePSRBtn = QtGui.QPushButton('Save peak data')
+        self.savePSRBtn.clicked.connect(self.save_peaks)
+        self.savePSRBtn.setDisabled(True)
+        
+        # should be inactive until extraction
+        self.save_baselined_ROIs_Btn = QtGui.QPushButton('Save baselined ROI traces')
+        self.save_baselined_ROIs_Btn.clicked.connect(self.save_baselined)
+        self.save_baselined_ROIs_Btn.setDisabled(True)
+        
+        # should be inactive until extraction
+        self.extractGroupsDialog_Btn = QtGui.QPushButton('Extract grouped responses')
+        self.extractGroupsDialog_Btn.clicked.connect(self.getGroups)
+        self.extractGroupsDialog_Btn.setDisabled(True)
+        
+        showDataBtn = QtGui.QPushButton('Show current peak data')
+        showDataBtn.clicked.connect(self.resultsPopUp)
+        
+        _buttonList = [self.fitHistDialogBtn, extractPeaksBtn, self.savePSRBtn, self.save_baselined_ROIs_Btn, self.extractGroupsDialog_Btn, showDataBtn]
+        bsize = (200, 35)
+        for b in _buttonList:
+            b.setFixedSize(*bsize)
+        
+        
+        dataGrid.addWidget(datasetLabel, 0, 0, 1, 1)
+        dataGrid.addWidget(self.datasetCBx, 0, 1, 1, 3)
+        dataGrid.addWidget(ROIBox_label, 1, 0, 1, 1)
+        dataGrid.addWidget(self.ROI_selectBox, 1, 1, 1, 3)
+        dataGrid.addWidget(self.combine_B, 2, 0, 1, 2)
+        dataGrid.addWidget(self.split_B, 2, 2, 1, 2)
+        
+        
+        dataGrid.addWidget(extractPeaksBtn, 4, 0, 1, 2)
+        dataGrid.addWidget(self.fitHistDialogBtn, 4, 2, 1, 2)
+        dataGrid.addWidget(self.save_baselined_ROIs_Btn, 5, 0, 1, 2)
+        dataGrid.addWidget(self.savePSRBtn, 5, 2, 1, 2)
+        dataGrid.addWidget(showDataBtn, 6, 2, 1, 2)
+        dataGrid.addWidget(self.extractGroupsDialog_Btn, 6, 0, 1, 2)
+        
+        dataPanel.setLayout(dataGrid)
         
         # Baseline controls box
         baseline = QGroupBox("Automatic baseline cleanup")
         base_grid = QGridLayout()
         auto_bs_label = QtGui.QLabel("Baseline removal?")
+        auto_bs_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.autobs_Box = pg.ComboBox()
         self.autobs_Box.addItems(['Auto', 'None', 'Lock'])
         self.autobs_Box.setFixedSize(70, 25)
@@ -494,31 +546,32 @@ class SAFTMainWindow(QMainWindow):
         # Savitsky-Golay smoothing is very aggressive and doesn't work well in this case
         SGsmoothing_label = QtGui.QLabel("Savitzky-Golay smoothing")
         SGsmoothing_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        #SGsmoothing_label.setFixedSize(170,25)
+        SGsmoothing_label.setFixedWidth(170)
         self.SGsmoothing_CB = pg.ComboBox()
         self.SGsmoothing_CB.setFixedSize(70, 25)
         self.SGsmoothing_CB.addItems(['Off','On'])
         self.SGsmoothing_CB.currentIndexChanged.connect(self.ROI_Change)
         
         SG_window_label = QtGui.QLabel("Window")
+        SG_window_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         SG_window_label.setFixedSize(80,25)
         self.SGWin_Spin = pg.SpinBox(value=15, step=2, bounds=[5, 49], delay=0, int=True)
         self.SGWin_Spin.setFixedSize(70, 25)
         self.SGWin_Spin.valueChanged.connect(self.ROI_Change)
         
         
-        base_grid.addWidget(auto_bs_label, 0, 0)
-        base_grid.addWidget(self.autobs_Box, 0, 1, 1, 3)
-        base_grid.addWidget(auto_bs_P_label, 1, 0)
-        base_grid.addWidget(self.auto_bs_P_slider, 1, 1, 1, 3)
-        base_grid.addWidget(auto_bs_lam_label, 2, 0)
-        base_grid.addWidget(self.auto_bs_lam_slider, 2, 1, 1, 3)
-        base_grid.addWidget(SGsmoothing_label, 3, 0)
-        base_grid.addWidget(self.SGsmoothing_CB, 3, 1)
-        base_grid.addWidget(SG_window_label, 3, 2)
-        base_grid.addWidget(self.SGWin_Spin, 3, 3)
-        base_grid.setColumnStretch(0,1)
-        base_grid.setColumnStretch(1,1)
+        base_grid.addWidget(auto_bs_label, 0, 0, 1, 2)
+        base_grid.addWidget(self.autobs_Box, 0, 2, 1, 3)
+        base_grid.addWidget(auto_bs_P_label, 1, 1)
+        base_grid.addWidget(self.auto_bs_P_slider, 1, 2, 1, 3)
+        base_grid.addWidget(auto_bs_lam_label, 2, 1)
+        base_grid.addWidget(self.auto_bs_lam_slider, 2, 2, 1, 3)
+        base_grid.addWidget(SGsmoothing_label, 3, 0, 1, 2)
+        base_grid.addWidget(self.SGsmoothing_CB, 3, 2)
+        base_grid.addWidget(SG_window_label, 3, 3)
+        base_grid.addWidget(self.SGWin_Spin, 3, 4)
+        #base_grid.setColumnStretch(0,1)
+        #base_grid.setColumnStretch(1,1)
         baseline.setLayout(base_grid)
         
         
@@ -603,47 +656,15 @@ class SAFTMainWindow(QMainWindow):
         peakFinding.setLayout(pkF_grid)
         
         
-        
-        # launch peak extraction wizard dialog
-        extractPeaksBtn = QtGui.QPushButton('Extract peaks from all ROIs')
-        extractPeaksBtn.clicked.connect(self.extractAllPeaks)
-        
-        # should be inactive until extraction
-        self.savePSRBtn = QtGui.QPushButton('Save peak data')
-        self.savePSRBtn.clicked.connect(self.save_peaks)
-        self.savePSRBtn.setDisabled(True)
-        
-        # should be inactive until extraction
-        self.save_baselined_ROIs_Btn = QtGui.QPushButton('Save baselined ROI traces')
-        self.save_baselined_ROIs_Btn.clicked.connect(self.save_baselined)
-        self.save_baselined_ROIs_Btn.setDisabled(True)
-        
-        # should be inactive until extraction
-        self.extractGroupsDialog_Btn = QtGui.QPushButton('Extract grouped responses')
-        self.extractGroupsDialog_Btn.clicked.connect(self.getGroups)
-        self.extractGroupsDialog_Btn.setDisabled(True)
-        
-        
-        showDataBtn = QtGui.QPushButton('Show current peak data')
-        showDataBtn.clicked.connect(self.resultsPopUp)
-        
 
     
         #stack widgets into control panel
-        controls.addWidget(traces, 0, 0, 1, -1)
+        controls.addWidget(dataPanel, 0, 0, 1, -1)
         controls.addWidget(histograms, 6 , 0, 1, -1)
         
         controls.addWidget(baseline, 1, 0 , 1, -1)
         controls.addWidget(peakFinding, 4, 0 , 2, -1)
-        
-        controls.addWidget(extractPeaksBtn, 7, 0, 1, 2)
-        
-        controls.addWidget(self.save_baselined_ROIs_Btn, 8, 0, 1, 2)
-        controls.addWidget(self.savePSRBtn, 8, 2, 1, 2)
-        
-        controls.addWidget(showDataBtn, 9, 2, 1, 2)
-        controls.addWidget(self.extractGroupsDialog_Btn, 9, 0, 1, 2)
-        
+        controls.setFixedWidth(450)
         
         self.central_layout.addWidget(controls, 0, 3, -1, 1)
         return
@@ -843,7 +864,7 @@ class SAFTMainWindow(QMainWindow):
         print ('Opening dialog for getting peaks from all ROIs.')
         # if the QDialog object is instantiated in __init__, it persists in state....
         # do it here to get a fresh one each time.
-        self.gpd = getPeaksDialog()
+        self.gpd = extractPeaksDialog()
         
         # pass the data into the get peaks dialog object
         # we do not want the original trace data modified
@@ -886,6 +907,7 @@ class SAFTMainWindow(QMainWindow):
             # these should now become available to be viewed (even edited?)
             
             #make 'save' and other analysis buttons available
+            self.fitHistDialogBtn.setEnabled(True)
             self.savePSRBtn.setEnabled(True)
             self.save_baselined_ROIs_Btn.setEnabled(True)
             self.extractGroupsDialog_Btn.setEnabled(True)
