@@ -12,7 +12,7 @@ def sanitizeList(l):
 
 class groupPeakDialog(QDialog):
     def __init__(self, *args, **kwargs):
-        super(groupDialog, self).__init__(*args, **kwargs)
+        super(groupPeakDialog, self).__init__(*args, **kwargs)
         
         self.peaksN = 50    # it's a guess
         self.dataLoaded = False

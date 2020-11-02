@@ -129,10 +129,8 @@ class Results:
 
 
 
-
-
 class Dataset:
-    """traces and peaks over different ROIs and conditions"""
+    """ named collection of traces, peaks and associated GUI controls over different ROIs and conditions"""
     def __init__(self, _state="Empty"):
         
         self.DSname = _state
@@ -161,17 +159,11 @@ class Dataset:
         self.isempty = False
         print ("addTracesToDS: added")
 
-    def getPeaksFromDS (self, _ROI, _condition):
-        pass
-        
-    def getTracesFromDS (self, _ROI, _condition):
-        pass
- 
- 
+
  
  
 class Store:
-    """ a handler for datasets """
+    """ a dictionary handler for storing datasets """
 
     def __init__(self):
         

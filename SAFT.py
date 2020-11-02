@@ -8,7 +8,7 @@ import itertools
 from PySide2 import QtCore, QtGui
 from PySide2.QtCore import Slot
 from PySide2 import __version__ as pyside_version
-from PySide2.QtWidgets import QApplication, QMainWindow, QWidget, QGridLayout, QMessageBox, QFileDialog, QAction, QGroupBox, QHBoxLayout, QRadioButton, QDialog, QVBoxLayout, QCheckBox, QButtonGroup
+from PySide2.QtWidgets import QApplication, QMainWindow, QWidget, QGridLayout, QMessageBox, QFileDialog, QAction, QGroupBox, QHBoxLayout, QRadioButton, QDialog, QVBoxLayout, QCheckBox, QButtonGroup, QFrame
 
 #package imports
 import numpy as np
@@ -30,6 +30,13 @@ import utils            #addFileSuffix, findCurve, findScatter etc
 #Import pg last to avoid namespace-overwrite problems?
 import pyqtgraph as pg
 
+
+class QHLine(QFrame):
+    ### from https://stackoverflow.com/questions/5671354
+    def __init__(self):
+        super(QHLine, self).__init__()
+        self.setFrameShape(QFrame.HLine)
+        self.setFrameShadow(QFrame.Sunken)
 
 class SAFTMainWindow(QMainWindow):
     
@@ -387,7 +394,7 @@ class SAFTMainWindow(QMainWindow):
         histsum_label = QtGui.QLabel("Show histograms")
         histsum_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.sum_hist = pg.ComboBox()
-        self.sum_hist.setFixedSize(100,25)
+        self.sum_hist.setFixedSize(95,25)
         self.sum_hist.addItems(['Separated','Summed'])
         self.sum_hist.currentIndexChanged.connect(self.updateHistograms)
         
@@ -412,28 +419,29 @@ class SAFTMainWindow(QMainWindow):
         self.histo_q_Spin.valueChanged.connect(self.updateHistograms)
         
         self.saveHistogramsToggle = QCheckBox("Save Histograms", self)
-        self.saveHistogramsToggle.setChecked(True)
+        self.saveHistogramsToggle.setChecked(False)
         self.saveHistogramsToggle.toggled.connect(lambda:self.saveHistogramsLogic(self.saveHistogramsToggle))
         
         
         
-        histGrid.addWidget(histsum_label, 0, 0)
-        histGrid.addWidget(self.sum_hist, 0, 1)
+        histGrid.addWidget(histsum_label, 0, 0, 1, 2)
+        histGrid.addWidget(self.sum_hist, 0, 2, 1, 3)
+        histGrid.addWidget(self.fitHistogramsToggle, 1, 5, 1, 2)
         
-        histGrid.addWidget(histnG_label, 1, 2, 1, 2)
-        histGrid.addWidget(self.histo_nG_Spin, 1, 4)
+        histGrid.addWidget(histnG_label, 2, 4, 1, 2)
+        histGrid.addWidget(self.histo_nG_Spin, 2, 6)
         
-        histGrid.addWidget(histq_label, 2, 2, 1, 2)
-        histGrid.addWidget(self.histo_q_Spin, 2, 4)
+        histGrid.addWidget(histq_label, 3, 4, 1, 2)
+        histGrid.addWidget(self.histo_q_Spin, 3, 6)
                 
         histGrid.addWidget(histMax_label, 1, 0)
-        histGrid.addWidget(self.histo_Max_Spin, 1, 1)
+        histGrid.addWidget(self.histo_Max_Spin, 1, 1, 1, 2)
         
         histGrid.addWidget(NBin_label, 2, 0)
-        histGrid.addWidget(self.histo_NBin_Spin, 2, 1)
+        histGrid.addWidget(self.histo_NBin_Spin, 2, 1, 1, 2)
         
-        histGrid.addWidget(self.saveHistogramsToggle, 3, 1, 1, 4)
-        histGrid.addWidget(self.fitHistogramsToggle, 0, 3, 1, 2)
+        histGrid.addWidget(self.saveHistogramsToggle, 3, 0, 1, 4)
+        
         histograms.setLayout(histGrid)
         
         # Data display options panel
@@ -461,7 +469,8 @@ class SAFTMainWindow(QMainWindow):
         self.ROI_selectBox.addItems(['None'])
         self.ROI_selectBox.currentIndexChanged.connect(self.ROI_Change)
         
-    
+        d_divider = QHLine()
+        d_divider.setFixedWidth(375)
         # launch histogram fitting dialog
         # should be inactive until extraction
         self.fitHistDialogBtn = QtGui.QPushButton('Launch Histogram Fit')
@@ -491,7 +500,7 @@ class SAFTMainWindow(QMainWindow):
         showDataBtn.clicked.connect(self.resultsPopUp)
         
         _buttonList = [self.fitHistDialogBtn, extractPeaksBtn, self.savePSRBtn, self.save_baselined_ROIs_Btn, self.extractGroupsDialog_Btn, showDataBtn]
-        bsize = (200, 35)
+        bsize = (195, 37)
         for b in _buttonList:
             b.setFixedSize(*bsize)
         
@@ -502,6 +511,8 @@ class SAFTMainWindow(QMainWindow):
         dataGrid.addWidget(self.ROI_selectBox, 1, 1)
         dataGrid.addWidget(self.combine_B, 1, 2, 1, 2)
         dataGrid.addWidget(self.split_B, 2, 2, 1, 2)
+        
+        dataGrid.addWidget(d_divider, 3, 0, 1, -1)
         
         dataGrid.addWidget(extractPeaksBtn, 4, 0, 1, 2)
         dataGrid.addWidget(self.extractGroupsDialog_Btn, 5, 0, 1, 2)
@@ -524,6 +535,7 @@ class SAFTMainWindow(QMainWindow):
         
         # parameters for the auto baseline algorithm
         auto_bs_lam_label = QtGui.QLabel("lambda")
+        auto_bs_lam_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.auto_bs_lam_slider = QtGui.QSlider(QtCore.Qt.Horizontal)
         self.auto_bs_lam_slider.setTickPosition(QtGui.QSlider.TicksBothSides)
         self.auto_bs_lam_slider.setMinimum(2)
@@ -533,6 +545,7 @@ class SAFTMainWindow(QMainWindow):
         self.auto_bs_lam_slider.valueChanged.connect(self.ROI_Change)
         
         auto_bs_P_label = QtGui.QLabel("p")
+        auto_bs_P_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.auto_bs_P_slider = QtGui.QSlider(QtCore.Qt.Horizontal)
         self.auto_bs_P_slider.setMinimum(0)
         self.auto_bs_P_slider.setMaximum(20)
@@ -544,7 +557,7 @@ class SAFTMainWindow(QMainWindow):
         # Savitsky-Golay smoothing is very aggressive and doesn't work well in this case
         SGsmoothing_label = QtGui.QLabel("Savitzky-Golay smoothing")
         SGsmoothing_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        SGsmoothing_label.setFixedWidth(170)
+        SGsmoothing_label.setFixedWidth(160)
         self.SGsmoothing_CB = pg.ComboBox()
         self.SGsmoothing_CB.setFixedSize(70, 25)
         self.SGsmoothing_CB.addItems(['Off','On'])
@@ -552,22 +565,27 @@ class SAFTMainWindow(QMainWindow):
         
         SG_window_label = QtGui.QLabel("Window")
         SG_window_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        SG_window_label.setFixedSize(80,25)
+        
         self.SGWin_Spin = pg.SpinBox(value=15, step=2, bounds=[5, 49], delay=0, int=True)
-        self.SGWin_Spin.setFixedSize(70, 25)
+        self.SGWin_Spin.setFixedSize(60, 25)
         self.SGWin_Spin.valueChanged.connect(self.ROI_Change)
         
+        b_divider = QHLine()
+        b_divider.setFixedWidth(375)
         
-        base_grid.addWidget(auto_bs_label, 0, 0, 1, 2)
-        base_grid.addWidget(self.autobs_Box, 0, 2, 1, 3)
-        base_grid.addWidget(auto_bs_P_label, 1, 1)
-        base_grid.addWidget(self.auto_bs_P_slider, 1, 2, 1, 3)
-        base_grid.addWidget(auto_bs_lam_label, 2, 1)
-        base_grid.addWidget(self.auto_bs_lam_slider, 2, 2, 1, 3)
-        base_grid.addWidget(SGsmoothing_label, 3, 0, 1, 2)
-        base_grid.addWidget(self.SGsmoothing_CB, 3, 2)
-        base_grid.addWidget(SG_window_label, 3, 3)
-        base_grid.addWidget(self.SGWin_Spin, 3, 4)
+        base_grid.addWidget(auto_bs_label, 0, 0, 1, 3)
+        base_grid.addWidget(self.autobs_Box, 0, 3, 1, 3)
+        base_grid.addWidget(auto_bs_P_label, 1, 0)
+        base_grid.addWidget(self.auto_bs_P_slider, 1, 1, 1, 2)
+        base_grid.addWidget(auto_bs_lam_label, 1, 3)
+        base_grid.addWidget(self.auto_bs_lam_slider, 1, 4, 1, 2)
+        
+        base_grid.addWidget(b_divider, 2, 0, 1, -1)
+        
+        base_grid.addWidget(SGsmoothing_label, 3, 0, 1, 3)
+        base_grid.addWidget(self.SGsmoothing_CB, 3, 3)
+        base_grid.addWidget(SG_window_label, 3, 4)
+        base_grid.addWidget(self.SGWin_Spin, 3, 5)
         #base_grid.setColumnStretch(0,1)
         #base_grid.setColumnStretch(1,1)
         baseline.setLayout(base_grid)
@@ -578,7 +596,7 @@ class SAFTMainWindow(QMainWindow):
         pkF_grid = QGridLayout()
         
         # Switch for manual peak finding
-        self.manual = QRadioButton("Manually edit peaks with mouse", self)
+        self.manual = QRadioButton("Edit peaks with mouse", self)
         self.auto = QRadioButton("Auto find peaks", self)
         self.man_auto_group = QButtonGroup()
         self.man_auto_group.addButton(self.manual)
@@ -589,16 +607,19 @@ class SAFTMainWindow(QMainWindow):
             
         self.man_auto_group.buttonClicked.connect(self.manualPeakToggle)
         
+        p_divider = QHLine()
+        p_divider.setFixedWidth(375)
+        
         p3_show_label = QtGui.QLabel("Show")
         p3_show_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        p3_select_label = QtGui.QLabel("in Peak editing/zoom")
+        p3_select_label = QtGui.QLabel("in peak editing frame")
         self.p3Selection = QtGui.QComboBox()
         self.p3Selection.setFixedSize(90, 25)       # only width seems to work
         self.p3Selection.addItems(['-'])
         self.p3Selection.currentIndexChanged.connect(self.ROI_Change)
                 
         # Toggle between wavelet transform and simple algorithm for peak finding
-        peakFind_L_label = QtGui.QLabel("Find peaks with")
+        peakFind_L_label = QtGui.QLabel("Auto-find peaks with")
         peakFind_L_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         peakFind_R_label = QtGui.QLabel("algorithm.")
         peakFind_R_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignVCenter)
@@ -630,27 +651,29 @@ class SAFTMainWindow(QMainWindow):
         self.removeSml_Spin.setFixedSize(70, 25)
         self.removeSml_Spin.valueChanged.connect(self.ROI_Change)
         
+        pkF_grid.addWidget(p3_show_label, 0, 0)
+        pkF_grid.addWidget(p3_select_label, 0, 2, 1, 2)
+        pkF_grid.addWidget(self.p3Selection, 0 , 1)
         
-        pkF_grid.addWidget(self.manual, 0, 1, 1, 3)
-        pkF_grid.addWidget(self.auto, 0, 0, 1, 1)
-        pkF_grid.addWidget(p3_show_label, 1, 0)
-        pkF_grid.addWidget(p3_select_label, 1, 2)
-        pkF_grid.addWidget(self.p3Selection, 1 , 1)
-        pkF_grid.addWidget(peakFind_L_label, 2, 0)
-        pkF_grid.addWidget(self.peak_CB, 2, 1)
-        pkF_grid.addWidget(peakFind_R_label, 2, 2)
+        pkF_grid.addWidget(p_divider, 1, 0, 1, -1)
         
-        pkF_grid.addWidget(cwt_width_label, 4, 0)
-        pkF_grid.addWidget(self.cwt_w_Spin, 4, 1)
-        pkF_grid.addWidget(SNR_label, 3, 0)
-        pkF_grid.addWidget(self.cwt_SNR_Spin, 3, 1)
+        pkF_grid.addWidget(self.manual, 2, 2, 1, 2)
+        pkF_grid.addWidget(self.auto, 2, 0, 1, 2)
         
-        pkF_grid.addWidget(removeSml_L_label, 5, 0)
-        pkF_grid.addWidget(removeSml_R_label, 5, 2)
-        pkF_grid.addWidget(self.removeSml_Spin, 5, 1)
+        pkF_grid.addWidget(peakFind_L_label, 3, 0, 1, 2)
+        pkF_grid.addWidget(self.peak_CB, 3, 2)
+        pkF_grid.addWidget(peakFind_R_label, 3, 3)
+        pkF_grid.addWidget(SNR_label, 4, 0, 1, 2)
+        pkF_grid.addWidget(self.cwt_SNR_Spin, 4, 2)
+        pkF_grid.addWidget(cwt_width_label, 5, 0, 1, 2)
+        pkF_grid.addWidget(self.cwt_w_Spin, 5, 2)
+        pkF_grid.addWidget(removeSml_L_label, 6, 0, 1, 2)
+        pkF_grid.addWidget(self.removeSml_Spin, 6, 2)
+        pkF_grid.addWidget(removeSml_R_label, 6, 3)
+        
         pkF_grid.setSpacing(10)
-        pkF_grid.setColumnStretch(0,3)
-        pkF_grid.setColumnStretch(2,2)
+        #pkF_grid.setColumnStretch(0,3)
+        #pkF_grid.setColumnStretch(2,2)
         peakFinding.setLayout(pkF_grid)
         
         
@@ -854,7 +877,7 @@ class SAFTMainWindow(QMainWindow):
         #send current peak data
         _dataset = copy.copy(self.workingDataset)
         ddf = utils.decomposeRDF(_dataset.resultsDF.df)
-        self.hfd.addData(ddf)
+        self.hfd.addData(ddf, _dataset.DSname)
         accepted = self.hfd.exec_()
         
     def extractAllPeaks(self):

@@ -177,6 +177,7 @@ class histogramFitDialog(QDialog):
         self.outputHeader = "{} Logfile\n".format(_now.strftime("%y%m%d-%H%M%S"))
         self.hPlot = HDisplay()
         self.filename = None
+        self.dataname = None
         self.outputF = txOutput(self.outputHeader)
         self.current_ROI = None
         self.flag = "Auto max"      #how to find histogram x-axis
@@ -205,11 +206,11 @@ class histogramFitDialog(QDialog):
         self.saveBtn = QPushButton('Save')
         self.saveBtn.clicked.connect(self.save)
         self.saveBtn.setDisabled(True)
-        self.filename_label = QtGui.QLabel("No file")
+        self.dataname_label = QtGui.QLabel("No data")
         
         _fileGrid.addWidget(self.loadBtn, 0, 0, 1, 1)
         _fileGrid.addWidget(self.saveBtn, 1, 0, 1, 1)
-        _fileGrid.addWidget(self.filename_label, 0, 1, 2, 1)
+        _fileGrid.addWidget(self.dataname_label, 0, 1, 2, 1)
         _fileOptions.setLayout(_fileGrid)
         
         # panel of display options for histograms
@@ -338,8 +339,11 @@ class histogramFitDialog(QDialog):
         self.ROI_change_command(2)
         self.outputF.appendOutText ("Advance to next ROI: {}".format(self.current_ROI))
         
+        
     def save(self):
         #maybe we just have a filename not a path
+        if filename == None:
+        
         if os.path.split(self.filename)[0] is not None:
             _outfile = os.path.split(self.filename)[0] + "Pr_" + os.path.split(self.filename)[1]
         else :
@@ -429,7 +433,7 @@ class histogramFitDialog(QDialog):
             self.addData (self.open_df)
             self.outputF.appendOutText ("Opening file {}".format(self.filename))
         
-    def addData(self, _data):
+    def addData(self, _data, _name=None):
         """
         Bring in external data for analysis
         _data should be a dictionary of dataframes
@@ -441,8 +445,12 @@ class histogramFitDialog(QDialog):
         if self.filename:
             #show only the filename not the entire path
             _f = os.path.split(self.filename)[1]
-            self.filename_label.setText (_f)
-          
+            self.dataname_label.setText (_f)
+        
+        if _name:
+            self.dataname_label.setText (_name)
+            self.dataname = _name
+        
         #take all peak lists
         self.peakResults = _data # a dict of DataFrames
 
@@ -522,7 +530,8 @@ class histogramFitDialog(QDialog):
         self.fitHistogramsOption = "Summed"
         
         if _fitSum == 0:
-            self.updateHistograms()             # if the veiw was already "summed", no need to adjust, just update and fit
+            self.updateHistograms()
+            # if the view was already "summed", no need to adjust, just update and fit
         else:
             self.sum_hist.setCurrentIndex(0)    # sets view to summed, calls update histograms and performs the fit.
         
@@ -735,6 +744,6 @@ if __name__ == '__main__':
     main_window.addData(tdata.histo_df)
     main_window.loadBtn.setDisabled(True)
     main_window.filename = tdata.filename
-    main_window.filename_label.setText("TEST: {}".format(tdata.filename))
+    main_window.dataname_label.setText("TEST: {}".format(tdata.filename))
     """
     sys.exit(app.exec_())

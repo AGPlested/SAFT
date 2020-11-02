@@ -9,7 +9,7 @@ import utils
 
 class extractPeaksDialog(QDialog):
     def __init__(self, *args, **kwargs):
-        super(getPeaksDialog, self).__init__(*args, **kwargs)
+        super(extractPeaksDialog, self).__init__(*args, **kwargs)
         
         self.peaksScraped = False
         self.small = 3
