@@ -203,6 +203,7 @@ class histogramFitDialog(QDialog):
         
         self.loadBtn = QPushButton('Load')
         self.loadBtn.clicked.connect(self.openData)
+        self.loadBtn.setDisabled(True)
         self.saveBtn = QPushButton('Save')
         self.saveBtn.clicked.connect(self.save)
         self.saveBtn.setDisabled(True)
@@ -397,12 +398,7 @@ class histogramFitDialog(QDialog):
     def prepGuiParameters(self):
         """Take parameters specified by GUI"""
         pass
-        """
-        #True if box is checked, otherwise False
-        self.ignore =  self.skipRB.isChecked()
         
-        self.psr = self.psrSB.value() // 2          #floor division to get ears
-        """
     
     def fitGlobalGaussians(self):
         """Target of the global fit button"""
@@ -738,6 +734,7 @@ if __name__ == '__main__':
     
     app = QApplication([])
     main_window = histogramFitDialog()
+    main_window.loadBtn.setEnabled(True)
     main_window.show()
     """
     ### Test code

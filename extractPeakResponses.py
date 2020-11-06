@@ -117,8 +117,8 @@ class extractPeaksDialog(QDialog):
         tdk_display = ", ".join(str(k) for k in tdk)
         N_ROI = np.array([len (self.tracedata[d].columns) for d in tdk])
         N_Peaks = len(self.tPeaks)
-        total_peaks = (N_ROI * N_Peaks).sum()
-        self.N_ROI_label.setText("Scraping {} peaks from {} ROIs (total {})\n over the sets named {}".format(N_Peaks, N_ROI, total_peaks, tdk_display))
+        self.total_peaks = (N_ROI * N_Peaks).sum()
+        self.N_ROI_label.setText("Extracting {} peaks from {} ROIs (total {})\n over the sets named {}".format(N_Peaks, N_ROI, self.total_peaks, tdk_display))
         
         _printable = "{}\n{}\n".format(tdk_display, [self.tracedata[d].head() for d in tdk])
         print ("Added data of type {}:\n{}\n".format(type(self.tracedata), _printable))
@@ -223,7 +223,7 @@ class extractPeaksDialog(QDialog):
             _numberCut += _bycol.sum()
             self.pk_extracted_with_failures[_condi] = _peaksDF
         
-        self.peaksLabel.setText("{} peaks set to failure.".format(_numberCut))
+        self.peaksLabel.setText("{} peaks set as failures ({: .1f}% of total).".format(_numberCut, 100*_numberCut/self.total_peaks))
         
 
         
