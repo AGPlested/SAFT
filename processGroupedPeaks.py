@@ -196,7 +196,7 @@ class groupPeakDialog(QDialog):
         
         #self.psr = self.psrSB.value() // 2          #floor division to get ears
     
-    
+    #not using this currently
     def addDataset(self, d):
         """Bring in external dataset for analysis"""
         self.peakData = d.resultsDF     #resultsDF object
@@ -223,10 +223,14 @@ class groupPeakDialog(QDialog):
         self.N_ROI_label.setText("Grouping peaks from {} ROIs \n over the sets named {}".format(N_ROI, pdk_display))
         self.updateGrouping()
         
-    def addData(self, data):
+    def addData(self, data, name=None):
         """Bring in external data for analysis"""
         #data is a dictionary of Pandas DataFrames
         self.peakData = data
+        if name:
+            self.name = name
+        else:
+            self.name = "unnamed"
         print (self.peakData)
         
         #remove any duplicate peaks
@@ -245,7 +249,7 @@ class groupPeakDialog(QDialog):
         print ("Added data of type {}:\n{}\n".format(type(self.peakData), _printable))
         
         self.dataLoaded = True
-        self.N_ROI_label.setText("Grouping peaks from {} ROIs \n over the sets named {}".format(N_ROI, pdk_display))
+        self.N_ROI_label.setText("Grouping peaks from {} dataset: {} ROIs \n over the conditions {}".format(self.name, N_ROI, pdk_display))
         self.updateGrouping()
         
     def groupPeaks(self):
@@ -273,7 +277,7 @@ class groupPeakDialog(QDialog):
             for p in range(self.step):
                 # get pth row group
                 _subset = self.peakData[_set].iloc[p::self.step]
-                print ("{0}. subset\n {1}".format(p, _subset))
+                print ("{0}. subset\n {1}".format(p + 1, _subset))
                 # each set of paired mean, sd results is assigned to two columns
                 pth_row = _s.index.isin(_s.index[p:p+1])
                 #print (pth_row, _s.loc[pth_row, (All, 'mean')] , _subset.describe().loc['mean'])

@@ -159,9 +159,10 @@ class SAFTMainWindow(QMainWindow):
         
         # traces plot
         data = []
-        self.plots = pg.GraphicsLayoutWidget(title="display")
+        self.plots = pg.GraphicsLayoutWidget()
         self.p1rc = (1,0)
-        self.p1 = self.plots.addPlot(title="Traces and background subtraction", y=data, row=self.p1rc[0], col=self.p1rc[1], rowspan=3, colspan=1)
+        self.p1 = self.plots.addPlot(y=data, row=self.p1rc[0], col=self.p1rc[1], rowspan=3, colspan=1)
+        self.p1.setTitle(title="Traces and background subtraction", color="F0F0F0", justify="right")
         self.p1.setLabel('left', "dF / F")
         self.p1.setLabel('bottom', "Time (s)")
         self.p1.vb.setLimits(xMin=0)
@@ -172,17 +173,20 @@ class SAFTMainWindow(QMainWindow):
             createLinearRegion()
         
         # Histograms
-        self.p2 = self.plots.addPlot(title="Peak Histograms", row=0, col=0, rowspan=1, colspan=1)
+        self.p2 = self.plots.addPlot(row=0, col=0, rowspan=1, colspan=1)
+        self.p2.setTitle("Peak Histograms", color="F0F0F0", justify="right")
         self.p2.setLabel('left', "N")
         self.p2.setLabel('bottom', "dF / F")
         self.p2.vb.setLimits(xMin=0, yMin=0)
-        self.p2.addLegend()
+        self.p2.addLegend(offset=(-50,50))
+        #self.p2.legend.setOffset()
         
         # zoomed editing region , start in auto peak mode
         self.p3 = self.plots.addPlot(y=data, row=0, col=1, rowspan=4, colspan=2)
-        self.p3.setTitle('Auto peak mode', color="a0a0a0", width=450)
+        self.p3.setTitle('Zoom - auto peak mode', color="F0F0F0", justify="right")
         self.p3.setLabel('left', "dF / F")
         self.p3.setLabel('bottom', "Time (s)")
+        self.p3.setFixedWidth(600)
         self.p3vb = self.p3.vb
         
         # draw the crosshair if we are in manual editing mode
@@ -194,27 +198,27 @@ class SAFTMainWindow(QMainWindow):
         
         self.plots.cursorlabel = pg.LabelItem(text='', justify='right')
         
-        #to fix label jiggling about (graphicswidget method)
+        # to stop label jiggling about (graphicswidget method)
         self.plots.cursorlabel.setFixedWidth(100)
         
         self.plots.peakslabel = pg.LabelItem(text='', justify='left')
         
-        #to fix label jiggling about (graphicswidget method)
+        # to stop label jiggling about (graphicswidget method)
         self.plots.peakslabel.setFixedWidth(100)
         
         self.plots.addItem(self.plots.cursorlabel, row=4, col=2, rowspan=1, colspan=1)
-        self.plots.addItem(self.plots.peakslabel, row=4, col=0, rowspan=1, colspan=1)
+        self.plots.addItem(self.plots.peakslabel, row=4, col=1, rowspan=1, colspan=1)
         
         self.central_layout.addWidget(self.plots, row=0, col=0, rowspan=1,colspan=2)
      
      
     def clickRelay(self, *args):
-        """logic to avoid the click signal getting sent out if manual peak editing is not on."""
+        """Logic to avoid the click signal getting sent out if manual peak editing is not on."""
         if self.autoPeaks:
             print ("Turn on manual peak editing to get some value for your clicks.\nFor debugging: ", args)
             return
         else:
-            # the asterisk in call unpacks the tuple into arguments.
+            # the asterisk in call unpacks the tuple into individual arguments.
             # a free click should be locked to the data (as the crosshair is)
             self.cA.onClick (*args, dataLocked=self.dataLock)
     
@@ -320,7 +324,7 @@ class SAFTMainWindow(QMainWindow):
     
     def manualPeakToggle (self, b):
         """disable controls if we are editing peaks manually"""
-        print ("MPT {}".format(b))
+        #print ("MPT {}".format(b))
         if self.manual.isChecked() == True:
             # enter manual mode
             print ("Manual peak editing")
@@ -345,7 +349,7 @@ class SAFTMainWindow(QMainWindow):
             self.p3.addItem(self.hLine, ignoreBounds=True)
             
             # add a hint
-            self.p3.setTitle('Manual peak mode: l-click to add/remove peaks', color="F0F0F0" , width=450)
+            self.p3.setTitle('Zoom - Manual editing  L-click to add/remove peaks', color="F0F0F0", justify="right")
             
         elif self.wasManualOnce:
             # Enter auto peak mode
@@ -363,7 +367,7 @@ class SAFTMainWindow(QMainWindow):
             self.removeSml_Spin.setEnabled(True)
             
             # Change the hint
-            self.p3.setTitle('Auto peak mode', color="a0a0a0", width=450)
+            self.p3.setTitle('Zoom - Auto peak mode', color="F0F0F0", justify="right")
             
             # Remove crosshair from p3.
             self.p3.removeItem(self.vLine)
@@ -791,7 +795,7 @@ class SAFTMainWindow(QMainWindow):
                 # redo histogram
                 hy, hx  = np.histogram(_pdata, bins=_nbins, range=(0., _max))
                 # replot
-                self.p2.plot(hx, hy, name="Histogram "+_condi, stepMode=True, fillLevel=0, fillOutline=True, brush=col_series)
+                self.p2.plot(hx, hy, name="Histogram "+_condi, stepMode=True, fillLevel=0, pen=col_series, brush=col_series) ###fillOutline=True,
         
         elif _hsum == "Summed":
             sumhy = np.zeros(_nbins)
@@ -816,7 +820,9 @@ class SAFTMainWindow(QMainWindow):
                 #from pyqtgraph.examples
                 _c.setPen('w', width=3)
                 _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
-    
+        
+        
+       
     def datasetChange(self):
         print ("a (dataset) change is coming")
         
@@ -867,7 +873,9 @@ class SAFTMainWindow(QMainWindow):
         """launch group processing dialog"""
         print ('Process grouped peaks from all ROIs.')
         self.getgroupsDialog = groupPeakDialog()
-        self.getgroupsDialog.addData(self.gpd.pk_extracted_by_condi)
+        _dataset = copy.copy(self.workingDataset)
+        ddf = utils.decomposeRDF(_dataset.resultsDF.df)
+        self.getgroupsDialog.addData(ddf, name=_dataset.DSname)
         accepted = self.getgroupsDialog.exec_()
       
     def launchHistogramFit(self):
@@ -1297,7 +1305,7 @@ class SAFTMainWindow(QMainWindow):
                     _pe.to_excel(writer, sheet_name=_condi, startrow=1, header=False)
                     
                     _workbook  = writer.book
-                    _worksheet = writer.conditions[_condi]
+                    _worksheet = writer.sheet[_condi]
                     
                     #write header manually so that values can be modified with addition of the sheet (for downstream use)
                     header_format = _workbook.add_format(self.hform)

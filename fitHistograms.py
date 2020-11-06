@@ -342,14 +342,16 @@ class histogramFitDialog(QDialog):
         
     def save(self):
         #maybe we just have a filename not a path
-        if filename == None:
+        if self.filename != None:
         
-        if os.path.split(self.filename)[0] is not None:
-            _outfile = os.path.split(self.filename)[0] + "Pr_" + os.path.split(self.filename)[1]
-        else :
-            _outfile = "Pr_" + self.filename
-        print (_outfile)
-        
+            if os.path.split(self.filename)[0] is not None:
+                _outfile = os.path.split(self.filename)[0] + "Pr_" + os.path.split(self.filename)[1]
+            else :
+                _outfile = "Pr_" + self.filename
+            print (_outfile)
+        else:
+            _outfile = self.dataname+"_Pr.xlsx"
+            
         self.Pr_by_ROI.to_excel(_outfile)
         
         self.outputF.appendOutText ("Write data out to disk {}".format(_outfile))
