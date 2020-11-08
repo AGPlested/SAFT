@@ -81,7 +81,7 @@ class extractPeaksDialog(QDialog):
         
         layout.addWidget(self.noiseRB, 3, 0, 1, 3)
         layout.addWidget(self.noiseSB, 3, 2, 1, 1)
-        layout.addWidget(self.peaksLabel, 4, 0)
+        layout.addWidget(self.peaksLabel, 4, 0, 1, -1)
         
         layout.addWidget(_doScrapeBtn, 5, 0)
         layout.addWidget(_cancelBtn, row=5, col=1)
@@ -256,7 +256,7 @@ class extractPeaksDialog(QDialog):
             _max = _df.max()
             _SD = _df.std()
             snr = _max / _SD
-            print ("max {}, sd {}, snr {}".format(_max, _SD, snr))
+            #print ("max {}, sd {}, snr {}".format(_max, _SD, snr))
             # add histogram of SNR values with 'SNRcut'-off drawn?
             
             self.whitelists[_condi] = snr.where(snr >= self.badSNRcut).dropna()
@@ -265,8 +265,8 @@ class extractPeaksDialog(QDialog):
             wl_count += len(self.whitelists[_condi])
             bl_count += len(self.blacklists[_condi])
         
-            print ("Whitelist: "+_condi, self.whitelists[_condi])
-            print ("Blacklist: "+_condi, self.blacklists[_condi])
+            #print ("Whitelist: "+_condi, self.whitelists[_condi])
+            #print ("Blacklist: "+_condi, self.blacklists[_condi])
         
         #update dialog
         skipLabelText = "Skipping {0} traces out of {1} for low SNR.".format(bl_count, wl_count+bl_count)

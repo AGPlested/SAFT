@@ -2,6 +2,26 @@ import itertools
 import pandas as pd
 import numpy as np
 
+def histogramFitParams(conditions):
+    _a = [conditions, ['ROI', 'id', 'N', 'Pr/mu', 'Stat', 'statistic', 'P', 'type']]
+    _cols =pd.MultiIndex.from_product(_a, names=('conditions', 'fit params'))
+    return pd.DataFrame(columns=_cols)     # dataframe for Pr values from fitting
+
+class HistogramFitStore:
+    def __init__(self, _ROI, _conditions):
+        self.ROI = _ROI
+        self.conditions = list(_conditions)
+        _c = [self.conditions, ["Hx", "Hy", "Fitx", "Fity"]]
+        _cols =pd.MultiIndex.from_product(_c, names=("conditions", "data"))
+        self.df = pd.DataFrame (data=_hfdata, columns=_cols)
+        
+    def addData(condition, hx, hy, fitx, fity):
+        _c = condition
+        self.df[_c]["Hx"] = hx
+        self.df[_c]["Hy"] = hy
+        self.df[_c]["Fitx"] = fitx
+        self.df[_c]["Fity"] = fity
+
 class HistogramsR():
     """ a data frame for the common histogram result """
 
@@ -136,7 +156,7 @@ class Dataset:
         self.DSname = _state
         self.isEmpty = True
         self.GUIcontrols = {}
-        self.GUIcontrols["autopeaks"] = 'Enable'   # a dataset can activate/deactivate parts of the GUI
+        self.GUIcontrols["autoPeaks"] = "Enable"   # a dataset can activate/deactivate parts of the GUI, activated by default
         self.ROI_list = []
     
     def setDSname(self, _name):
@@ -179,7 +199,7 @@ class Store:
         #traces should be arranged as ROIs over different conditions
         if ds.DSname in self.store:
             #modify ds.name to allow storage
-            ds.name += "_cp"
+            ds.DSname += "_cp"
         
         self.store[ds.DSname] = ds
             

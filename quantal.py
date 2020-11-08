@@ -5,6 +5,29 @@ from scipy import optimize
 import pandas as pd
 from scipy.stats import binom, poisson
 
+def cdf(x, func, max, step, *fargs):
+    """calculate cdf for function. extra arguments (after x) for func in should be given in fargs"""
+    print (x, step)
+    _denom = 0
+    for d in np.arange(0, max, step):
+        _denom += func(d, *fargs)
+    
+    f = []
+    
+    for xi in x:
+        _num = 0
+        for d in np.arange(0, xi, step):
+            _num += func(d, *fargs)
+        
+        f.append(_num/_denom)
+    
+    f_array = np.array(f)
+    print (f_array)
+    return f_array
+    
+
+
+
 def gaussian(x, height, center, width, offset):
     """x is an array or a scalar"""
     return height * np.exp(-(x - center)**2 / (2 * width ** 2)) + offset

@@ -74,6 +74,8 @@ class SAFTMainWindow(QMainWindow):
         
         self.store = Store()
         self.dataLoaded = False
+        self.pauseUpdates = False
+        self.noCrosshair = True
         self.workingDataset = Dataset("Empty") # unnamed, empty dataset for traces, pk results and GUI settings
         self.workingDataset.ROI_list = None
         self.filename = None
@@ -206,8 +208,8 @@ class SAFTMainWindow(QMainWindow):
         # to stop label jiggling about (graphicswidget method)
         self.plots.peakslabel.setFixedWidth(100)
         
-        self.plots.addItem(self.plots.cursorlabel, row=4, col=2, rowspan=1, colspan=1)
-        self.plots.addItem(self.plots.peakslabel, row=4, col=1, rowspan=1, colspan=1)
+        self.plots.addItem(self.plots.cursorlabel, row=4, col=2)
+        self.plots.addItem(self.plots.peakslabel, row=4, col=1)
         
         self.central_layout.addWidget(self.plots, row=0, col=0, rowspan=1,colspan=2)
      
@@ -322,8 +324,8 @@ class SAFTMainWindow(QMainWindow):
             self.fitHistogramsOption = False
     
     
-    def manualPeakToggle (self, b):
-        """disable controls if we are editing peaks manually"""
+    def manualPeakToggle (self, b=None):
+        """Disable controls if we are editing peaks manually"""
         #print ("MPT {}".format(b))
         if self.manual.isChecked() == True:
             # enter manual mode
@@ -342,12 +344,13 @@ class SAFTMainWindow(QMainWindow):
             self.removeSml_Spin.setDisabled(True)
             
             # Turn on crosshair and change mouse mode in p3.
-            # cross hair
-            self.vLine = pg.InfiniteLine(angle=90, movable=False)
-            self.hLine = pg.InfiniteLine(angle=0, movable=False)
-            self.p3.addItem(self.vLine, ignoreBounds=True)
-            self.p3.addItem(self.hLine, ignoreBounds=True)
             
+            if self.noCrosshair:
+                self.vLine = pg.InfiniteLine(angle=90, movable=False)
+                self.hLine = pg.InfiniteLine(angle=0, movable=False)
+                self.p3.addItem(self.vLine, ignoreBounds=True)
+                self.p3.addItem(self.hLine, ignoreBounds=True)
+                self.noCrosshair = False
             # add a hint
             self.p3.setTitle('Zoom - Manual editing  L-click to add/remove peaks', color="F0F0F0", justify="right")
             
@@ -369,10 +372,14 @@ class SAFTMainWindow(QMainWindow):
             # Change the hint
             self.p3.setTitle('Zoom - Auto peak mode', color="F0F0F0", justify="right")
             
+            if self.noCrosshair == False:
             # Remove crosshair from p3.
-            self.p3.removeItem(self.vLine)
-            self.p3.removeItem(self.hLine)
-     
+                self.p3.removeItem(self.vLine)
+                self.p3.removeItem(self.hLine)
+                self.noCrosshair = True
+        
+        else:
+            print ("DEUBG: Fell through without updating")
      
     def createControlsWidgets(self):
         """control panel"""
@@ -835,6 +842,11 @@ class SAFTMainWindow(QMainWindow):
             self.workingDataset = self.store.retrieveWorkingSet(self.datasetCBx.currentText())
             print ('Retrieved {}'.format(self.workingDataset.DSname))
         
+            # update the ROI list combobox (should have a list)
+            # needed for updating GUI
+            self.updateROI_list_Box()
+            self.ROI_Change()
+            
             # print GUI control dict
             print ("swdsGC {}".format(self.workingDataset.GUIcontrols))
             
@@ -845,14 +857,15 @@ class SAFTMainWindow(QMainWindow):
                 elif k == "print":
                     print (v)
 
-            # update the ROI list combobox, should have a list
-            self.updateROI_list_Box()
-            self.ROI_Change()
+            
+            
+            
         
   
     def autoPeaks_GUI_switch(self, v):
         if v == "Disable":
             print ("autoPeaks_GUI_switch : Disable")
+            self.pauseUpdates = True
             self.autobs_Box.setValue('None')
             self.auto_bs = False
             self.manual.setChecked(True)
@@ -860,14 +873,20 @@ class SAFTMainWindow(QMainWindow):
             self.auto.setDisabled(True)
             self.autoPeaks = False
             
+            self.pauseUpdates = False
+            self.manualPeakToggle()
+            
         elif v == "Enable":
             print ("autoPeaks_GUI_switch : Enable")
-            self.autobs_Box.setValue('Auto')
-            self.auto_bs = True
-            self.manual.setChecked(False)
+            #self.autobs_Box.setValue('Auto')
+            #self.auto_bs = True
+            #self.manual.setChecked(False)
+            self.pauseUpdates = True
             self.manual.setEnabled(True)
             self.auto.setEnabled(True)
-            self.autoPeaks = True
+            #self.autoPeaks = True
+            self.pauseUpdates = False
+            self.manualPeakToggle()
     
     def getGroups(self):
         """launch group processing dialog"""
@@ -1137,7 +1156,9 @@ class SAFTMainWindow(QMainWindow):
         # we are not interested in updating data if there isn't any
         if self.dataLoaded == False:
             return
-        
+        # used when the GUI is updating at multiple places
+        if self.pauseUpdates:
+            return
         # something changed in the control panel, get latest values
         _ROI = self.ROI_selectBox.currentText()
               
@@ -1186,8 +1207,12 @@ class SAFTMainWindow(QMainWindow):
                 self.auto_bs = False
                 print ('No baseline subtraction for variance trace')
                 
-            else:
+            elif _ROI != '':
+                print ("condi, roi {} {}".format(_condi, _ROI))
                 y[i] = self.workingDataset.traces[_condi][_ROI].to_numpy()
+            
+            else:
+                return
             
             if self.auto_bs:
                 # baseline
