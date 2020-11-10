@@ -14,7 +14,7 @@ from scipy.stats import chisquare, kstest
 ### SAFT imports
 from dataStructures import HistogramFitStore as HFStore
 from dataStructures import histogramFitParams
-from utils import getRandomString
+from utils import getRandomString, linePrint
 from quantal import fit_nGaussians, nGaussians_display, fit_nprGaussians, fit_PoissonGaussians_global, PoissonGaussians_display, nprGaussians_display, fit_nprGaussians_global, nprGaussians, poissonGaussians, cdf
 
 def despace (s):
@@ -191,6 +191,7 @@ class histogramFitDialog(QDialog):
         self.saveFits = False
         self.filename = None
         self.dataname = None
+        self.fitInfoHeader = "Fits for current ROI:\nROI    ID     N      P/mu   Test   Stat.  Pval.  Fit Type\n"
         self.outputF = txOutput(self.outputHeader)
         self.current_ROI = None
         self.flag = "Auto max"      #how to find histogram x-axis
@@ -227,8 +228,8 @@ class histogramFitDialog(QDialog):
         
         _fileGrid.addWidget(self.loadBtn, 0, 0, 1, 1)
         _fileGrid.addWidget(self.saveBtn, 1, 0, 1, 1)
-        _fileGrid.addWidget(self.sHFCurves, 2, 0, 1, 1)
-        _fileGrid.addWidget(self.dataname_label, 0, 1, 2, 1)
+        _fileGrid.addWidget(self.sHFCurves, 3, 0, 1, 1)
+        _fileGrid.addWidget(self.dataname_label, 2, 0, 1, 1)
         _fileOptions.setLayout(_fileGrid)
         
         # panel of display options for histograms
@@ -271,7 +272,7 @@ class histogramFitDialog(QDialog):
         _histnG_label = QtGui.QLabel("Gaussian components")
         _histnG_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.histo_nG_Spin = pg.SpinBox(value=6, step=1, bounds=[1,20], delay=0, int=True)
-        self.histo_nG_Spin.setFixedSize(80, 25)
+        self.histo_nG_Spin.setFixedSize(50, 25)
         self.histo_nG_Spin.setAlignment(QtCore.Qt.AlignRight)
         #print (self.histo_nG_Spin.alignment())
         self.histo_nG_Spin.valueChanged.connect(self.updateHistograms)
@@ -300,48 +301,50 @@ class histogramFitDialog(QDialog):
         _PoissonGlobalFitBtn = QPushButton('Global Poisson fit')
         _PoissonGlobalFitBtn.clicked.connect(self.PoissonfitGlobalGaussians)
         
-        self.fitInfo = txOutput("Fits for current ROI:\n")
+        self.fitInfo = txOutput(self.fitInfoHeader)
+        self.fitInfo.size(400, 120)
         
         
-        _fitGrid.addWidget(_histnG_label, 0, 2, 1, 2)
-        _fitGrid.addWidget(self.histo_nG_Spin, 0, 4)
+        _fitGrid.addWidget(_histnG_label, 0, 2)
+        _fitGrid.addWidget(self.histo_nG_Spin, 0, 3)
         _fitGrid.addWidget(_histw_label, 0, 0)
         _fitGrid.addWidget(self.histo_q_Spin, 0, 1)
-        _fitGrid.addWidget(_doFitBtn, 1, 0)
-        _fitGrid.addWidget(_sumFit_label, 1, 1, 1, 2)
-        _fitGrid.addWidget(self.reFitSeparateBtn, 2, 0)
-        _fitGrid.addWidget(_reFit_label, 2, 1, 1, 2)
-        _fitGrid.addWidget(_globFitBtn, 3, 0)
-        _fitGrid.addWidget(_globFit_label, 3, 1, 1, 2)
-        _fitGrid.addWidget(_PoissonGlobalFitBtn, 4, 0)
-        _fitGrid.addWidget(_PoissonGlobalFit_label, 4, 1, 1, 2)
-        _fitGrid.addWidget(self.fitInfo.frame, 1, 3, -1, 2)
+        _fitGrid.addWidget(_doFitBtn, 1, 0, 1, 2)
+        _fitGrid.addWidget(_sumFit_label, 1, 2, 1, 3)
+        _fitGrid.addWidget(self.reFitSeparateBtn, 2, 0, 1, 2)
+        _fitGrid.addWidget(_reFit_label, 2, 2, 1, 3)
+        _fitGrid.addWidget(_globFitBtn, 3, 0, 1, 2)
+        _fitGrid.addWidget(_globFit_label, 3, 2, 1, 3)
+        _fitGrid.addWidget(_PoissonGlobalFitBtn, 4, 0, 1, 2)
+        _fitGrid.addWidget(_PoissonGlobalFit_label, 4, 2, 1, 3)
+        _fitGrid.addWidget(self.fitInfo.frame, 0, 5, -1, 1)
         _fittingPanel.setLayout(_fitGrid)
         
         # histogram analysis layout
         self.hlayout = QGridLayout()
         
         # histogram view
-        self.histogramLayPos = (0, 0, 2, 2)
+        self.histogramLayPos = (0, 0, 2, 3)
         self.hlayout.addWidget(self.hPlot.glw, *self.histogramLayPos)
         
         _fittingPanel.setFixedHeight(180)
-        self.hlayout.addWidget(_fittingPanel, 2, 0, 1, 1)
-        
-        _histOptions.setFixedHeight(180)
-        self.hlayout.addWidget(_histOptions, 2, 1, 1, 1)
+        self.hlayout.addWidget(_fittingPanel, 3, 0, 1, 3)
         
         # ROI controls
         self.RC = ROI_Controls(self)        #need to send this instance as parent
-        self.RC.ROI_box.setFixedHeight(80)
-        self.hlayout.addWidget(self.RC.ROI_box, 3, 0, 1, 2)
+        self.RC.ROI_box.setFixedHeight(120)
+        self.hlayout.addWidget(self.RC.ROI_box, 2, 0, 1, 2)
         
-        # text output console
-        self.outputF.frame.setFixedSize(400, 550)
-        self.hlayout.addWidget(self.outputF.frame, 0, 2, 2, 1)
+        # Display options for the histograms
+        _histOptions.setFixedSize(250, 120)
+        self.hlayout.addWidget(_histOptions, 2, 2, 1, 1)
         
-        _fileOptions.setFixedSize(400, 200)
-        self.hlayout.addWidget(_fileOptions, 2, 2, 2, 1)
+        # Text output console
+        self.outputF.frame.setFixedSize(300, 550)
+        self.hlayout.addWidget(self.outputF.frame, 0, 3, 2, 1)
+        
+        _fileOptions.setFixedSize(300, 200)
+        self.hlayout.addWidget(_fileOptions, 2, 3, 3, 1)
         
         self.setLayout(self.hlayout)
     
@@ -360,7 +363,7 @@ class histogramFitDialog(QDialog):
         
         # clear current fits and info frame without storing anything
         self.currentROIFits = pd.DataFrame(columns=self.currentROIFits.columns)
-        self.fitInfo = txOutput("Fits for current ROI:\n")
+        self.fitInfo.reset(self.fitInfoHeader)
             
         self.ROI_change_command(2)
         self.outputF.appendOutText ("Advance to next ROI: {}".format(self.current_ROI))
@@ -375,6 +378,10 @@ class histogramFitDialog(QDialog):
         
     def save(self):
         #maybe we just have a filename not a path
+        self.outputF.appendOutText ("Keeping {} fit results for {} --\n".format(len(self.currentROIFits.index),self.current_ROI), "Magenta")
+        
+        self.fitResults = self.fitResults.append(copy.copy(self.currentROIFits), ignore_index=True)
+        
         if self.filename != None:
         
             if os.path.split(self.filename)[0] is not None:
@@ -405,7 +412,7 @@ class histogramFitDialog(QDialog):
         self.outputF.appendOutText ("Advance to next ROI: {}".format(self.current_ROI), "Magenta")
         # empty the current fits dataframe
         self.currentROIFits = pd.DataFrame(columns=self.currentROIFits.columns)
-        self.fitInfo.reset("Fits for current ROI:\n")
+        self.fitInfo.reset(self.fitInfoHeader)
         
     
     def reFitSeparated(self):
@@ -628,6 +635,12 @@ class histogramFitDialog(QDialog):
                 # when complete, toggle to bypass next time
                 self.split_state = True
             
+                
+            #get the next empty line for writing results out
+            imax = self.currentROIFits.index.max()
+            if np.isnan(imax):
+                imax = 0
+            
             for i, _condition in enumerate(self.peakResults.keys()):
                 # colours
                 col_series = (i, len(self.peakResults.keys()))
@@ -657,9 +670,9 @@ class histogramFitDialog(QDialog):
                     _pr = _opti.x[1]
                     _resid = _opti.fun
                     _chiSq = chisquare(hy, hy + _resid)
-                    #I for individual fit
+                    # I for individual fit
                     _pr_results = [_ROI, _ID, _num, _pr, "chi_sq", _chiSq[0], _chiSq[1], "I" ]
-                    self.fitInfo.appendOutText (_pr_results)
+                    self.fitInfo.appendOutText (linePrint(_pr_results, pre=4), "cyan")
                     self.saveBtn.setEnabled(True)
                     
                     # display the fit
@@ -669,10 +682,7 @@ class histogramFitDialog(QDialog):
                     _c.setPen(color=col_series, width=3)
                     _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
                     
-                    # continuous updating/overwriting FIXFIX
-                    imax = self.currentROIFits.index.max()
-                    if np.isnan(imax):
-                        imax = 0
+                    # save results to dataframe
                     self.currentROIFits.loc[imax + 1, (_condition, slice(None))]= _pr_results
                     
                 
@@ -700,6 +710,10 @@ class histogramFitDialog(QDialog):
                     _ws = _opti.x[1]
                     _scale = _opti.x[2]
                     _resid = _opti.fun.reshape(-1, len(self.peakResults.keys()))
+                    imax = self.currentROIFits.index.max()
+                    if np.isnan(imax):
+                        imax = 0
+                    
                     for i, _condition in enumerate(self.peakResults.keys()):
                         # colours
                         col_series = (i, len(self.peakResults.keys()))
@@ -728,16 +742,14 @@ class histogramFitDialog(QDialog):
                             _hx_u, _hy_u = PoissonGaussians_display (_hxc, _num, _q, _ws, [_scale, _mu])
                             _globalR = [_ROI, _ID, _num, _mu, "K-S", KS.statistic, KS.pvalue, "PG"]
                         
-                        self.fitInfo.appendOutText ("{} _globalR: {}".format(_condition, _globalR), "Green")
+                        self.fitInfo.appendOutText (linePrint(_globalR, pre=4), "Green")
                         _c = target.plot(_hx_u, _hy_u, name=legend)
                         _c.setPen(color=col_series, width=3)
                         _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
                         
-                        imax = self.currentROIFits.index.max()
-                        if np.isnan(imax):
-                            imax = 0
                         self.currentROIFits.loc[imax + 1, (_condition, slice(None))] = _globalR
                         print (self.currentROIFits)
+                    
                     self.saveBtn.setEnabled(True) # results so we have something to save
                     
                 else :
@@ -796,9 +808,11 @@ class histogramFitDialog(QDialog):
             
         
 if __name__ == '__main__':
-    
-    test = True
-    
+    if len(sys.argv) > 1:
+        if sys.argv[1] == 'test':
+            test = True
+            print ("test mode: auto load data")
+            
     app = QApplication([])
     main_window = histogramFitDialog()
     

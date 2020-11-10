@@ -47,6 +47,21 @@ def getRandomString(length):
     return ''.join(random.choice(letters) for i in range(length))
     #print("Random string of length", length, "is:", result_str)
 
+def linePrint(results, pre=2):
+    """changes a list of results into readable string"""
+    
+    readable = ""
+    
+    for item in results:
+        if isinstance(item, str):
+            readable += "{:^7}".format(item)
+        elif isinstance(item, float):
+            readable += "{:7.{p}f}".format(item, p=pre)
+        else:
+            readable += "{:^7}".format(str(item))
+        
+    return readable
+
 def findCurve(items):
     # assume there is one PG PlotDataItem with curve data and return it
     # the others should be empty
