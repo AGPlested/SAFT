@@ -13,6 +13,7 @@ from PySide2.QtWidgets import QApplication, QMainWindow, QWidget, QGridLayout, Q
 #package imports
 import numpy as np
 import pandas as pd
+from scipy import __version__ as scipy_version
 import scipy.signal as scsig
 
 #SAFT imports
@@ -117,13 +118,14 @@ class SAFTMainWindow(QMainWindow):
         QMessageBox.about (self, "About SAFT",
         """ ----*- SAFT {0} -*----
         \nSemi-Automatic Fluorescence Trace analysis
-        \nAndrew Plested 2020
+        \nAndrew Plested FMP- and HU-Berlin 2020
         \nThis application can analyse sets of fluorescence time series.
-        \nIt makes heavy use of PyQtGraph (Luke Campagnola).
+        \nIt makes heavy use of PyQtGraph ({8}, Luke Campagnola).
         \nPython {1}
-        \nPySide2 {2} built on Qt {3}
-        \nRunning on {4}
-        """.format(__version__, platform.python_version(), pyside_version, QtCore.__version__, platform.platform()))
+        \nPandas {2}, Numpy {3}, SciPy {4}
+        \nPySide2 {5} built on Qt {6}
+        \nRunning on {7}
+        """.format(__version__, platform.python_version(), pd.__version__, np.__version__, scipy_version, pyside_version, QtCore.__version__, platform.platform(), pg.__version__))
     
     
     def getStarted(self):
