@@ -9,6 +9,9 @@ numpy==1.18.4
 scipy==1.2.0
 pyqtgraph==0.11.0
 pandas==0.24.0
+matplotlib (3.3.2 works?)
+
+
 pythonapp 1.3??
 
 You need PyObjectiveC Cocoa framework for some details
