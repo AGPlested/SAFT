@@ -11,4 +11,7 @@ pyqtgraph==0.11.0
 pandas==0.24.0
 pythonapp 1.3??
 
+You need PyObjectiveC Cocoa framework for some details
+pip install pyobjc-framework-Cocoa
+
 pip install --upgrade --force-reinstall numpy??
