@@ -22,11 +22,9 @@ def cdf(x, func, max, step, *fargs):
         f.append(_num/_denom)
     
     f_array = np.array(f)
-    print (f_array)
+    #print (f_array)
     return f_array
     
-
-
 
 def gaussian(x, height, center, width, offset):
     """x is an array or a scalar"""

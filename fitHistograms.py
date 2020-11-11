@@ -73,7 +73,7 @@ class ROI_Controls(QtGui.QWidget):
         buttonList.append(_skipBtn)
         _skipBtn.setFixedWidth(220)
 
-        posn = [(0,1), (0,2), (0,3), (0,4), (0,0), (1,0)]
+        posn = [(0,1), (0,2), (0,3), (0,4), (1,1,1,2), (1,3,1,2)]
         
         for counter, btn in enumerate(buttonList):
             
@@ -83,9 +83,9 @@ class ROI_Controls(QtGui.QWidget):
             l.addWidget(btn, *posn[counter])
           
         self.ROI_label = QtGui.QLabel("-")
-        self.ROI_label.setFixedSize(300, 25)
+        self.ROI_label.setFixedSize(150, 25)
         
-        l.addWidget(self.ROI_label, 1, 1, 1, 4)
+        l.addWidget(self.ROI_label, 0, 0, 2, 1)
         self.ROI_box.setLayout(l)
         
         #self.ctrl_signal.connect(self.buttonPressed)
@@ -191,7 +191,7 @@ class histogramFitDialog(QDialog):
         self.saveFits = False
         self.filename = None
         self.dataname = None
-        self.fitInfoHeader = "Fits for current ROI:\nROI    ID     N      P/mu   Test   Stat.  Pval.  Fit Type\n"
+        self.fitInfoHeader = "Fits for current ROI:\n" + linePrint(['ROI', 'ID', 'N', 'P/mu', 'Test', 'Stat.', 'Pval.', 'Fit'])
         self.outputF = txOutput(self.outputHeader)
         self.current_ROI = None
         self.flag = "Auto max"      #how to find histogram x-axis
@@ -612,7 +612,7 @@ class histogramFitDialog(QDialog):
             
         
         _hsum = self.sum_hist.currentText()
-        self.outputF.appendOutText ("Update {0} Histogram(s) for {1} with Nbins = {2} and maximum dF/F = {3}.".format(_hsum, _ROI, _nbins, _max))
+        self.outputF.appendOutText ("Update {0} Histogram(s) for {1} with {2} bins and maximum dF/F = {3:0.3f}.".format(_hsum, _ROI, _nbins, _max))
     
         if "Global" in self.fitHistogramsOption:
             ystack = []
@@ -672,7 +672,7 @@ class histogramFitDialog(QDialog):
                     _chiSq = chisquare(hy, hy + _resid)
                     # I for individual fit
                     _pr_results = [_ROI, _ID, _num, _pr, "chi_sq", _chiSq[0], _chiSq[1], "I" ]
-                    self.fitInfo.appendOutText (linePrint(_pr_results, pre=4), "cyan")
+                    self.fitInfo.appendOutText (linePrint(_pr_results, pre=4), "darkmagenta")
                     self.saveBtn.setEnabled(True)
                     
                     # display the fit
@@ -731,6 +731,7 @@ class histogramFitDialog(QDialog):
                             legend = 'Global Fit {} Gaussians, Pr: {:.3f}, q: {:.3f}\nw: {:.3f}, Events: {:.3f}'.format(_num, _pr, _q, _ws, _scale)
                             _hx_u, _hy_u = nprGaussians_display (_hxc, _num, _q, _ws, [_scale, _pr])
                             _globalR = [_ROI, _ID, _num, _pr, "K-S", KS.statistic, KS.pvalue, "BG"]
+                            _fitinfoCol = "darkred"
                         
                         elif "Poisson" in self.fitHistogramsOption:
                             _mu = _opti.x[i+3]
@@ -741,8 +742,9 @@ class histogramFitDialog(QDialog):
                             legend = 'Global Fit {} Gaussians, mu: {:.3f}, q: {:.3f}\nw: {:.3f}, Events: {:.3f}'.format(_num,_mu,_q, _ws, _scale)
                             _hx_u, _hy_u = PoissonGaussians_display (_hxc, _num, _q, _ws, [_scale, _mu])
                             _globalR = [_ROI, _ID, _num, _mu, "K-S", KS.statistic, KS.pvalue, "PG"]
+                            _fitinfoCol = "darkcyan"
                         
-                        self.fitInfo.appendOutText (linePrint(_globalR, pre=4), "Green")
+                        self.fitInfo.appendOutText (linePrint(_globalR, pre=4), _fitinfoCol)
                         _c = target.plot(_hx_u, _hy_u, name=legend)
                         _c.setPen(color=col_series, width=3)
                         _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
@@ -804,7 +806,7 @@ class histogramFitDialog(QDialog):
                 # as long as we have a fit, we can enable the separate fit button
                 if _opti.success:
                     self.reFitSeparateBtn.setEnabled(True)
-                    self.outputF.appendOutText ("opti.x: {} opti.cost {}".format(_opti.x, _opti.cost), "Green")
+                    self.outputF.appendOutText ("Summed Histogram fit\nopti.x: {}\nCost: {}".format(linePrint(_opti.x), _opti.cost), "darkgreen")
             
         
 if __name__ == '__main__':
