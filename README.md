@@ -1,4 +1,4 @@
-# SAFT v0.3
+# SAFT v. 0.3
 Semi Automatic Fluorescent Trace analysis
 
 ## Requirements
@@ -10,6 +10,7 @@ scipy==1.2.0
 pyqtgraph==0.11.0
 pandas==0.24.0
 matplotlib (3.3.2 works?)
+xlrd>=1.0.0
 pyobjc-framework-Cocoa
 
 pythonapp 1.3??
