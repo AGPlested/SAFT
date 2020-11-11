@@ -776,7 +776,7 @@ class histogramFitDialog(QDialog):
                 
             sumhy = np.zeros(_nbins)
             for _condition in self.peakResults.keys():
-                _pdata = self.peakResults[_condition][_ROI]
+                _pdata = self.peakResults[_condition][_ROI].dropna()
                 hy, hx  = np.histogram(_pdata, bins=_nbins, range=(0., _max))
                 sumhy += hy
             
