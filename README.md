@@ -1,20 +1,22 @@
-# SAFT
+# SAFT v0.3
 Semi Automatic Fluorescent Trace analysis
 
 ## Requirements
-python 3.7.6
+Python 3.7.x
 
-PySide2==5.14.0
+PySide2>=5.13.2
 numpy==1.18.4
 scipy==1.2.0
 pyqtgraph==0.11.0
 pandas==0.24.0
 matplotlib (3.3.2 works?)
-
+pyobjc-framework-Cocoa
 
 pythonapp 1.3??
 
-You need PyObjectiveC Cocoa framework for some details
-pip install pyobjc-framework-Cocoa
+PyObjectiveC Cocoa framework is far from essential.
+
 
 pip install --upgrade --force-reinstall numpy??
+
+load the SAFT_Data.xlsx file
