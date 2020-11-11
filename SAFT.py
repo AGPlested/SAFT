@@ -647,7 +647,7 @@ class SAFTMainWindow(QMainWindow):
         self.peak_CB.currentIndexChanged.connect(self.ROI_Change)
         
         # spin boxes for CWT algorithm parameters
-        self.cwt_SNR_Spin = pg.SpinBox(value=1.5, step=.1, bounds=[.1, 4], delay=0, int=False)
+        self.cwt_SNR_Spin = pg.SpinBox(value=1.3, step=.1, bounds=[.1, 4], delay=0, int=False)
         self.cwt_SNR_Spin.setFixedSize(70, 25)
         self.cwt_SNR_Spin.valueChanged.connect(self.ROI_Change)
         
@@ -1369,8 +1369,9 @@ class SAFTMainWindow(QMainWindow):
             "Open Data", os.path.expanduser("~"))[0]
         
         if self.filename:
-            #very simple and rigid right now - must be an excel file with conditions
-            #should be made generic - load all conditions into dictionary of dataframes no matter what
+            """   #OLD WAY
+                #very simple and rigid right now - must be an excel file with conditions
+                #should be made generic - load all conditions into dictionary of dataframes no matter what
             with pg.ProgressDialog("Loading conditions...", 0, len(self.conditions)) as dlg:
                 _traces = {}
                 for _sheet in self.conditions:
@@ -1382,6 +1383,15 @@ class SAFTMainWindow(QMainWindow):
                         print ("Probably: XLDR error- no sheet named exactly {0}. Please check it.".format(_sheet))
                         self.conditions.remove(_sheet)
                 # decide if there is data or not
+            """
+            #"None" reads all the sheets into a dictionary of data frames
+            _traces = pd.read_excel(self.filename, None, index_col=0)
+        
+        else:
+            print ("file dialog failed")
+            return
+        
+        self.conditions = list(_traces.keys())
         
         print ("Loaded following conditions: ", self.conditions)
         
@@ -1458,7 +1468,7 @@ if __name__ == "__main__":
             
     
     __version__ = "v. 0.3"
-    print (sys.version)
+    #print (sys.version)
     app = QApplication([])
     smw = SAFTMainWindow()
     smw.show()
