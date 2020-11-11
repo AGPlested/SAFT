@@ -78,7 +78,7 @@ class ROI_Controls(QtGui.QWidget):
         for counter, btn in enumerate(buttonList):
             
             btn.pressed.connect(lambda val=counter: self.buttonPressed(val))
-            #btn.clicked.connect(self.ctrl_signal.emit)
+           
             #self.ctrl_signal.connect(parent.ctrl_signal.emit)
             l.addWidget(btn, *posn[counter])
           
@@ -87,14 +87,10 @@ class ROI_Controls(QtGui.QWidget):
         
         l.addWidget(self.ROI_label, 0, 0, 2, 1)
         self.ROI_box.setLayout(l)
-        
-        #self.ctrl_signal.connect(self.buttonPressed)
 
     def update_ROI_label(self, t):
         self.ROI_label.setText (t)
         #with pyside2 5.13 this label (and other GUI items) doesn't update
-        #print ("Change label: {}".format(t))
-        #self.ROI_label.repaint()
         
     def buttonPressed(self, _b):
         #print (_b)
@@ -398,8 +394,8 @@ class histogramFitDialog(QDialog):
         
         self.fitResults.to_excel(_outfile)
         
-        if self.saveFits:
-            self.Fits.to_excel("Fits_" + self.filename)
+        ##if self.saveFits:
+         ##   self.Fits.to_excel("Fits_" + self.filename)
         
         self.outputF.appendOutText ("Write data out to disk {}".format(_outfile))
     
@@ -751,6 +747,7 @@ class histogramFitDialog(QDialog):
                         
                         self.currentROIFits.loc[imax + 1, (_condition, slice(None))] = _globalR
                         print (self.currentROIFits)
+                        self.Fits_data['ID']
                     
                     self.saveBtn.setEnabled(True) # results so we have something to save
                     
