@@ -395,7 +395,7 @@ class histogramFitDialog(QDialog):
         self.fitResults.to_excel(_outfile)
         
         ##if self.saveFits:
-         ##   self.Fits.to_excel("Fits_" + self.filename)
+         ##   self.Fits_data.to_excel("Fits_" + self.filename)
         
         self.outputF.appendOutText ("Write data out to disk {}".format(_outfile))
     
@@ -747,7 +747,7 @@ class histogramFitDialog(QDialog):
                         
                         self.currentROIFits.loc[imax + 1, (_condition, slice(None))] = _globalR
                         print (self.currentROIFits)
-                        self.Fits_data['ID']
+                        #self.Fits_data['ID']
                     
                     self.saveBtn.setEnabled(True) # results so we have something to save
                     
