@@ -13,7 +13,8 @@ class HistogramFitStore:
         self.conditions = list(_conditions)
         _c = [self.conditions, ["Hx", "Hy", "Fitx", "Fity"]]
         _cols =pd.MultiIndex.from_product(_c, names=("conditions", "data"))
-        self.df = pd.DataFrame (data=_hfdata, columns=_cols)
+        self.df = pd.DataFrame (columns=_cols)
+        self.empty = True
         
     def addData(condition, hx, hy, fitx, fity):
         _c = condition
@@ -21,6 +22,7 @@ class HistogramFitStore:
         self.df[_c]["Hy"] = hy
         self.df[_c]["Fitx"] = fitx
         self.df[_c]["Fity"] = fity
+        self.empty = False
 
 class HistogramsR():
     """ a data frame for the common histogram result """

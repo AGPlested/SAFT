@@ -30,7 +30,7 @@ class testData():
         self.open_file()
         
     def open_file(self):
-        self.filename = "BK_ROI_Trial.xlsx"
+        self.filename = "ExPeak_Data.xlsx"
       
         #"None" reads all the sheets into a dictionary of data frames
         self.histo_df = pd.read_excel(self.filename, None, index_col=0)
@@ -383,10 +383,12 @@ class histogramFitDialog(QDialog):
             if os.path.split(self.filename)[0] is not None:
                 _outfile = os.path.split(self.filename)[0] + "Pr_" + os.path.split(self.filename)[1]
             else :
-                _outfile = "Pr_" + self.filename
-            print (_outfile)
+                _outfile = "HFitRes_" + self.filename
+            
+            print ("Wrote {} to disk.".format(_outfile))
+        
         else:
-            _outfile = self.dataname+"_Pr.xlsx"
+            _outfile = self.dataname+"_HFitRes.xlsx"
             
             
         # FIXFIX fitted curves should be saved if the IDs are in the results table!!!
@@ -615,6 +617,8 @@ class histogramFitDialog(QDialog):
             xstack = []
         
         _ID = getRandomString(4)
+        if self.fitHistogramsOption not in ["None", "Individual", "Summed"]:
+            self.Fits_data[_ID] = HFStore(self.current_ROI, self.peakResults.keys())
         
         if _hsum == "Separated":
             _num = self.histo_nG_Spin.value()
@@ -683,7 +687,7 @@ class histogramFitDialog(QDialog):
                     
                 
             if self.fitHistogramsOption == "Individual":
-                # if fits were done, they are complete so show results FIXFIX
+                # if fits were done, they are complete so show results
                 self.outputF.appendOutText ("results: {}".format(self.currentROIFits.iloc[-1]))
             
             if "Global" in self.fitHistogramsOption:

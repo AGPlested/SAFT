@@ -1453,9 +1453,10 @@ if __name__ == "__main__":
                     app_info['CFBundleName'] = app_name.upper() #ensure it is in upper case.
         except ImportError:
             print ("Failed to import NSBundle, couldn't change menubar name." )
-            pass
+            
     
-    __version__ = "v. 0.2"
+    __version__ = "v. 0.3"
+    print (sys.version)
     app = QApplication([])
     smw = SAFTMainWindow()
     smw.show()
