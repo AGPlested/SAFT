@@ -15,7 +15,7 @@ You can also launch quantal fitting of histograms as a standalone app, and the f
 
 
 
-### Requirements
+### Requirements 2020-11-12
 ---------
 SAFT was written for macOS. In principle it is cross-platform, in practice it was never launched on Windows or Linux. 
 
