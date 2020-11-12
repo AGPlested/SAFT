@@ -1,4 +1,4 @@
-name: SAFT-test
+name: SAFT
 channels:
   - conda-forge
   - defaults
@@ -12,12 +12,14 @@ dependencies:
   - clangxx=10.0.1=default_hf57f61e_0
   - cycler=0.10.0=py37_0
   - dbus=1.13.18=h18a8e69_0
+  - et_xmlfile=1.0.1=py_1001
   - expat=2.2.10=hb1e8313_2
   - freetype=2.10.4=ha233b18_0
   - gettext=0.19.8.1=hb0f4f8b_2
   - glib=2.66.1=h9bbe63b_0
   - icu=58.2=h0a44026_3
   - intel-openmp=2019.4=233
+  - jdcal=1.4.1=py_0
   - jpeg=9b=he5867d9_2
   - kiwisolver=1.3.0=py37h23ab428_0
   - lcms2=2.11=h92f6f08_0
@@ -47,6 +49,7 @@ dependencies:
   - numpy=1.19.2=py37h456fd55_0
   - numpy-base=1.19.2=py37hcfb5961_0
   - olefile=0.46=py37_0
+  - openpyxl=3.0.5=py_0
   - openssl=1.1.1h=haf1e3a3_0
   - pandas=1.1.3=py37hb1e8313_0
   - pcre=8.44=hb1e8313_0
@@ -77,4 +80,4 @@ dependencies:
   - xz=5.2.5=haf1e3a3_1
   - zlib=1.2.11=h1de35cc_3
   - zstd=1.4.5=h41d2c2f_0
-prefix: /Users/Andrew/miniconda3/envs/SAFTenv
+prefix: /Users/Andrew/miniconda3/envs/SAFT
