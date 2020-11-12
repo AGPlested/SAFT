@@ -1,6 +1,8 @@
 # SAFT v. 0.3
 Semi Automatic Fluorescent Trace analysis
 
+SAFT was written for macOS. In principle it is cross-platform, in practice it was never launched on Windows or Linux. 
+
 Launch SAFT from the Terminal with the command,
 
 `pythonw SAFT.py`
@@ -17,7 +19,6 @@ You can also launch quantal fitting of histograms as a standalone app, and the f
 
 ### Requirements 2020-11-12
 ---------
-SAFT was written for macOS. In principle it is cross-platform, in practice it was never launched on Windows or Linux. 
 
 SAFT depends on quite a few packages, for its GUI (Qt, pyqtgraph, pyside2, matplotlib, pyobjc-framework-Cocoa), for number crunching (numpy, scipy, pandas) and for data handling (pandas, xlrd, openpyxl). 
 
@@ -29,7 +30,7 @@ PySide2 versions up to 5.15 seem to run happily with qt 5.9.7 but it may be diff
 
 Conda currently provides Qt 5.9.7 and this makes it convenient to use conda to set up the package environment. To make getting the right environment in place, we include a conda environment .yml file in the distribution (SAFTenv.yml). To use this, you must have Anaconda or Miniconda. If you don't have Anaconda already, just get Miniconda. https://docs.conda.io/projects/continuumio-conda/en/latest/user-guide/install/macos.html
 
-To install the packages into a fresh environment with Miniconda, go to the SAFT directory and enter the following in the Terminal,
+To install the packages needed for SAFT into a fresh environment with Miniconda, go to the SAFT directory and enter the following in the Terminal,
 
 `conda env create --file SAFTenv.yml`
 
@@ -50,28 +51,17 @@ If you happen to already have an environment named SAFT, you will need to remove
 ### Current dependencies
 -----------
 
-`Python 3.7.x
-
-qt==5.9.7
-
-PySide2>=5.9.x
-
-numpy==1.18.4
-
-scipy==1.2.0
-
-pyqtgraph==0.11.0
-
-pandas==0.24.0
-
-matplotlib (3.3.2 works?)
-
-xlrd>=1.0.0
-
-openpyxl
-
-pyobjc-framework-Cocoa
-
-python.app 3.x`
+Python 3.7.x   
+qt==5.9.7   
+PySide2>=5.9.x  
+numpy==1.18.4  
+scipy==1.2.0  
+pyqtgraph==0.11.0  
+pandas==0.24.0  
+matplotlib (3.3.2 works?)  
+xlrd>=1.0.0  
+openpyxl  
+pyobjc-framework-Cocoa  
+python.app 3.x  
 
 
