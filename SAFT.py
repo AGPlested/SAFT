@@ -68,24 +68,24 @@ class SAFTMainWindow(QMainWindow):
         
         self.split_traces = False
         self.LR_created = False                 # was a pg linear region created yet?
-        self.wasManualOnce = False
-        self.simplePeaks = False            # choice of peak finding algorithm
-        self.autoPeaks = True                  # find peaks automatically or manually
-        self.cwt_width = 5                # width of the continuous wavelet transform peak finding
+        self.wasManualOnce = False              # was manual editing of peaks ever engaged?
+        self.simplePeaks = False                # choice of peak finding algorithm
+        self.autoPeaks = True                   # find peaks automatically or manually
+        self.cwt_width = 5                      # width of the continuous wavelet transform peak finding
         
-        self.store = Store()
-        self.dataLoaded = False
-        self.pauseUpdates = False
-        self.noCrosshair = True
-        self.workingDataset = Dataset("Empty") # unnamed, empty dataset for traces, pk results and GUI settings
+        self.store = Store()                    # store for the datasets not being analysed
+        self.dataLoaded = False                 # was any data loaded yet?
+        self.pauseUpdates = False               # should updates be paused whilst we make a lot of changes to GUI?
+        self.noCrosshair = True                 # is there any crosshair shown?
+        self.workingDataset = Dataset("Empty")  # unnamed, empty dataset for traces, pk results and GUI settings
         self.workingDataset.ROI_list = None
         self.filename = None
         
-        self.conditions = ['0.5 mM', '2 mM', '4 mM', '8 mM']    # example with one too many, conditions are sheet names from xlsx
-        self.datasetList_CBX = ['-']            # maintain our own list of datasets
+        self.conditions = []                    # conditions will be sheet names from xlsx
+        self.datasetList_CBX = ['-']            # maintain our own list of datasets from the combobox
         self.extPa = {}                         # external parameters for the peak scraping dialog
         self.dataLock = True                    # when manual peak editing, lock to trace data
-        self.noPeaks = True
+        self.noPeaks = True                     # were any peaks found yet?
         
         
         # setup main window widgets and menus
