@@ -3,6 +3,41 @@ Semi Automatic Fluorescent Trace analysis
 
 SAFT was written for macOS. In principle it is cross-platform, in practice it was never launched on Windows or Linux. 
 
+### Getting Started - beginners 
+
+(Python/UNIX experts [see below](#experts)
+
+Clone this repository to your machine by pressing the green button at the top of the page and selecting "zip file"
+
+You will get a directory called "SAFT-master", probably in the 'Downloads' folder. 
+
+Use Spotlight (Cmd+Space) to find and launch 'Terminal'. 
+
+To get all the Python packages you need to run SAFT, we recommend using miniconda. Download `miniconda for python 3.6 bash` ; we provide everything you need after that. Here's the link:
+https://docs.conda.io/projects/continuumio-conda/en/latest/user-guide/install/macos.html
+
+
+
+
+> `bash miniconda....`
+
+You'll need to restart the Terminal window. 
+
+Now you need to navigate to the Home directory *in the Terminal*. You start in your "Home" directory. You  The command is cd:
+
+> `cd Downloads\SAFT-master`
+
+To prepare for SAFT, get Conda to create the SAFT environment:
+>`conda env create --file SAFTenv.yml`
+
+> `conda activate SAFT`
+
+To run SAFT :
+
+> `pythonw SAFT.py`
+
+
+
 Launch SAFT from the Terminal with the command,
 
 `pythonw SAFT.py`
@@ -17,7 +52,7 @@ You can also launch quantal fitting of histograms as a standalone app, and the f
 
 
 
-### Requirements 2020-11-12
+### Experts
 ---------
 
 SAFT depends on quite a few packages, for its GUI (Qt, pyqtgraph, pyside2, matplotlib, pyobjc-framework-Cocoa), for number crunching (numpy, scipy, pandas) and for data handling (pandas, xlrd, openpyxl). 
@@ -48,7 +83,7 @@ If you happen to already have an environment named SAFT, you will need to remove
 
 
 
-### Current dependencies
+### Current dependencies 2020-11-12
 -----------
 
 Python 3.7.x   
