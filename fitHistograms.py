@@ -647,13 +647,14 @@ class histogramFitDialog(QDialog):
             ystack = []
             xstack = []
         
-        # _ID is a unique identifier for each fit, will be the key for the fits dict
-        
+        # _ID is a unique identifier for each fit
+        # it is the key for the fits dict
         _ID = getRandomString(4)
+        
         if self.fitHistogramsOption not in ["None", "Individual", "Summed"]:
             
             self.Fits_data[_ID] = HFStore(self.current_ROI, self.peakResults.keys())
-            print ("SFHO: {}\nSFDID: {}".format(self.fitHistogramsOption, self.Fits_data[_ID]))
+            #print ("SFHO: {}\nSFDID: {}".format(self.fitHistogramsOption, self.Fits_data[_ID]))
             
         if _hsum == "Separated":
             _num = self.histo_nG_Spin.value()
@@ -797,7 +798,8 @@ class histogramFitDialog(QDialog):
                     
                 else :
                     self.outputF.appendOutText ("Global fit failed! reason: {} cost: {}".format(_opti.message, _opti.cost), "Red")
-                    self.Fits_data.remove(_ID)
+                    
+                    del self.Fits_data['_ID']
                     
                 self.fitHistogramsOption = "None" # to stop cycling but avoid problems with substrings.
                 
