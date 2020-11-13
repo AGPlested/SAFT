@@ -5,7 +5,7 @@ SAFT was written for macOS. In principle it is cross-platform, in practice it wa
 
 ### Getting Started - beginners 
 
-(Python/UNIX experts [see below](#experts)
+(Python/UNIX experts [see below](#experts))
 
 Clone this repository to your machine by pressing the green button at the top of the page and selecting "zip file"
 
@@ -15,8 +15,6 @@ Use Spotlight (Cmd+Space) to find and launch 'Terminal'.
 
 To get all the Python packages you need to run SAFT, we recommend using miniconda. Download `miniconda for python 3.6 bash` ; we provide everything you need after that. Here's the link:
 https://docs.conda.io/projects/continuumio-conda/en/latest/user-guide/install/macos.html
-
-
 
 
 > `bash miniconda....`
