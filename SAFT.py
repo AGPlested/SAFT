@@ -346,13 +346,13 @@ class SAFTMainWindow(QMainWindow):
             self.removeSml_Spin.setDisabled(True)
             
             # Turn on crosshair and change mouse mode in p3.
-            
             if self.noCrosshair:
                 self.vLine = pg.InfiniteLine(angle=90, movable=False)
                 self.hLine = pg.InfiniteLine(angle=0, movable=False)
                 self.p3.addItem(self.vLine, ignoreBounds=True)
                 self.p3.addItem(self.hLine, ignoreBounds=True)
                 self.noCrosshair = False
+            
             # add a hint
             self.p3.setTitle('Zoom - Manual editing  L-click to add/remove peaks', color="F0F0F0", justify="right")
             
@@ -381,7 +381,7 @@ class SAFTMainWindow(QMainWindow):
                 self.noCrosshair = True
         
         else:
-            print ("DEUBG: Fell through without updating")
+            print ("DEBUG: Fell through manualPeakToggle without updating")
      
     def createControlsWidgets(self):
         """control panel"""
@@ -494,7 +494,7 @@ class SAFTMainWindow(QMainWindow):
         extractPeaksBtn = QtGui.QPushButton('Extract peaks from all ROIs')
         extractPeaksBtn.clicked.connect(self.extractAllPeaks)
         
-        # should be inactive until extraction
+        # should be inactive until peaks are extracted
         self.savePSRBtn = QtGui.QPushButton('Save peak data')
         self.savePSRBtn.clicked.connect(self.save_peaks)
         self.savePSRBtn.setDisabled(True)
@@ -599,8 +599,7 @@ class SAFTMainWindow(QMainWindow):
         base_grid.addWidget(self.SGsmoothing_CB, 3, 3)
         base_grid.addWidget(SG_window_label, 3, 4)
         base_grid.addWidget(self.SGWin_Spin, 3, 5)
-        #base_grid.setColumnStretch(0,1)
-        #base_grid.setColumnStretch(1,1)
+    
         baseline.setLayout(base_grid)
         
         
@@ -933,7 +932,7 @@ class SAFTMainWindow(QMainWindow):
             _dataset.traces = baselineIterator(_dataset.traces, self.auto_bs_lam, self.auto_bs_P)
         
         #get the times of the peaks from the "best" trace, that were selected auto or manually
-        _peak_t, _ = self.workingDataset.resultsDF.getPeaks('Mean', '4 mM')
+        _peak_t, _ = self.workingDataset.resultsDF.getPeaks('Mean', self.conditionForExtraction)
         #print (_peak_t, type(_peak_t))      # pd.series
         _sorted_peak_t = _peak_t.sort_values(ascending=True)    # list is not sorted until now
         _sorted_peak_t.dropna(inplace=True)                     # if there are 'empty' NaN, remove them
@@ -1422,7 +1421,12 @@ class SAFTMainWindow(QMainWindow):
         self.workingDataset.ROI_list = ["Mean", "Variance"]
         
         _first = self.conditions[0]
-        #print (self.workingDataset.__dict__)
+        # print (self.workingDataset.__dict__)
+        
+        # by default use the last sheet, but allow the user to change it
+        self.conditionForExtraction = self.conditions[-1]
+        print ("scfe: {}".format(self.conditionForExtraction))
+        
         self.workingDataset.ROI_list.extend(self.workingDataset.traces[_first].columns.tolist())
         self.updateROI_list_Box()
         
@@ -1431,8 +1435,6 @@ class SAFTMainWindow(QMainWindow):
         
         #split trace layout can be made now we know how many sets (conditions) we have
         self.createSplitTraceLayout()
-    
-        
         
         #populate the combobox for choosing the data shown in the zoom view
         self.p3Selection.clear()
