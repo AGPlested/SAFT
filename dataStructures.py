@@ -2,8 +2,14 @@ import itertools
 import pandas as pd
 import numpy as np
 
-def histogramFitParams(conditions):
-    _a = [conditions, ['ROI', 'id', 'N', 'Pr/mu', 'Stat', 'statistic', 'P', 'type']]
+def histogramFitParams(conditions, pColumns=None):
+    if pColumns == None:
+        
+        #default columns
+        pColumns = ['ROI', 'id', 'N', 'Pr/mu', 'Stat', 'statistic', 'P', 'type']
+    
+    _a = [conditions, pColumns]
+    
     _cols =pd.MultiIndex.from_product(_a, names=('conditions', 'fit params'))
     return pd.DataFrame(columns=_cols)     # dataframe for Pr values from fitting
 
@@ -15,14 +21,28 @@ class HistogramFitStore:
         _cols =pd.MultiIndex.from_product(_c, names=("conditions", "data"))
         self.df = pd.DataFrame (columns=_cols)
         self.empty = True
-        
-    def addData(condition, hx, hy, fitx, fity):
+        #print ("df.head \n{}".format(self.df.head(5)))
+    
+    def addHData(self, condition, hx, hy):
         _c = condition
-        self.df[_c]["Hx"] = hx
-        self.df[_c]["Hy"] = hy
-        self.df[_c]["Fitx"] = fitx
-        self.df[_c]["Fity"] = fity
+    
+        self.df.loc(axis=1)[(_c, "Hx")] = pd.Series(hx)
+        self.df.loc(axis=1)[(_c, "Hy")] = pd.Series(hy)
         self.empty = False
+    
+    def addFData(self, condition, fitx, fity):
+        _c = condition
+        self.df.loc(axis=1)[(_c, "Fitx")] = pd.Series(fitx)
+        self.df.loc(axis=1)[(_c, "Fity")] = pd.Series(fity)
+        self.empty = False
+        
+    def addHFData(self, condition, hx, hy, fitx, fity):
+    
+        self.addHData(condition, hx, hy)
+        self.addFData(condition, fitx, fity)
+        
+    
+        
 
 class HistogramsR():
     """ a data frame for the common histogram result """

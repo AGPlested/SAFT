@@ -65,15 +65,19 @@ class ROI_Controls(QtGui.QWidget):
         for b in buttonList:
             b.setFixedSize(*bsize)
         
-        _storeAdvBtn = QPushButton('Next (Keep fit results)')
+        _clearFitsBtn = QPushButton('Clear recent fits')
+        buttonList.append(_clearFitsBtn)
+        _clearFitsBtn.setFixedWidth(220)
+        
+        _storeAdvBtn = QPushButton('Next ROI, keep fits')
         buttonList.append(_storeAdvBtn)
         _storeAdvBtn.setFixedWidth(220)
         
-        _skipBtn = QPushButton('Next (Discard any fits)')
+        _skipBtn = QPushButton('Next ROI, discard fits')
         buttonList.append(_skipBtn)
         _skipBtn.setFixedWidth(220)
 
-        posn = [(0,1), (0,2), (0,3), (0,4), (1,1,1,2), (1,3,1,2)]
+        posn = [(0,2), (0,3), (0,4), (0,5), (1,0,1,2), (1,2,1,2), (1,4,1,2)]
         
         for counter, btn in enumerate(buttonList):
             
@@ -83,7 +87,8 @@ class ROI_Controls(QtGui.QWidget):
             l.addWidget(btn, *posn[counter])
           
         self.ROI_label = QtGui.QLabel("-")
-        self.ROI_label.setFixedSize(150, 25)
+        self.ROI_label.setFixedSize(150, 40)
+        self.ROI_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
         
         l.addWidget(self.ROI_label, 0, 0, 2, 1)
         self.ROI_box.setLayout(l)
@@ -187,7 +192,8 @@ class histogramFitDialog(QDialog):
         self.saveFits = False
         self.filename = None
         self.dataname = None
-        self.fitInfoHeader = "Fits for current ROI:\n" + linePrint(['ROI', 'ID', 'N', 'P/mu', 'Test', 'Stat.', 'Pval.', 'Fit'])
+        self.fitPColumns = ['ROI', 'id', 'N', 'Pr/mu', 'Stat', 'statistic', 'P', 'type']
+        self.fitInfoHeader = "Fits for current ROI:\n" + linePrint(self.fitPColumns)
         self.outputF = txOutput(self.outputHeader)
         self.current_ROI = None
         self.flag = "Auto max"      #how to find histogram x-axis
@@ -354,15 +360,20 @@ class histogramFitDialog(QDialog):
         self.outputF.appendOutText ("N_bins {}, Max {}".format(_nbins, _max))
         return _nbins, _max
     
-    def skipROI(self):
-        self.outputF.appendOutText ("Discard fit results from {}".format(self.current_ROI))
+    def clearFits(self):
+    
+        self.outputF.appendOutText ("Discarded fit results from {}".format(self.current_ROI), "red")
         
-        # clear current fits and info frame without storing anything
+        # clear current fits and info frame
         self.currentROIFits = pd.DataFrame(columns=self.currentROIFits.columns)
+        
         self.fitInfo.reset(self.fitInfoHeader)
-            
+    
+    def skipROI(self):
+        
+        self.clearFits()
         self.ROI_change_command(2)
-        self.outputF.appendOutText ("Advance to next ROI: {}".format(self.current_ROI))
+        self.outputF.appendOutText ("Advance to next ROI: {}".format(self.current_ROI), "magenta")
         
     def toggleSaveFits(self):
         if self.sHFCurves.isChecked == False:
@@ -381,25 +392,36 @@ class histogramFitDialog(QDialog):
         if self.filename != None:
         
             if os.path.split(self.filename)[0] is not None:
-                _outfile = os.path.split(self.filename)[0] + "Pr_" + os.path.split(self.filename)[1]
+                _outfile = os.path.split(self.filename)[0] + "HFit_" + os.path.split(self.filename)[1]
+                
             else :
-                _outfile = "HFitRes_" + self.filename
-            
-            print ("Wrote {} to disk.".format(_outfile))
+                _outfile = "HFit_" + self.filename
         
         else:
-            _outfile = self.dataname+"_HFitRes.xlsx"
+            _outfile = self.dataname + "_HFit.xlsx"
+           
+        with pd.ExcelWriter(_outfile) as writer:
             
+            self.fitResults.to_excel(writer, sheet_name="Fit Results", startrow=1)
+        
+            #optionally all fitted curves are saved
+            if self.saveFits:
+        
+                #repack as dict of dataframes
+                fits_ddf = {}
+                for k,v in self.Fits_data.items():
+                    fits_ddf[k] = v.df
             
-        # FIXFIX fitted curves should be saved if the IDs are in the results table!!!
+                _fitsDF = pd.concat(fits_ddf, axis=1)
+                _fitsDF.columns.rename(["Fit ID", "Condition", "Coordinate"], inplace=True )
+                #print (_fitsDF.head(5))
         
+                _fitsDF.to_excel(writer, sheet_name="Histograms & Fitted Curves", startrow=1)
         
-        self.fitResults.to_excel(_outfile)
-        
-        ##if self.saveFits:
-         ##   self.Fits_data.to_excel("Fits_" + self.filename)
-        
-        self.outputF.appendOutText ("Write data out to disk {}".format(_outfile))
+        print ("Wrote {} to disk.".format(_outfile))
+        self.outputF.appendOutText ("Wrote fit results out to disk: {}".format(_outfile))
+       
+
     
     def storeAdvance(self):
         """storing data and moving forward one ROI"""
@@ -530,11 +552,11 @@ class histogramFitDialog(QDialog):
         self.ROI_list = list(self.peakResults[list(pRK)[0]].keys().unique(level=0))
         print (self.ROI_list)
         
-        ## id is a unique identifier, will be the key for the fits dict
-        ## stat
         
-        self.fitResults = histogramFitParams(pRK)
-        self.currentROIFits = histogramFitParams(pRK)
+       
+        
+        self.fitResults = histogramFitParams(pRK, self.fitPColumns)
+        self.currentROIFits = histogramFitParams(pRK, self.fitPColumns)
         self.Fits_data = {}
         
         self.hPlot.createSplitHistLayout(self.peakResults.keys())
@@ -551,18 +573,27 @@ class histogramFitDialog(QDialog):
         
         if button_command == 0:
             self.ROI_N = 0
+        
         elif button_command == 1:
             self.ROI_N -= 1
             if self.ROI_N < 0:  self.ROI_N = 0
+        
         elif button_command == 2:
             self.ROI_N += 1
             if self.ROI_N == len(self.ROI_list):  self.ROI_N = len(self.ROI_list) - 1
+        
         elif button_command == 3:
             self.ROI_N = len(self.ROI_list) - 1
+        
         elif button_command == 4:
+            self.clearFits()
+            return
+            
+        elif button_command == 5:
             self.storeAdvance() # comes back here with b_c = 2
             return
-        elif button_command == 5:
+        
+        elif button_command == 6:
             self.skipROI()  # comes back here with b_c = 2
             return
             
@@ -616,10 +647,14 @@ class histogramFitDialog(QDialog):
             ystack = []
             xstack = []
         
+        # _ID is a unique identifier for each fit, will be the key for the fits dict
+        
         _ID = getRandomString(4)
         if self.fitHistogramsOption not in ["None", "Individual", "Summed"]:
+            
             self.Fits_data[_ID] = HFStore(self.current_ROI, self.peakResults.keys())
-        
+            print ("SFHO: {}\nSFDID: {}".format(self.fitHistogramsOption, self.Fits_data[_ID]))
+            
         if _hsum == "Separated":
             _num = self.histo_nG_Spin.value()
             #_pr_results = [_num]
@@ -648,6 +683,11 @@ class histogramFitDialog(QDialog):
                 _pdata = self.peakResults[_condition][_ROI]
                 # redo histogram
                 hy, hx  = np.histogram(_pdata, bins=_nbins, range=(0., _max))
+                
+                # Only store histogram values if we are doing a global fit
+                if self.fitHistogramsOption not in ["None", "Individual", "Summed"]:
+                    print (self.Fits_data)
+                    self.Fits_data[_ID].addHData(_condition, hx, hy)
                 
                 if "Global" in self.fitHistogramsOption:
                     ystack.append(hy)
@@ -698,7 +738,7 @@ class histogramFitDialog(QDialog):
                 # guesses
                 _num = self.histo_nG_Spin.value()
                 _q = self.histo_q_Spin.value()
-                _ws = self.histo_Max_Spin.value() / 20
+                _ws = self.histo_Max_Spin.value() / 10
                 if self.fitHistogramsOption == "Global Binom":
                     _opti = fit_nprGaussians_global (_num, _q, _ws, _hys, _hxs)
                 else:
@@ -751,13 +791,14 @@ class histogramFitDialog(QDialog):
                         
                         self.currentROIFits.loc[imax + 1, (_condition, slice(None))] = _globalR
                         print (self.currentROIFits)
-                        #self.Fits_data['ID']
+                        self.Fits_data[_ID].addFData(_condition, _hx_u, _hy_u)
                     
                     self.saveBtn.setEnabled(True) # results so we have something to save
                     
                 else :
                     self.outputF.appendOutText ("Global fit failed! reason: {} cost: {}".format(_opti.message, _opti.cost), "Red")
-                
+                    self.Fits_data.remove(_ID)
+                    
                 self.fitHistogramsOption = "None" # to stop cycling but avoid problems with substrings.
                 
         elif _hsum == "Summed":
