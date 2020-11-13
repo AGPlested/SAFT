@@ -51,7 +51,7 @@ You can also launch quantal fitting of histograms as a standalone app, and the f
 
 
 ### Experts
----------
+---
 
 SAFT depends on quite a few packages, for its GUI (Qt, pyqtgraph, pyside2, matplotlib, pyobjc-framework-Cocoa), for number crunching (numpy, scipy, pandas) and for data handling (pandas, xlrd, openpyxl). 
 
@@ -81,20 +81,20 @@ If you happen to already have an environment named SAFT, you will need to remove
 
 
 
-### Current dependencies 2020-11-12
------------
+### Dependencies *current as of 2020-11-12*
+---
 
-Python 3.7.x   
+Python 3.7.9   
 qt==5.9.7   
-PySide2>=5.9.x  
-numpy==1.18.4  
-scipy==1.2.0  
+PySide2>=5.9.0a1  
+numpy==1.19.2 
+scipy==1.5.2  
 pyqtgraph==0.11.0  
 pandas==0.24.0  
-matplotlib (3.3.2 works?)  
-xlrd>=1.0.0  
-openpyxl  
-pyobjc-framework-Cocoa  
-python.app 3.x  
+matplotlib==3.3.2 works?  
+xlrd==1.2.0  
+openpyxl==3.0.5
+pyobjc-framework-Cocoa==6.2.2
+python.app 2  
 
 
