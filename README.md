@@ -16,13 +16,15 @@ https://docs.conda.io/projects/continuumio-conda/en/latest/user-guide/install/ma
 
 Use Spotlight (Cmd+Space) to find and launch 'Terminal'. In the following, you will need to enter `commands` in the Terminal. You must be exact...
 
-To install miniconda, you need to navigate to the directory where it downloaded, probably also 'Downloads'.
+To install miniconda, you need to navigate to the directory where it downloaded, probably again 'Downloads'.
 
 > `cd Downloads`
 
 Then you can type the following command to make the installation. Use the space bar to page through the licence agreement. Answer (type) 'yes' to everything...
 
 > `bash Miniconda3-latest-MacOSX-x86_64.sh`
+
+(Free UNIX tip: if you start typing `bash Min` and then press the <Tab> key "->|", it will autocomplete)
 
 After this you'll need to restart the Terminal window. 
 
