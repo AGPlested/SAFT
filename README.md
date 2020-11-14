@@ -26,7 +26,8 @@ Then you can type the following to make the installation. Press space to page th
 
 You'll need to restart the Terminal window. 
 
-Now you need to navigate to the Home directory *in the Terminal*. You start in your "Home" directory. You  The command is cd:
+Now you need to navigate to the SAFT directory *in the Terminal*. You start in your "Home" folder (it's name is your username).  
+The command you need is cd (change directory):
 
 > `cd Downloads\SAFT-master`
 
