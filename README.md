@@ -16,7 +16,13 @@ Use Spotlight (Cmd+Space) to find and launch 'Terminal'.
 To get all the Python packages you need to run SAFT, we recommend using miniconda. Download `miniconda for python 3.6 bash` ; we provide everything you need after that. Here's the link:
 https://docs.conda.io/projects/continuumio-conda/en/latest/user-guide/install/macos.html
 
-> `bash miniconda....`
+To install miniconda, you need to navigate to the directory where it downloaded, probably also 'Downloads'.
+
+> `cd Downloads`
+
+Then you can type the following to make the installation. Press space to page through the licence agreement. Answer (type) 'yes' to everything...
+
+> `bash Miniconda3-latest-MacOSX-x86_64.sh`
 
 You'll need to restart the Terminal window. 
 
