@@ -1,8 +1,11 @@
+import sys
 import os.path
-import pyqtgraph as pg
 import string
 import random
+
 import pandas as pd
+
+import pyqtgraph as pg
 
 def decomposeRDF(rdf):
     """decompose MultiIndex dataframe R-C-(t-pk-pairs)
@@ -47,19 +50,28 @@ def getRandomString(length):
     return ''.join(random.choice(letters) for i in range(length))
     #print("Random string of length", length, "is:", result_str)
 
-def linePrint(results, pre=2):
-    """changes a list of results into readable string"""
+def linePrint(results, pre=2, pitch=7):
+    """
+    changes a list of results into readable string
+    pre     : the precision of any float value
+    pitch   : the field spacing
+    """
     
     readable = ""
     
     for item in results:
         if isinstance(item, str):
-            readable += "{:^7}".format(item)
+            readable += "{:^{pi}}".format(item, pi=pitch)
         elif isinstance(item, float):
-            readable += "{:7.{p}f}".format(item, p=pre)
+            readable += "{:{pi}.{prec}f}".format(item, prec=pre, pi=pitch)
         else:
-            readable += "{:^7}".format(str(item))
-        
+            try:
+                readable += "{:^{pi}}".format(str(item), pi=pitch)
+            except:
+                readable += "<error>"
+                print("Conversion error:", sys.exc_info()[0])
+                raise
+                
     return readable
 
 def findCurve(items):
