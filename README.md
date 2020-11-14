@@ -1,7 +1,7 @@
-# SAFT v. 0.3
-Semi Automatic Fluorescent Trace analysis
+# SAFT : Semi Automatic Fluorescent Trace analysis
+v. 0.3  2020-11-14
 
-SAFT was written for macOS. In principle it is cross-platform, in practice it was never launched on Windows or Linux. If you happen to get it working on either of these platforms, please let us know. 
+SAFT was written in Python 3 for macOS. In principle it is cross-platform, in practice it was never launched on Windows or Linux. If you happen to get it working on either of these platforms, please let us know. 
 
 ### Getting Started on macOS - beginners 
 
@@ -56,11 +56,7 @@ SAFT depends on quite a few packages, for its GUI (Qt, pyqtgraph, pyside2, matpl
 
 Getting all these packages aligned is not easy. You can use anaconda, pip or compile from source. It is best to start with a fresh environment.
 
-Very important : Qt versions after 5.9 are not open source (breaks licensing conditions), and coincidentally have serious bugs on macOS. 
-We need Qt for the high-performance scientific plotting library pyqtgraph. 
-PySide2 versions up to 5.15 seem to run happily with qt 5.9.7 but it may be difficult to avoid a concurrent Qt update, unless you have a separate version of Qt compiled from open source and know how to point PySide2 at it. The latter solution is not stable. 
-
-Conda currently provides Qt 5.9.7 and this makes it convenient to use conda to set up the package environment. To make getting the right environment in place, we include a conda environment .yml file in the distribution (SAFTenv.yml). To use this, you must have Anaconda or Miniconda. If you don't have Anaconda already, just get [Miniconda](# https://docs.conda.io/projects/continuumio-conda/en/latest/user-guide/install/macos.html).
+Conda currently provides Qt 5.9.7 and this makes it convenient to use conda to set up the package environment. To make getting the right environment in place easy, we include a conda environment .yml file in the distribution (SAFTenv.yml). To use this, you must have Anaconda or Miniconda. If you don't have Anaconda already, just get [Miniconda](# https://docs.conda.io/projects/continuumio-conda/en/latest/user-guide/install/macos.html).
 
 To install the packages needed for SAFT into a fresh environment with Miniconda, go to the SAFT directory and enter the following in the Terminal,
 
@@ -74,11 +70,13 @@ As conda will tell you, to switch to this environment, enter the following,
 
 then navigate to the SAFT directory and execute the commands as above to launch SAFT.
 
-If you happen to already have an environment named SAFT, you will need to remove it first:
+If you happen to already have an environment named SAFT, you would need to remove it first:
 
 >`conda env remove --name SAFT`
 
-
+**Very important** : Qt versions after 5.9 are not open source (breaking the conditions of our license), and coincidentally have serious bugs on macOS. 
+We need Qt for the high-performance scientific plotting library [pyqtgraph](#http://www.pyqtgraph.org). 
+PySide2 versions up to 5.15 seem to run happily with qt 5.9.7 but it may be difficult to avoid a concurrent Qt update, unless you have a separate version of Qt compiled from open source and know how to point PySide2 at it. The latter solution is not stable. 
 
 ### Dependencies *current as of 2020-11-12*
 ---
@@ -90,7 +88,7 @@ numpy==1.19.2
 scipy==1.5.2  
 pyqtgraph==0.11.0  
 pandas==0.24.0  
-matplotlib==3.3.2 works?  
+matplotlib==3.3.2  
 xlrd==1.2.0  
 openpyxl==3.0.5
 pyobjc-framework-Cocoa==6.2.2
