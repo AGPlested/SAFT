@@ -1,3 +1,6 @@
+### SAFT Utility Functions
+### Andrew Plested 2020-11-14
+
 import sys
 import os.path
 import string
@@ -8,10 +11,13 @@ import pandas as pd
 import pyqtgraph as pg
 
 def decomposeRDF(rdf):
-    """decompose MultiIndex dataframe R-C-(t-pk-pairs)
-    into dictionary with C as keys and dataframes as values
-    Each dataframe with t as index and pk as columns named by R"""
+    """
+    Decompose a pandas MultiIndex dataframe ('rdf') with levels R, C, (time-peak pairs)
+    into dictionary ('decomposed') with C as keys and dataframes as values
+    Each dataframe has time as index and peaks as columns named by R
+    """
     decomposed = {}
+    
     for co in rdf.columns.get_level_values(1).unique():
         # take the sub-dataframe for each condition
         inter = rdf.loc(axis=1)[:,co,:]
@@ -31,7 +37,7 @@ def getFileStem(_name):
 
     _split = os.path.split(_name)
     _tail = _split[1]
-    _stem = _tail.rsplit(".", 1)          #from "file.txt" -> "file", "text"
+    _stem = _tail.rsplit(".", 1)            #"file.txt" -> "file", "text"
     
     return _stem[0]
 
@@ -40,7 +46,7 @@ def addFileSuffix(_name, _suffix):
     _split = os.path.split(_name)
     _path = _split[0]
     _tail = _split[1]
-    _stem = _tail.rsplit(".", 1)     #from "file.txt" -> "file", "text"
+    _stem = _tail.rsplit(".", 1)             #"file.txt" -> "file", "text"
     
     return _path + _stem[0] + _suffix + "." + _stem[1]
 
@@ -48,12 +54,12 @@ def getRandomString(length):
     ###https://pynative.com/python-generate-random-string/
     letters = string.ascii_lowercase
     return ''.join(random.choice(letters) for i in range(length))
-    #print("Random string of length", length, "is:", result_str)
+    
 
 def linePrint(results, pre=2, pitch=7):
     """
-    changes a list of results into readable string
-    pre     : the precision of any float value
+    changes a list of results into consistently-spaced, readable string
+    pre     : the precision of any floating point value
     pitch   : the field spacing
     """
     
@@ -96,8 +102,8 @@ def findScatter(items):
         if len(x) > 0:
             return pdi.scatter
 
-def removeAllScatter(p1):
-    """p1 should be a plot item"""
+def removeAllScatter(p1, verbose=True):
+    """p1 should be a pg plotItem"""
     
     PDIs = [d for d in p1.items if isinstance(d, pg.PlotDataItem)]
     for pdi in PDIs:
@@ -109,4 +115,5 @@ def removeAllScatter(p1):
             
     _rem = p1.listDataItems()
 
-    print("Data items remaining in {0}: {1}".format(p1, len(_rem)))
+    if Verbose:
+        print("Data items remaining in {0}: {1}".format(p1, len(_rem)))

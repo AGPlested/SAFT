@@ -67,15 +67,15 @@ class ROI_Controls(QtGui.QWidget):
         
         _clearFitsBtn = QPushButton('Clear recent fits')
         buttonList.append(_clearFitsBtn)
-        _clearFitsBtn.setFixedWidth(220)
+        _clearFitsBtn.setFixedWidth(180)
         
         _storeAdvBtn = QPushButton('Next ROI, keep fits')
         buttonList.append(_storeAdvBtn)
-        _storeAdvBtn.setFixedWidth(220)
+        _storeAdvBtn.setFixedWidth(180)
         
         _skipBtn = QPushButton('Next ROI, discard fits')
         buttonList.append(_skipBtn)
-        _skipBtn.setFixedWidth(220)
+        _skipBtn.setFixedWidth(180)
 
         posn = [(0,2), (0,3), (0,4), (0,5), (1,0,1,2), (1,2,1,2), (1,4,1,2)]
         
@@ -297,14 +297,14 @@ class histogramFitDialog(QDialog):
         
         _globFit_label = QtGui.QLabel("find N, Pr; common dF (q), w")
         _globFitBtn = QPushButton('Global Binomial fit')
-        _globFitBtn.clicked.connect(self.fitGlobalGaussians)
+        _globFitBtn.clicked.connect(self.binomialFitGlobalGaussians)
         
         _PoissonGlobalFit_label = QtGui.QLabel("find mu; common dF (q), w")
         _PoissonGlobalFitBtn = QPushButton('Global Poisson fit')
-        _PoissonGlobalFitBtn.clicked.connect(self.PoissonfitGlobalGaussians)
+        _PoissonGlobalFitBtn.clicked.connect(self.poissonFitGlobalGaussians)
         
         self.fitInfo = txOutput(self.fitInfoHeader)
-        self.fitInfo.size(500, 120)
+        self.fitInfo.size(480, 130)
         
         
         _fitGrid.addWidget(_histnG_label, 0, 2)
@@ -324,29 +324,33 @@ class histogramFitDialog(QDialog):
         
         # histogram analysis layout
         self.hlayout = QGridLayout()
+        _secondRowH = 140
         
         # histogram view
-        self.histogramLayPos = (0, 0, 2, 3)
+        self.histogramLayPos = (0, 0, 2, 5)
         self.hlayout.addWidget(self.hPlot.glw, *self.histogramLayPos)
-        
-        _fittingPanel.setFixedHeight(180)
-        self.hlayout.addWidget(_fittingPanel, 3, 0, 1, 3)
         
         # ROI controls
         self.RC = ROI_Controls(self)        #need to send this instance as parent
-        self.RC.ROI_box.setFixedHeight(100)
-        self.hlayout.addWidget(self.RC.ROI_box, 2, 0, 1, 2)
+        self.RC.ROI_box.setFixedSize(575, _secondRowH)
+        self.hlayout.addWidget(self.RC.ROI_box, 2, 0, 1, 4)
         
         # Display options for the histograms
-        _histOptions.setFixedSize(250, 100)
-        self.hlayout.addWidget(_histOptions, 2, 2, 1, 1)
+        _histOptions.setFixedSize(275, _secondRowH)
+        self.hlayout.addWidget(_histOptions, 2, 4, 1, 2)
+        
+        # File controls
+        _fileOptions.setFixedSize(250, _secondRowH)
+        self.hlayout.addWidget(_fileOptions, 2, 6, 1, 2)
+        
+        # Fitting controls and display
+        _fittingPanel.setFixedHeight(200)
+        self.hlayout.addWidget(_fittingPanel, 3, 0, 1, 8)
         
         # Text output console
-        self.outputF.frame.setFixedSize(300, 550)
-        self.hlayout.addWidget(self.outputF.frame, 0, 3, 2, 1)
+        self.outputF.frame.setFixedSize(400, 600)
+        self.hlayout.addWidget(self.outputF.frame, 0, 5, 2, 3)
         
-        _fileOptions.setFixedSize(300, 200)
-        self.hlayout.addWidget(_fileOptions, 2, 3, 3, 1)
         
         self.setLayout(self.hlayout)
     
@@ -445,10 +449,10 @@ class histogramFitDialog(QDialog):
         self.fitHistogramsOption = "Individual"
         self.sum_hist.setCurrentIndex(1)    #calls updateHistogram and fit
     
-    def PoissonfitGlobalGaussians(self):
+    def poissonFitGlobalGaussians(self):
         """obtain mean release rate using Poisson, estimating q, w and scale from global fit"""
         self.fitHistogramsOption = "Global Poisson"
-        self.outputF.appendOutText ("Global Poisson Fit")
+        self.outputF.appendOutText ("\nGlobal Poisson Fit", "darkcyan")
         _fitSum =self.sum_hist.currentIndex()
         if _fitSum == 1:
             self.updateHistograms()             # no need to adjust view (histograms already separate), just fit
@@ -471,10 +475,10 @@ class histogramFitDialog(QDialog):
         pass
         
     
-    def fitGlobalGaussians(self):
+    def binomialFitGlobalGaussians(self):
         """Target of the global fit button"""
         self.fitHistogramsOption = "Global Binom"
-        self.outputF.appendOutText ("Global Binomial Fit", "Magenta")
+        self.outputF.appendOutText ("\nGlobal Binomial Fit", "darkred")
         _fitSum =self.sum_hist.currentIndex()
         if _fitSum == 1:
             self.updateHistograms()             # no need to adjust view (histograms already separate), just fit
@@ -532,17 +536,15 @@ class histogramFitDialog(QDialog):
         for key in self.peakResults.copy():
             if "SNR<" in key:
                 del self.peakResults[key]
-                self.outputF.appendOutText ("Removed low SNR data {}".format(key),"Red")
+                self.outputF.appendOutText ("Removed low SNR data {}".format(key), "Red")
         
         pRK = self.peakResults.keys()
         pRK_display = ", ".join(str(k) for k in pRK)
         print (pRK_display)
         N_ROI = [len (self.peakResults[d].columns) for d in pRK]
         
-        #self.outputF.appendOutText ("Scraping peaks from {} ROIs \n over the sets named {}".format(N_ROI, pRK_display))
-        
-        self.outputF.appendOutText ("Added data of type {}:\n".format(type(self.peakResults)))
-        for _c, _d in zip(pRK, [self.peakResults[d].head() for d in pRK]):
+        self.outputF.appendOutText ("Added data of type {}:\n".format(type(self.peakResults)), "Blue")
+        for _c, _d in zip(pRK, [self.peakResults[d].head(3) for d in pRK]):
             self.outputF.appendOutText ("{}\n{}\n".format(_c, _d), "Blue")
         
         for d in self.peakResults:
@@ -658,7 +660,6 @@ class histogramFitDialog(QDialog):
             
         if _hsum == "Separated":
             _num = self.histo_nG_Spin.value()
-            #_pr_results = [_num]
             
             if self.split_state == False:
                 # bring in split histogram view
@@ -716,36 +717,34 @@ class histogramFitDialog(QDialog):
                     _scale = _opti.x[0]
                     _pr = _opti.x[1]
                     
+                    # _Bcdf is a vector of the biomial cdf values for the observed data
+                    # KS is the Kolmogorov Smirnoff test of goodness of fit
                     _Bcdf = lambda x, *pa: cdf(x, nprGaussians, *pa)
                     KS = kstest(_pdata, _Bcdf, (_max, _max/100, _num, _q, _ws, _scale, _pr))
                     
-                    #_resid = _opti.fun
-                    #_chiSq = chisquare(hy, hy + _resid)
-                    
-                    # BI for binomial individual fit
-                    _pr_results = [_ROI, _ID, _num, _pr, _scale, _ws, _q, "K-S", KS.statistic, KS.pvalue, "BI" ]
-                    self.fitInfo.appendOutText (linePrint(_pr_results, pre=4), "darkmagenta")
+                    # IB for binomial individual fit
+                    _IB_results = [_ROI, _ID, _num, _pr, _scale, _ws, _q, "KS", KS.statistic, KS.pvalue, "IB" ]
+                    self.fitInfo.appendOutText (linePrint(_IB_results, pre=3), "darkmagenta")
                     self.saveBtn.setEnabled(True)
                     
                     # display the fit
-                    _c = target.plot(_hx_u, _hy_u, name='{} Individual Binomial fit: {} Gaussians, Pr: {:.3f}'.format(_ROI, _num,_pr,_q))
+                    _c = target.plot(_hx_u, _hy_u, name='Individual Binomial fit: {} Gaussians, Pr: {:.3f}'.format( _num, _pr, _q))
                     
                     # from pyqtgraph.examples
                     _c.setPen(color=col_series, width=3)
                     _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
                     
                     # save results to dataframe
-                    self.currentROIFits.loc[imax + 1, (_condition, slice(None))]= _pr_results
+                    self.currentROIFits.loc[imax + 1, (_condition, slice(None))]= _IB_results
                     
                 # histogram was made for each set now so we can set the same maximum y for all
                 for t in self.hPlot.stackMembers:
                     t.setYRange(0, _ymax*1.2)
                 
              
-             
             if self.fitHistogramsOption == "Individual":
                 # if fits were done, they are complete so show results
-                self.outputF.appendOutText ("results:\n {}".format(linePrint(self.currentROIFits.iloc[-1])))
+                self.outputF.appendOutText ("Individual Fit Results:\n {}".format(linePrint(self.currentROIFits.iloc[-1])), "darkmagenta")
             
             if "Global" in self.fitHistogramsOption:
                 # put both global options together and use common code
@@ -756,21 +755,23 @@ class histogramFitDialog(QDialog):
                 _num = self.histo_nG_Spin.value()
                 _q = self.histo_q_Spin.value()
                 _ws = self.histo_Max_Spin.value() / 10
+                
                 if self.fitHistogramsOption == "Global Binom":
                     _opti = fit_nprGaussians_global (_num, _q, _ws, _hys, _hxs)
                 else:
                     _opti = fit_PoissonGaussians_global (_num, _q, _ws, _hys, _hxs)
                 
                 if _opti.success:
-                    self.outputF.appendOutText ("Global _opti.x {}\n .cost = {}".format(linePrint(_opti.x, pre=3), _opti.cost), color="Green")
+                    self.outputF.appendOutText ("_opti.x: {}\nCost = {}".format(linePrint(_opti.x, pre=3), _opti.cost), color="Green")
                     _q = _opti.x[0]
                     _ws = _opti.x[1]
                     _scale = _opti.x[2]
-                    _resid = _opti.fun.reshape(-1, len(self.peakResults.keys()))
+                    #_resid = _opti.fun.reshape(-1, len(self.peakResults.keys()))
                     imax = self.currentROIFits.index.max()
                     if np.isnan(imax):
                         imax = 0
                     
+                    # handle each histogram in turn
                     for i, _condition in enumerate(self.peakResults.keys()):
                         # colours
                         col_series = (i, len(self.peakResults.keys()))
@@ -785,9 +786,9 @@ class histogramFitDialog(QDialog):
                             _Bcdf = lambda x, *pa: cdf(x, nprGaussians, *pa)
                             KS = kstest(_pdata, _Bcdf, (_max, _max/100, _num, _q, _ws, _scale, _pr))
                             print ("Binomial fit: {}".format(KS))
-                            legend = 'Global Binomial Fit {}: {} Gaussians, Pr: {:.3f}, K.-S. P: {:.3f}'.format(_ROI, _ID, _num, _pr, KS.pvalue)
+                            legend = 'Global Binomial Fit {}: {} Gaussians, Pr: {:.3f}, K.-S. P: {:.3f}'.format(_ID, _num, _pr, KS.pvalue)
                             _hx_u, _hy_u = nprGaussians_display (_hxc, _num, _q, _ws, [_scale, _pr])
-                            _globalR = [_ROI, _ID, _num, _pr, _scale, _ws, _q, "K-S", KS.statistic, KS.pvalue, "BG"]
+                            _globalR = [_ROI, _ID, _num, _pr, _scale, _ws, _q, "KS", KS.statistic, KS.pvalue, "GB"]
                             _fitinfoCol = "darkred"
                         
                         elif "Poisson" in self.fitHistogramsOption:
@@ -796,12 +797,12 @@ class histogramFitDialog(QDialog):
                             KS = kstest(_pdata, _Pcdf, (_max, _max/100, _num, _q, _ws, _scale, _mu))
                             print ("Poisson fit: {}".format(KS))
 
-                            legend = 'Global Poisson Fit {}: {} Gaussians, mu: {:.3f}, K.-S. P: {:.3f}'.format(_ROI, _ID, _num,_mu, KS.pvalue)
+                            legend = 'Global Poisson Fit {}: {} Gaussians, mu: {:.3f}, K.-S. P: {:.3f}'.format( _ID, _num, _mu, KS.pvalue)
                             _hx_u, _hy_u = PoissonGaussians_display (_hxc, _num, _q, _ws, [_scale, _mu])
-                            _globalR = [_ROI, _ID, _num, _mu, _scale, _ws, _q, "K-S", KS.statistic, KS.pvalue, "PG"]
+                            _globalR = [_ROI, _ID, _num, _mu, _scale, _ws, _q, "KS", KS.statistic, KS.pvalue, "GP"]
                             _fitinfoCol = "darkcyan"
                         
-                        self.fitInfo.appendOutText (linePrint(_globalR, pre=4), _fitinfoCol)
+                        self.fitInfo.appendOutText (linePrint(_globalR, pre=3), _fitinfoCol)
                         _c = target.plot(_hx_u, _hy_u, name=legend)
                         _c.setPen(color=col_series, width=3)
                         _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
@@ -815,7 +816,8 @@ class histogramFitDialog(QDialog):
                 else :
                     self.outputF.appendOutText ("Global fit failed! reason: {} cost: {}".format(_opti.message, _opti.cost), "Red")
                     
-                    del self.Fits_data['_ID']
+                    del self.Fits_data[_ID]
+                    print ("Fit failed: {}, removed histogram fit container {}".format(_opti.message, _ID))
                     
                 self.fitHistogramsOption = "None" # to stop cycling but avoid problems with substrings.
                 
