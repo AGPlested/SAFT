@@ -1361,6 +1361,9 @@ class SAFTMainWindow(QMainWindow):
         self.filename = QFileDialog.getSaveFileName(self,
         "Save Baselined ROI Data", os.path.expanduser("~"))[0]
         
+        
+        # save baselined data
+        
     def open_file(self):
         """Open a dialog to provide sheet names"""
         

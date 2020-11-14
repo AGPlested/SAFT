@@ -189,14 +189,17 @@ class histogramFitDialog(QDialog):
         self.fitHistogramsOption = "Summed"
         self.outputHeader = "{} Logfile\n".format(_now.strftime("%y%m%d-%H%M%S"))
         self.hPlot = HDisplay()
-        self.saveFits = False
+        self.autoSave = True        # must match initial state of checkbox!
+        self.saveFits = True        # must match initial state of checkbox!
         self.filename = None
         self.dataname = None
         self.fitPColumns = ['ROI', 'Fit ID', 'N', 'Pr/mu', 'Events', 'Width', 'dF_Q', 'Test', 'Stat.', 'P_val', 'Type']
-        self.fitInfoHeader = "Fits for current ROI:\n" + linePrint(self.fitPColumns)
+        self.fitInfoHeader = linePrint(self.fitPColumns)
         self.outputF = txOutput(self.outputHeader)
         self.current_ROI = None
-        self.flag = "Auto max"      #how to find histogram x-axis
+        self.ROI_SD = 0                 # the SD for the ROI (assumed similar over conditions)
+        self.flag = "Auto max"          # how to find histogram x-axis
+        
         self.makeDialog()
     
     """
@@ -223,15 +226,26 @@ class histogramFitDialog(QDialog):
         self.saveBtn = QPushButton('Save')
         self.saveBtn.clicked.connect(self.save)
         self.saveBtn.setDisabled(True)
+        self.doneBtn = QPushButton('Done')
+        self.saveBtn.clicked.connect(self.done)
+        self.saveBtn.setDisabled(True)
+        
         self.dataname_label = QtGui.QLabel("No data")
-        self.sHFCurves = QCheckBox('Save Histogram Fitted Curves')
-        self.sHFCurves.setChecked(False)
-        self.sHFCurves.stateChanged.connect(self.toggleSaveFits)
+        
+        self.autoSaveSwitch = QCheckBox('Auto-save fit results')
+        self.autoSaveSwitch.setChecked(True)
+        self.autoSaveSwitch.stateChanged.connect(self.toggleAutoSave)
+        
+        self.sHFCurvesSwitch = QCheckBox('Save Histogram Fitted Curves')
+        self.sHFCurvesSwitch.setChecked(True)
+        self.sHFCurvesSwitch.stateChanged.connect(self.toggleSaveFits)
         
         _fileGrid.addWidget(self.loadBtn, 0, 0, 1, 1)
-        _fileGrid.addWidget(self.saveBtn, 1, 0, 1, 1)
-        _fileGrid.addWidget(self.sHFCurves, 3, 0, 1, 1)
-        _fileGrid.addWidget(self.dataname_label, 2, 0, 1, 1)
+        _fileGrid.addWidget(self.saveBtn, 0, 1, 1, 1)
+        _fileGrid.addWidget(self.doneBtn, 0, 2, 1, 1)
+        _fileGrid.addWidget(self.autoSaveSwitch, 2, 0, 1, -1)
+        _fileGrid.addWidget(self.dataname_label, 1, 0, 1, -1)
+        _fileGrid.addWidget(self.sHFCurvesSwitch, 3, 0, 1, -1)
         _fileOptions.setLayout(_fileGrid)
         
         # panel of display options for histograms
@@ -271,20 +285,30 @@ class histogramFitDialog(QDialog):
         _fittingPanel = QGroupBox("Fitting")
         _fitGrid = QGridLayout()
 
-        _histnG_label = QtGui.QLabel("Gaussian components")
-        _histnG_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        
+
+        _hist_W_label = QtGui.QLabel("Gaussian widths (from SD)")
+        self.histo_W_Spin = pg.SpinBox(value=self.ROI_SD, step=0.005, delay=0, int=False)
+        self.histo_W_Spin.setFixedSize(80, 25)
+        
+        _hist_nG_label = QtGui.QLabel("Gaussian components")
+        #_hist_nG_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.histo_nG_Spin = pg.SpinBox(value=6, step=1, bounds=[1,20], delay=0, int=True)
         self.histo_nG_Spin.setFixedSize(50, 25)
         self.histo_nG_Spin.setAlignment(QtCore.Qt.AlignRight)
         #print (self.histo_nG_Spin.alignment())
-        self.histo_nG_Spin.valueChanged.connect(self.updateHistograms)
+        #self.histo_nG_Spin.valueChanged.connect(self.updateHistograms)          ###SHOULD IT?
         
-        _histw_label = QtGui.QLabel("dF (q) guess")
-        _histw_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
+        _hist_q_label = QtGui.QLabel("Quantal size (dF)")
+        #_hist_q_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         self.histo_q_Spin = pg.SpinBox(value=.05, step=0.005, bounds=[0.005,1], delay=0, int=False)
         self.histo_q_Spin.setFixedSize(80, 25)
         self.histo_q_Spin.setAlignment(QtCore.Qt.AlignRight)
-        self.histo_q_Spin.valueChanged.connect(self.updateHistograms)
+        #self.histo_q_Spin.valueChanged.connect(self.updateHistograms)
+        
+        self.fixWtoSDSwitch = QCheckBox('Fix W according to SD')
+        self.fixWtoSDSwitch .setChecked(False)
+        self.fixWtoSDSwitch .stateChanged.connect(self.toggleFixW)
         
         _reFit_label = QtGui.QLabel("fixed dF (q), w")
         self.reFitSeparateBtn = QPushButton('Separate Binomial fits')
@@ -303,23 +327,32 @@ class histogramFitDialog(QDialog):
         _PoissonGlobalFitBtn = QPushButton('Global Poisson fit')
         _PoissonGlobalFitBtn.clicked.connect(self.poissonFitGlobalGaussians)
         
+        _fitInfoLabel = QtGui.QLabel("Fits for current ROI")
+        _fitInfoLabel.setFixedSize(120,20)
+        
         self.fitInfo = txOutput(self.fitInfoHeader)
         self.fitInfo.size(480, 130)
         
+        _fitGrid.addWidget(_hist_nG_label, 1, 0)
+        _fitGrid.addWidget(self.histo_nG_Spin, 1, 1)
+        _fitGrid.addWidget(_hist_q_label, 2, 0)
+        _fitGrid.addWidget(self.histo_q_Spin, 2, 1)
+        _fitGrid.addWidget(_hist_W_label, 3, 0)
+        _fitGrid.addWidget(self.histo_W_Spin, 3, 1)
+        _fitGrid.addWidget(self.fixWtoSDSwitch, 4, 0, 1 ,2)
         
-        _fitGrid.addWidget(_histnG_label, 0, 2)
-        _fitGrid.addWidget(self.histo_nG_Spin, 0, 3)
-        _fitGrid.addWidget(_histw_label, 0, 0)
-        _fitGrid.addWidget(self.histo_q_Spin, 0, 1)
-        _fitGrid.addWidget(_doFitBtn, 1, 0, 1, 2)
-        _fitGrid.addWidget(_sumFit_label, 1, 2, 1, 3)
-        _fitGrid.addWidget(self.reFitSeparateBtn, 2, 0, 1, 2)
-        _fitGrid.addWidget(_reFit_label, 2, 2, 1, 3)
-        _fitGrid.addWidget(_globFitBtn, 3, 0, 1, 2)
-        _fitGrid.addWidget(_globFit_label, 3, 2, 1, 3)
-        _fitGrid.addWidget(_PoissonGlobalFitBtn, 4, 0, 1, 2)
-        _fitGrid.addWidget(_PoissonGlobalFit_label, 4, 2, 1, 3)
-        _fitGrid.addWidget(self.fitInfo.frame, 0, 5, -1, 1)
+        
+        _fitGrid.addWidget(_doFitBtn, 1, 2, 1, 1)
+        _fitGrid.addWidget(_sumFit_label, 1, 3, 1, 1)
+        _fitGrid.addWidget(self.reFitSeparateBtn, 2, 2, 1, 1)
+        _fitGrid.addWidget(_reFit_label, 2, 3, 1, 1)
+        _fitGrid.addWidget(_globFitBtn, 3, 2, 1, 1)
+        _fitGrid.addWidget(_globFit_label, 3, 3, 1, 1)
+        _fitGrid.addWidget(_PoissonGlobalFitBtn, 4, 2, 1, 1)
+        _fitGrid.addWidget(_PoissonGlobalFit_label, 4, 3, 1, 1)
+        
+        _fitGrid.addWidget(_fitInfoLabel, 0, 5, 1, 1)
+        _fitGrid.addWidget(self.fitInfo.frame, 1, 5, -1, 1)
         _fittingPanel.setLayout(_fitGrid)
         
         # histogram analysis layout
@@ -340,7 +373,7 @@ class histogramFitDialog(QDialog):
         self.hlayout.addWidget(_histOptions, 2, 4, 1, 2)
         
         # File controls
-        _fileOptions.setFixedSize(250, _secondRowH)
+        _fileOptions.setFixedSize(300, _secondRowH)
         self.hlayout.addWidget(_fileOptions, 2, 6, 1, 2)
         
         # Fitting controls and display
@@ -348,7 +381,7 @@ class histogramFitDialog(QDialog):
         self.hlayout.addWidget(_fittingPanel, 3, 0, 1, 8)
         
         # Text output console
-        self.outputF.frame.setFixedSize(400, 600)
+        self.outputF.frame.setFixedSize(400, 450)
         self.hlayout.addWidget(self.outputF.frame, 0, 5, 2, 3)
         
         
@@ -378,33 +411,64 @@ class histogramFitDialog(QDialog):
         self.clearFits()
         self.ROI_change_command(2)
         self.outputF.appendOutText ("Advance to next ROI: {}".format(self.current_ROI), "magenta")
-        
-    def toggleSaveFits(self):
-        if self.sHFCurves.isChecked == False:
-            self.saveFits = False
+    
+    
+    def toggleAutoSave(self):
+        if self.autoSaveSwitch.isChecked() == False:
+            self.autoSave = False
     
         else:
-            self.saveFits = True
+            self.autoSave = True
+        print ("AutoSave is {}.".format(self.autoSave))
         
         
-    def save(self):
-        #maybe we just have a filename not a path
-        self.outputF.appendOutText ("Keeping {} fit results for {} --\n".format(len(self.currentROIFits.index),self.current_ROI), "Magenta")
-        
-        self.fitResults = self.fitResults.append(copy.copy(self.currentROIFits), ignore_index=True)
-        
-        if self.filename != None:
-        
-            if os.path.split(self.filename)[0] is not None:
-                _outfile = os.path.split(self.filename)[0] + "HFit_" + os.path.split(self.filename)[1]
-                
-            else :
-                _outfile = "HFit_" + self.filename
-        
+    def toggleSaveFits(self):
+        if self.sHFCurvesSwitch.isChecked() == False:
+            self.saveFits = False
         else:
-            _outfile = self.dataname + "_HFit.xlsx"
-           
-        with pd.ExcelWriter(_outfile) as writer:
+            self.saveFits = True
+        print ("SaveFitsToggle is {}.".format(self.saveFits))
+        
+        
+    def toggleFixW(self):
+        if self.fixWtoSDSwitch.isChecked() == False:
+            self.fixW = False
+        else:
+            self.fixW = True
+        print ("FixWToggle is {}.".format(self.fixWToggle))
+        
+    def save(self, auto=False):
+        #maybe we just have a filename not a path
+        
+        ## override when autosaving
+        if auto:
+            _saveFilename = "HFtemp.xlsx"
+            
+        
+        # Save was requested by the user
+        else:
+            self.outputF.appendOutText ("Keeping {} fit results for {} --\n".format(len(self.currentROIFits.index),self.current_ROI), "Magenta")
+        
+            self.fitResults = self.fitResults.append(copy.copy(self.currentROIFits), ignore_index=True)
+        
+            usr = os.path.expanduser("~")
+            print ("user path : {}".format(usr))
+            if self.filename:
+
+                if os.path.split(self.filename)[0] is not None:
+                    _outfile =  os.path.join(usr,"HFit_" + os.path.split(self.filename)[1])
+                    print ("_outfile : {}".format(_outfile))
+                else:
+                    _outfile = "HFit_" + self.filename
+                
+            _saveFilename = QFileDialog.getSaveFileName(self,
+                        "Save Results",  _outfile)
+            
+            if _saveFilename == None:
+                print ("file dialog failed")
+                return
+    
+        with pd.ExcelWriter(_saveFilename) as writer:
             
             self.fitResults.to_excel(writer, sheet_name="Fit Results", startrow=1)
         
@@ -421,9 +485,12 @@ class histogramFitDialog(QDialog):
                 #print (_fitsDF.head(5))
         
                 _fitsDF.to_excel(writer, sheet_name="Histograms & Fitted Curves", startrow=1)
-        
-        print ("Wrote {} to disk.".format(_outfile))
-        self.outputF.appendOutText ("Wrote fit results out to disk: {}".format(_outfile))
+
+        if auto:
+            print ("Autosaved to {}".format(_saveFilename))
+        else:
+            print ("Wrote {} to disk.".format(_outfile))
+            self.outputF.appendOutText ("Wrote fit results out to disk: {}".format(_outfile))
        
 
     
@@ -432,6 +499,8 @@ class histogramFitDialog(QDialog):
         self.outputF.appendOutText ("Keeping {} fit results for {} --\n".format(len(self.currentROIFits.index),self.current_ROI), "Magenta")
         
         self.fitResults = self.fitResults.append(copy.copy(self.currentROIFits), ignore_index=True)
+        if self.autoSave:
+            self.save(auto=True)
         self.ROI_change_command(2)
         self.outputF.appendOutText ("Advance to next ROI: {}".format(self.current_ROI), "Magenta")
         # empty the current fits dataframe
@@ -745,6 +814,9 @@ class histogramFitDialog(QDialog):
             if self.fitHistogramsOption == "Individual":
                 # if fits were done, they are complete so show results
                 self.outputF.appendOutText ("Individual Fit Results:\n {}".format(linePrint(self.currentROIFits.iloc[-1])), "darkmagenta")
+                
+                if self.autoSave:
+                    self.save(auto=True)
             
             if "Global" in self.fitHistogramsOption:
                 # put both global options together and use common code
@@ -810,7 +882,8 @@ class histogramFitDialog(QDialog):
                         self.currentROIFits.loc[imax + 1, (_condition, slice(None))] = _globalR
                         print (self.currentROIFits)
                         self.Fits_data[_ID].addFData(_condition, _hx_u, _hy_u)
-                    
+                
+                        
                     self.saveBtn.setEnabled(True) # results so we have something to save
                     
                 else :
@@ -886,11 +959,12 @@ if __name__ == '__main__':
         tdata.open_file()
         main_window.addData(tdata.histo_df)
         main_window.loadBtn.setDisabled(True)
+        main_window.doneBtn.setDisabled(True)
         main_window.filename = tdata.filename
         main_window.dataname_label.setText("TEST: {}".format(tdata.filename))
     
     else:
         main_window.loadBtn.setEnabled(True)
-    
+        
     main_window.show()
     sys.exit(app.exec_())
