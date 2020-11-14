@@ -3,11 +3,11 @@ v. 0.3  2020-11-14
 
 SAFT was written in Python 3 for macOS. In principle it is cross-platform, in practice it was never launched on Windows or Linux. If you happen to get it working on either of these platforms, please let us know. 
 
-### Getting Started on macOS for Python/UNIX beginners 
+### Getting Started on macOS (for Python/UNIX beginners) 
 
 (Python/UNIX experts [see below](#experts))
 
-Clone the SAFT repository to your machine by clicking the green button at the top of this page and selecting "Zip file".
+Clone the SAFT repository to your machine by clicking the green "Code" button at the top of this page and selecting "Download Zip".
 
 You will receive a directory called "SAFT-master", probably in the 'Downloads' folder. 
 
