@@ -82,10 +82,16 @@ References
     return np.convolve( m[::-1], y, mode='valid')
     
 def baseline_als(y, lam, p, niter=20, quiet=False):
-    #from https://stackoverflow.com/questions/29156532
-    #from "Asymmetric Least Squares Smoothing" by P. Eilers and H. Boelens in 2005.
-    """There are two parameters: p for asymmetry and λ for smoothness. Both have to be tuned to the data at hand. We found that generally 0.001 ≤ p ≤ 0.1 is a good choice (for a signal with positive peaks) and 10^2 ≤ λ ≤ 10^9 , but exceptions may occur. In any case one should vary λ on a grid that is approximately linear for log λ"""
-    if not quiet: print('Baseline subtraction with lambda {0:.3f} and p {1:.3f}'.format(lam, p))
+    
+    """ y is a numpy array, niter is the number of iterations
+    
+    from https://stackoverflow.com/questions/29156532
+    Reference: "Asymmetric Least Squares Smoothing" by P. Eilers and H. Boelens in 2005.
+    There are two parameters: p for asymmetry and λ for smoothness. Both have to be tuned to the data at hand. We found that generally
+    0.001 ≤ p ≤ 0.1 is a good choice (for a signal with positive peaks) and 10^2 ≤ λ ≤ 10^9 , but exceptions may occur. In any case one
+    should vary λ on a grid that is approximately linear for log λ"""
+    
+    if not quiet: print('Asymmetric Baseline subtraction with lambda {0:.3f} and p {1:.3f}.'.format(lam, p))
     L = len(y)
     D = sparse.diags([1, -2, 1],[0, -1, -2], shape=(L, L-2))
     w = np.ones(L)
@@ -99,19 +105,20 @@ def baseline_als(y, lam, p, niter=20, quiet=False):
 def baselineIterator(data, lam, p, niter=20):
     """ iterate baseline subtraction over dictionary of dataframes of ROI traces """
     
-    #is there a problem with running it twice? No, peaks were being chucked out was the problem
-    bdata = {}
+    #is there a problem with running it twice? No, the problem was peaks were being chucked out
     
+    bdata = {}
     for _set, df in data.items():
         print ("Auto baseline for {0} set. lambda: {1:.3f} and p: {2:.3f}".format(_set, lam, p))
         
         maxVal = len (df.columns)
         progMsg = "Auto baseline for {0} traces".format(maxVal)
         with pg.ProgressDialog(progMsg, 0, maxVal) as dlg:
+            dlg.setMinimumWidth(300)
             for col in df:
                 dlg += 1
                 y = np.asarray(df[col])
-                #subtract appropriate baseline from each column of df
+                # subtract appropriate baseline from each column of df
                 df[col] -= baseline_als(y, lam, p, niter=20, quiet=True)
         bdata[_set] = df
     return bdata

@@ -109,7 +109,7 @@ class SAFTMainWindow(QMainWindow):
         
         self.analysis_menu.addAction("Extract all peaks", self.extractAllPeaks)
         self.analysis_menu.addAction("Grouped peak stats", self.getGroups)
-        self.analysis_menu.addAction("Launch Histogram Fit", self.launchHistogramFit)
+        self.analysis_menu.addAction("Quantal Histogram Fit", self.launchHistogramFit)
         
         self.help_menu.addAction("Getting Started", self.getStarted)
     
@@ -126,6 +126,14 @@ class SAFTMainWindow(QMainWindow):
         \nPySide2 {5} built on Qt {6}
         \nRunning on {7}
         """.format(__version__, platform.python_version(), pd.__version__, np.__version__, scipy_version, pyside_version, QtCore.__version__, platform.platform(), pg.__version__))
+    
+    def modalWarning(self, s):
+        #print("click", s)
+
+
+        QMessageBox.warning(self, 'Warning', s)
+        #dlg.setWindowTitle("HELLO!")
+        #dlg.exec_()
     
     
     def getStarted(self):
@@ -220,7 +228,7 @@ class SAFTMainWindow(QMainWindow):
         """Logic to avoid the click signal getting sent out if manual peak editing is not on."""
         if self.autoPeaks:
             print ("Turn on manual peak editing to get some value for your clicks.\nFor debugging: ", args)
-            # make popup here
+            self.modalWarning ("Turn on manual peak editing to get some value for your clicks.\nFor debugging: {}".format(args))
             return
         else:
             # the asterisk in call unpacks the tuple into individual arguments.
@@ -487,7 +495,7 @@ class SAFTMainWindow(QMainWindow):
         d_divider.setFixedWidth(375)
         # launch histogram fitting dialog
         # should be inactive until extraction
-        self.fitHistDialogBtn = QtGui.QPushButton('Launch Histogram Fit')
+        self.fitHistDialogBtn = QtGui.QPushButton('Quantal Histogram Fit')
         self.fitHistDialogBtn.clicked.connect(self.launchHistogramFit)
         self.fitHistDialogBtn.setDisabled(True)
         
@@ -917,7 +925,7 @@ class SAFTMainWindow(QMainWindow):
       
     def launchHistogramFit(self):
         """Wrapping function to launch histogram fit dialog"""
-        
+        print ('Dialog to obtain quantal parameters from histogram fits.')
         self.hfd = histogramFitDialog()
         #send current peak data
         _dataset = copy.copy(self.workingDataset)
@@ -927,7 +935,7 @@ class SAFTMainWindow(QMainWindow):
         
     def extractAllPeaks(self):
         """Wrapping function to get peak data from the dialog"""
-        print ('Opening dialog for getting peaks from all ROIs.')
+        print ('Dialog for getting peaks from all ROIs according to reference pattern.')
         # if the QDialog object is instantiated in __init__, it persists in state....
         # do it here to get a fresh one each time.
         self.gpd = extractPeaksDialog()
@@ -950,7 +958,7 @@ class SAFTMainWindow(QMainWindow):
         
         #get the times of the peaks from the "best" trace, that were selected auto or manually
         _peak_t, _ = self.workingDataset.resultsDF.getPeaks('Mean', self.refSelection.currentText())  # pd.series
-        print ("srsv: {}".format(self.refSelection.currentText()))
+        #print ("srsv: {}".format(self.refSelection.currentText()))
         
         _sorted_peak_t = _peak_t.sort_values(ascending=True)    # list is not sorted until now
         _sorted_peak_t.dropna(inplace=True)                     # if there are 'empty' NaN, remove them
@@ -1035,6 +1043,11 @@ class SAFTMainWindow(QMainWindow):
                 
                 if self.autoPeaks:
                     xp, yp = self.peaksWrapper(x, y[i], _condi)
+                else:
+                    # if new data is loaded without autopeaks, there are no peaks....
+                    # this goes wrong later on though
+                    xp = np.array([])
+                    yp = np.array([])
                 
                 # need to add something to p3 scatter
                 self.p3.plot(xp, yp, name="Peaks "+_condi, pen=None, symbol="s", symbolBrush=(i,3))
@@ -1042,8 +1055,9 @@ class SAFTMainWindow(QMainWindow):
                 # create the object for parsing clicks in p3
                 self.cA = clickAlgebra(self.p3)
                 _p3_scatter = utils.findScatter(self.p3.items)
-                _p3_scatter.sigClicked.connect(self.clickRelay)
-                _p3_scatter.sigPlotChanged.connect(self.manualUpdate)
+                if _p3_scatter:
+                    _p3_scatter.sigClicked.connect(self.clickRelay)
+                    _p3_scatter.sigPlotChanged.connect(self.manualUpdate)
         
         self.createLinearRegion()
         #return
@@ -1482,10 +1496,10 @@ class SAFTMainWindow(QMainWindow):
 
 
 if __name__ == "__main__":
-    #change menubar name from 'python' to 'SAFT' on macOS
-    #from https://stackoverflow.com/questions/5047734/
+    # Change menubar name from 'python' to 'SAFT' on macOS
+    # from https://stackoverflow.com/questions/5047734/
     if sys.platform.startswith('darwin'):
-    # Python 3: pip install pyobjc-framework-Cocoa is needed
+    # Python 3: pyobjc-framework-Cocoa is needed
         try:
             from Foundation import NSBundle
             bundle = NSBundle.mainBundle()
@@ -1493,7 +1507,7 @@ if __name__ == "__main__":
                 app_name = os.path.splitext(os.path.basename(sys.argv[0]))[0]
                 app_info = bundle.localizedInfoDictionary() or bundle.infoDictionary()
                 if app_info:
-                    app_info['CFBundleName'] = app_name.upper() #ensure it is in upper case.
+                    app_info['CFBundleName'] = app_name.upper() # ensure text is in upper case.
         except ImportError:
             print ("Failed to import NSBundle, couldn't change menubar name." )
             

@@ -593,8 +593,8 @@ class histogramFitDialog(QDialog):
                 self.outputF.appendOutText ("Removed low SNR data {}".format(key), "Red")
         
         pRK = self.peakResults.keys()
-        pRK_display = ", ".join(str(k) for k in pRK)
-        print (pRK_display)
+        
+        print ("Conditions: {}".format(linePrint(pRK)))
         N_ROI = [len (self.peakResults[d].columns) for d in pRK]
         
         self.outputF.appendOutText ("Added data of type {}:\n".format(type(self.peakResults)), "Blue")
@@ -606,10 +606,7 @@ class histogramFitDialog(QDialog):
            
         # minimal approach, consider exhaustive list as in SAFT.py
         self.ROI_list = list(self.peakResults[list(pRK)[0]].keys().unique(level=0))
-        print (self.ROI_list)
-        
-        
-       
+        print ("ROI list: {}".format(linePrint(self.ROI_list)))
         
         self.fitResults = histogramFitParams(pRK, self.fitPColumns)
         self.currentROIFits = histogramFitParams(pRK, self.fitPColumns)
@@ -653,7 +650,7 @@ class histogramFitDialog(QDialog):
             self.skipROI()  # comes back here with b_c = 2
             return
             
-        print ("self_ROI_N is ", self.ROI_N)
+        #print ("self_ROI_N is ", self.ROI_N)
         self.ROI_change(self.ROI_N)
         
     def ROI_change(self, _ROI=0):
@@ -750,7 +747,7 @@ class histogramFitDialog(QDialog):
                     _ymax = hy.max()
                 # Only store histogram values if we are doing a global fit
                 if self.fitHistogramsOption not in ["None", "Summed"]:
-                    print (self.Fits_data)
+                    #print (self.Fits_data)
                     self.Fits_data[_ID].addHData(_condition, hx, hy)
                 
                 if "Global" in self.fitHistogramsOption:
@@ -853,7 +850,7 @@ class histogramFitDialog(QDialog):
                             
                             _Bcdf = lambda x, *pa: cdf(x, nprGaussians, *pa)
                             KS = kstest(_pdata, _Bcdf, (_max, _max/100, _num, _q, _ws, _scale, _pr))
-                            print ("Binomial fit: {}".format(KS))
+                            
                             legend = 'Global Binomial Fit {}: {} Gaussians, Pr: {:.3f}, K.-S. P: {:.3f}'.format(_ID, _num, _pr, KS.pvalue)
                             _hx_u, _hy_u = nprGaussians_display (_hxc, _num, _q, _ws, [_scale, _pr])
                             _globalR = [_ROI, _ID, _num, _pr, _scale, _ws, _q, "KS", KS.statistic, KS.pvalue, "GB"]
@@ -863,7 +860,6 @@ class histogramFitDialog(QDialog):
                             _mu = _opti.x[i+3]
                             _Pcdf = lambda x, *pa: cdf(x, poissonGaussians, *pa)
                             KS = kstest(_pdata, _Pcdf, (_max, _max/100, _num, _q, _ws, _scale, _mu))
-                            print ("Poisson fit: {}".format(KS))
 
                             legend = 'Global Poisson Fit {}: {} Gaussians, mu: {:.3f}, K.-S. P: {:.3f}'.format( _ID, _num, _mu, KS.pvalue)
                             _hx_u, _hy_u = PoissonGaussians_display (_hxc, _num, _q, _ws, [_scale, _mu])
@@ -876,7 +872,7 @@ class histogramFitDialog(QDialog):
                         _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
                         
                         self.currentROIFits.loc[imax + 1, (_condition, slice(None))] = _globalR
-                        print (self.currentROIFits)
+                        #print (self.currentROIFits)
                         self.Fits_data[_ID].addFData(_condition, _hx_u, _hy_u)
                 
                         

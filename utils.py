@@ -148,5 +148,5 @@ def removeAllScatter(p1, verbose=True):
             
     _rem = p1.listDataItems()
 
-    if Verbose:
+    if verbose:
         print("Data items remaining in {0}: {1}".format(p1, len(_rem)))

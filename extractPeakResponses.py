@@ -140,6 +140,7 @@ class extractPeaksDialog(QDialog):
             peaksList = []
             progMsg = "Get {0} peaks, {1} set..".format(maxVal, _condi)
             with pg.ProgressDialog(progMsg, 0, maxVal) as dlg:
+                dlg.setMinimumWidth(300)
                 for t in self.tPeaks:
                     dlg += 1
                     idx =  np.searchsorted(ROI_df.index, t)
