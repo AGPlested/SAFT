@@ -1498,7 +1498,7 @@ if __name__ == "__main__":
             print ("Failed to import NSBundle, couldn't change menubar name." )
             
     
-    __version__ = "v. 0.3"
+    __version__ = "v. 0.4"
     #print (sys.version)
     app = QApplication([])
     smw = SAFTMainWindow()
