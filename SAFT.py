@@ -688,8 +688,6 @@ class SAFTMainWindow(QMainWindow):
         #pkF_grid.setColumnStretch(2,2)
         peakFinding.setLayout(pkF_grid)
         
-        
-
     
         #stack widgets into control panel
         controls.addWidget(dataPanel, 0, 0, 1, -1)

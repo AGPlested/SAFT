@@ -200,8 +200,8 @@ class histogramFitDialog(QDialog):
         self.saveBtn.clicked.connect(self.save)
         self.saveBtn.setDisabled(True)
         self.doneBtn = QPushButton('Done')
-        self.saveBtn.clicked.connect(self.done)
-        self.saveBtn.setDisabled(True)
+        self.doneBtn.clicked.connect(self.done)
+        self.doneBtn.setDisabled(True)
         
         self.dataname_label = QtGui.QLabel("No data")
         
@@ -410,6 +410,16 @@ class histogramFitDialog(QDialog):
             self.fixW = True
         print ("FixWToggle is {}.".format(self.fixWToggle))
         
+    def done(self, *arg):
+        
+        #print ("done arg {}".format(arg))  ## recursion limit
+        
+        try:
+            self.accept()   # works if the dialog was called from elsewhere
+        except:
+            print ("Bye.")
+            self.hide()     # works if the dialog was called standalone
+            
     def save(self, auto=False):
         #maybe we just have a filename not a path
         
@@ -417,7 +427,6 @@ class histogramFitDialog(QDialog):
         if auto:
             _saveFilename = "HFtemp.xlsx"
             
-        
         # Save was requested by the user
         else:
             self.outputF.appendOutText ("Keeping {} fit results for {} --\n".format(len(self.currentROIFits.index),self.current_ROI), "Magenta")
@@ -425,29 +434,32 @@ class histogramFitDialog(QDialog):
             self.fitResults = self.fitResults.append(copy.copy(self.currentROIFits), ignore_index=True)
         
             usr = os.path.expanduser("~")
-            print ("user path : {}".format(usr))
+            #print ("user path : {}".format(usr))
             if self.filename:
 
                 if os.path.split(self.filename)[0] is not None:
                     _outfile =  os.path.join(usr,"HFit_" + os.path.split(self.filename)[1])
-                    print ("_outfile : {}".format(_outfile))
+                    #print ("_outfile : {}".format(_outfile))
                 else:
                     _outfile = "HFit_" + self.filename
                 
             _saveFilename = QFileDialog.getSaveFileName(self,
-                        "Save Results",  _outfile)
+                        "Save Results",  _outfile)[0]
             
             if _saveFilename == None:
-                print ("file dialog failed")
+                print ("File dialog failed.")
                 return
-    
+        
+        print ("sfn : {}".format(_saveFilename))
+        
         with pd.ExcelWriter(_saveFilename) as writer:
             
+            #print (self.fitResults.head(5))
             self.fitResults.to_excel(writer, sheet_name="Fit Results", startrow=1)
         
             #optionally all fitted curves are saved
             if self.saveFits:
-        
+            
                 #repack as dict of dataframes
                 fits_ddf = {}
                 for k,v in self.Fits_data.items():
@@ -455,8 +467,8 @@ class histogramFitDialog(QDialog):
             
                 _fitsDF = pd.concat(fits_ddf, axis=1)
                 _fitsDF.columns.rename(["Fit ID", "Condition", "Coordinate"], inplace=True )
+
                 #print (_fitsDF.head(5))
-        
                 _fitsDF.to_excel(writer, sheet_name="Histograms & Fitted Curves", startrow=1)
 
         if auto:
@@ -695,7 +707,7 @@ class histogramFitDialog(QDialog):
         # it is the key for the fits dict
         _ID = getRandomString(4)
         
-        if self.fitHistogramsOption not in ["None", "Individual", "Summed"]:
+        if self.fitHistogramsOption not in ["None", "Summed"]:
             
             self.Fits_data[_ID] = HFStore(self.current_ROI, self.peakResults.keys())
             #print ("SFHO: {}\nSFDID: {}".format(self.fitHistogramsOption, self.Fits_data[_ID]))
@@ -737,7 +749,7 @@ class histogramFitDialog(QDialog):
                 if hy.max() > _ymax:
                     _ymax = hy.max()
                 # Only store histogram values if we are doing a global fit
-                if self.fitHistogramsOption not in ["None", "Individual", "Summed"]:
+                if self.fitHistogramsOption not in ["None", "Summed"]:
                     print (self.Fits_data)
                     self.Fits_data[_ID].addHData(_condition, hx, hy)
                 
@@ -758,47 +770,49 @@ class histogramFitDialog(QDialog):
                     _hxc = np.mean(np.vstack([hx[0:-1], hx[1:]]), axis=0)
                     _opti = fit_nprGaussians (_num, _q, _ws, hy, _hxc)
                     
-                    ## add "if _opti success" here
+                    if _opti.success:
+                        _hx_u, _hy_u = nprGaussians_display (_hxc, _num, _q, _ws, _opti.x)
                     
-                    _hx_u, _hy_u = nprGaussians_display (_hxc, _num, _q, _ws, _opti.x)
+                        # save fitted curves
+                        self.Fits_data[_ID].addFData(_condition, _hx_u, _hy_u)
                     
-                    # save fitted curves
-                    self.Fits_data[_ID].addFData(_condition, _hx_u, _hy_u)
+                        _scale = _opti.x[0]
+                        _pr = _opti.x[1]
                     
-                    _scale = _opti.x[0]
-                    _pr = _opti.x[1]
+                        # _Bcdf is a vector of the biomial cdf values for the observed data
+                        # KS is the Kolmogorov Smirnoff test of goodness of fit
+                        _Bcdf = lambda x, *pa: cdf(x, nprGaussians, *pa)
+                        KS = kstest(_pdata, _Bcdf, (_max, _max/100, _num, _q, _ws, _scale, _pr))
+                        
+                        # IB for binomial individual fit
+                        _IB_results = [_ROI, _ID, _num, _pr, _scale, _ws, _q, "KS", KS.statistic, KS.pvalue, "IB" ]
+                        self.fitInfo.appendOutText (linePrint(_IB_results, pre=3), "darkmagenta")
+                        self.saveBtn.setEnabled(True)
+                        
+                        # display the fit
+                        _c = target.plot(_hx_u, _hy_u, name='Individual Binomial fit: {} Gaussians, Pr: {:.3f}'.format( _num, _pr, _q))
                     
-                    # _Bcdf is a vector of the biomial cdf values for the observed data
-                    # KS is the Kolmogorov Smirnoff test of goodness of fit
-                    _Bcdf = lambda x, *pa: cdf(x, nprGaussians, *pa)
-                    KS = kstest(_pdata, _Bcdf, (_max, _max/100, _num, _q, _ws, _scale, _pr))
+                        # from pyqtgraph.examples
+                        _c.setPen(color=col_series, width=3)
+                        _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
+                        
+                        # save results to dataframe
+                        self.currentROIFits.loc[imax + 1, (_condition, slice(None))]= _IB_results
                     
-                    # IB for binomial individual fit
-                    _IB_results = [_ROI, _ID, _num, _pr, _scale, _ws, _q, "KS", KS.statistic, KS.pvalue, "IB" ]
-                    self.fitInfo.appendOutText (linePrint(_IB_results, pre=3), "darkmagenta")
-                    self.saveBtn.setEnabled(True)
-                    
-                    # display the fit
-                    _c = target.plot(_hx_u, _hy_u, name='Individual Binomial fit: {} Gaussians, Pr: {:.3f}'.format( _num, _pr, _q))
-                    
-                    # from pyqtgraph.examples
-                    _c.setPen(color=col_series, width=3)
-                    _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
-                    
-                    # save results to dataframe
-                    self.currentROIFits.loc[imax + 1, (_condition, slice(None))]= _IB_results
-                    
+                    else:
+                        self.outputF.appendOutText ("Individual fit failed! reason: {} cost: {}".format(_opti.message, _opti.cost), "Red")
+                        # add null fitted curve for consistency, others may have worked fine.
+                        self.Fits_data[_ID].addFData(_condition, pd.Series([]), pd.Series([]))
+                        
                 # histogram was made for each set now so we can set the same maximum y for all
                 for t in self.hPlot.stackMembers:
-                    t.setYRange(0, _ymax*1.2)
+                    t.setYRange(0, _ymax * 1.2)
                 
              
             if self.fitHistogramsOption == "Individual":
                 # if fits were done, they are complete so show results
                 self.outputF.appendOutText ("Individual Fit Results:\n {}".format(linePrint(self.currentROIFits.iloc[-1])), "darkmagenta")
                 
-                if self.autoSave:
-                    self.save(auto=True)
             
             if "Global" in self.fitHistogramsOption:
                 # put both global options together and use common code
