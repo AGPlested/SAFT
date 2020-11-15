@@ -929,8 +929,10 @@ class SAFTMainWindow(QMainWindow):
         self.hfd = histogramFitDialog()
         #send current peak data
         _dataset = copy.copy(self.workingDataset)
+        
         ddf = utils.decomposeRDF(_dataset.resultsDF.df)
-        self.hfd.addData(ddf, _dataset.DSname)
+        self.hfd.addData(ddf, _dataset.DSname, _dataset.getSD())
+        
         accepted = self.hfd.exec_()
         
     def extractAllPeaks(self):

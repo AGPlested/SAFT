@@ -180,6 +180,7 @@ class Dataset:
         self.GUIcontrols = {}
         self.GUIcontrols["autoPeaks"] = "Enable"   # a dataset can activate/deactivate parts of the GUI, activated by default
         self.ROI_list = []
+        self.trace = None
     
     def setDSname(self, _name):
         self.DSname = _name
@@ -201,7 +202,25 @@ class Dataset:
         self.isempty = False
         print ("addTracesToDS: added")
 
-
+    def getSD (self):
+        if self.isempty:
+            return None
+        SD = {}
+        if self.traces:
+            for i, condition in enumerate(self.traces):
+                SD[i] = self.traces[condition].std()
+                print ("SDi", SD[i])
+                idx = SD[i].index
+                
+            allSD = np.vstack([s.transpose() for s in SD.values()])
+            
+            allSD_df = pd.DataFrame(allSD, columns=idx)
+            print (allSD_df, allSD_df.max())
+            return allSD_df.max()
+        
+        else:
+            return None
+        
  
  
 class Store:

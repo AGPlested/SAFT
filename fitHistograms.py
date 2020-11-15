@@ -87,7 +87,7 @@ class ROI_Controls(QtGui.QWidget):
             l.addWidget(btn, *posn[counter])
           
         self.ROI_label = QtGui.QLabel("-")
-        self.ROI_label.setFixedSize(150, 40)
+        self.ROI_label.setFixedSize(250, 40)
         self.ROI_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
         
         l.addWidget(self.ROI_label, 0, 0, 2, 1)
@@ -280,8 +280,9 @@ class histogramFitDialog(QDialog):
         #self.histo_q_Spin.valueChanged.connect(self.updateHistograms)
         
         self.fixWtoSDSwitch = QCheckBox('Fix W according to SD')
-        self.fixWtoSDSwitch .setChecked(False)
-        self.fixWtoSDSwitch .stateChanged.connect(self.toggleFixW)
+        self.fixWtoSDSwitch.setChecked(False)
+        self.fixWtoSDSwitch.setDisabled(True)
+        self.fixWtoSDSwitch.stateChanged.connect(self.toggleFixW)
         
         _reFit_label = QtGui.QLabel("fixed dF (q), w")
         self.reFitSeparateBtn = QPushButton('Separate Binomial fits')
@@ -406,8 +407,10 @@ class histogramFitDialog(QDialog):
     def toggleFixW(self):
         if self.fixWtoSDSwitch.isChecked() == False:
             self.fixW = False
+            self.histo_W_Spin.setDisabled(False)
         else:
             self.fixW = True
+            self.histo_W_Spin.setDisabled(True)
         print ("FixWToggle is {}.".format(self.fixWToggle))
         
     def done(self, *arg):
@@ -560,11 +563,12 @@ class histogramFitDialog(QDialog):
             self.addData (self.open_df)
             self.outputF.appendOutText ("Opening file {}".format(self.filename))
         
-    def addData(self, _data, _name=None):
+    def addData(self, _data, _name=None, _SD=None):
         """
         Bring in external data for analysis
         _data should be a dictionary of dataframes
         keys are conditions
+        _SD is a dictionary with ROIs as keys, SD as values
         values are dataframes with times as indices (ignored)
         and peak amplitudes as columns named by ROIs
         """
@@ -577,6 +581,8 @@ class histogramFitDialog(QDialog):
         if _name:
             self.dataname_label.setText (_name)
             self.dataname = _name
+        
+        self.SD = _SD       #None by default
         
         #take all peak lists
         self.peakResults = _data # a dict of DataFrames
@@ -657,7 +663,15 @@ class histogramFitDialog(QDialog):
         """ update on ROI change"""
         self.ROI_N = _ROI
         self.current_ROI = self.ROI_list[_ROI]
-        self.RC.update_ROI_label("{} : {} of {}".format(self.current_ROI, self.ROI_N + 1, len(self.ROI_list)))
+        ROI_label_text = "{} : {} of {}".format(self.current_ROI, self.ROI_N + 1, len(self.ROI_list))
+        
+        
+        if self.SD is not None:
+            self.fixWtoSDSwitch.setEnabled(True)
+            self.fixws = self.SD[self.current_ROI]
+            ROI_label_text += " , baseline SD: {:.3f}".format(self.fixws)
+        
+        self.RC.update_ROI_label(ROI_label_text)
         
         #for any change of ROI, the default view is the sum of all histograms
         _fitSum =self.sum_hist.currentIndex()
