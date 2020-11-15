@@ -220,6 +220,7 @@ class SAFTMainWindow(QMainWindow):
         """Logic to avoid the click signal getting sent out if manual peak editing is not on."""
         if self.autoPeaks:
             print ("Turn on manual peak editing to get some value for your clicks.\nFor debugging: ", args)
+            # make popup here
             return
         else:
             # the asterisk in call unpacks the tuple into individual arguments.
@@ -494,28 +495,27 @@ class SAFTMainWindow(QMainWindow):
         extractPeaksBtn = QtGui.QPushButton('Extract peaks from all ROIs')
         extractPeaksBtn.clicked.connect(self.extractAllPeaks)
         
-        # should be inactive until peaks are extracted
-        self.savePSRBtn = QtGui.QPushButton('Save peak data')
-        self.savePSRBtn.clicked.connect(self.save_peaks)
-        self.savePSRBtn.setDisabled(True)
         
-        # should be inactive until extraction
-        self.save_baselined_ROIs_Btn = QtGui.QPushButton('Save baselined ROI traces')
-        self.save_baselined_ROIs_Btn.clicked.connect(self.save_baselined)
-        self.save_baselined_ROIs_Btn.setDisabled(True)
+        
+        
         
         # should be inactive until extraction
         self.extractGroupsDialog_Btn = QtGui.QPushButton('Extract grouped responses')
         self.extractGroupsDialog_Btn.clicked.connect(self.getGroups)
         self.extractGroupsDialog_Btn.setDisabled(True)
         
-        showDataBtn = QtGui.QPushButton('Show current peak data')
-        showDataBtn.clicked.connect(self.resultsPopUp)
+        reference_label = QtGui.QLabel("Refence Condition")
+        reference_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         
-        _buttonList = [self.fitHistDialogBtn, extractPeaksBtn, self.savePSRBtn, self.save_baselined_ROIs_Btn, self.extractGroupsDialog_Btn, showDataBtn]
-        bsize = (195, 37)
-        for b in _buttonList:
-            b.setFixedSize(*bsize)
+        self.refSelection = QtGui.QComboBox()
+        self.refSelection.setFixedSize(90, 25)       # only width seems to work
+        self.refSelection.addItems(['-'])
+        self.refSelection.currentIndexChanged.connect(self.ROI_Change)
+        
+        ##_buttonList = [self.fitHistDialogBtn, extractPeaksBtn, self.savePSRBtn, self.save_baselined_ROIs_Btn, self.extractGroupsDialog_Btn, showDataBtn]
+        ##bsize = (195, 37)
+        ##for b in _buttonList:
+        ##    b.setFixedSize(*bsize)
         
         
         dataGrid.addWidget(datasetLabel, 0, 0, 1, 1)
@@ -527,12 +527,14 @@ class SAFTMainWindow(QMainWindow):
         
         dataGrid.addWidget(d_divider, 3, 0, 1, -1)
         
-        dataGrid.addWidget(extractPeaksBtn, 4, 0, 1, 2)
-        dataGrid.addWidget(self.extractGroupsDialog_Btn, 5, 0, 1, 2)
+        dataGrid.addWidget(reference_label, 4, 0, 1, 2)
+        dataGrid.addWidget(self.refSelection, 4, 2, 1, 2)
+        
+        dataGrid.addWidget(extractPeaksBtn, 5, 0, 1, 2)
+        dataGrid.addWidget(self.extractGroupsDialog_Btn, 5, 2, 1, 2)
         dataGrid.addWidget(self.fitHistDialogBtn, 6, 0, 1, 2)
-        dataGrid.addWidget(showDataBtn, 4, 2, 1, 2)
-        dataGrid.addWidget(self.save_baselined_ROIs_Btn, 5, 2, 1, 2)
-        dataGrid.addWidget(self.savePSRBtn, 6, 2, 1, 2)
+        
+        
         
         dataPanel.setLayout(dataGrid)
         
@@ -583,13 +585,19 @@ class SAFTMainWindow(QMainWindow):
         self.SGWin_Spin.setFixedSize(60, 25)
         self.SGWin_Spin.valueChanged.connect(self.ROI_Change)
         
+        # should be inactive until extraction
+        self.save_baselined_ROIs_Btn = QtGui.QPushButton('Save baselined ROI traces')
+        self.save_baselined_ROIs_Btn.clicked.connect(self.save_baselined)
+        self.save_baselined_ROIs_Btn.setDisabled(True)
+        
         b_divider = QHLine()
         b_divider.setFixedWidth(375)
         
-        base_grid.addWidget(auto_bs_label, 0, 0, 1, 3)
-        base_grid.addWidget(self.autobs_Box, 0, 3, 1, 3)
-        base_grid.addWidget(auto_bs_P_label, 1, 0)
-        base_grid.addWidget(self.auto_bs_P_slider, 1, 1, 1, 2)
+        base_grid.addWidget(auto_bs_label, 0, 0, 1, 2)
+        base_grid.addWidget(self.autobs_Box, 0, 2, 1, 1)
+        base_grid.addWidget(self.save_baselined_ROIs_Btn, 1, 0, 1, 3)
+        base_grid.addWidget(auto_bs_P_label, 0, 3)
+        base_grid.addWidget(self.auto_bs_P_slider, 0, 4, 1, 2)
         base_grid.addWidget(auto_bs_lam_label, 1, 3)
         base_grid.addWidget(self.auto_bs_lam_slider, 1, 4, 1, 2)
         
@@ -663,6 +671,14 @@ class SAFTMainWindow(QMainWindow):
         self.removeSml_Spin.setFixedSize(70, 25)
         self.removeSml_Spin.valueChanged.connect(self.ROI_Change)
         
+        # should be inactive until peaks are extracted
+        self.savePSRBtn = QtGui.QPushButton('Save peak data')
+        self.savePSRBtn.clicked.connect(self.save_peaks)
+        self.savePSRBtn.setDisabled(True)
+        
+        showDataBtn = QtGui.QPushButton('Show current peak data')
+        showDataBtn.clicked.connect(self.resultsPopUp)
+        
         pkF_grid.addWidget(p3_show_label, 0, 0)
         pkF_grid.addWidget(p3_select_label, 0, 2, 1, 2)
         pkF_grid.addWidget(self.p3Selection, 0 , 1)
@@ -682,6 +698,9 @@ class SAFTMainWindow(QMainWindow):
         pkF_grid.addWidget(removeSml_L_label, 6, 0, 1, 2)
         pkF_grid.addWidget(self.removeSml_Spin, 6, 2)
         pkF_grid.addWidget(removeSml_R_label, 6, 3)
+        
+        pkF_grid.addWidget(showDataBtn, 7, 0, 1, 2)
+        pkF_grid.addWidget(self.savePSRBtn, 7, 2, 1, 2)
         
         pkF_grid.setSpacing(10)
         #pkF_grid.setColumnStretch(0,3)
@@ -930,8 +949,9 @@ class SAFTMainWindow(QMainWindow):
             _dataset.traces = baselineIterator(_dataset.traces, self.auto_bs_lam, self.auto_bs_P)
         
         #get the times of the peaks from the "best" trace, that were selected auto or manually
-        _peak_t, _ = self.workingDataset.resultsDF.getPeaks('Mean', self.conditionForExtraction)
-        #print (_peak_t, type(_peak_t))      # pd.series
+        _peak_t, _ = self.workingDataset.resultsDF.getPeaks('Mean', self.refSelection.currentText())  # pd.series
+        print ("srsv: {}".format(self.refSelection.currentText()))
+        
         _sorted_peak_t = _peak_t.sort_values(ascending=True)    # list is not sorted until now
         _sorted_peak_t.dropna(inplace=True)                     # if there are 'empty' NaN, remove them
         
@@ -1437,9 +1457,17 @@ class SAFTMainWindow(QMainWindow):
         #split trace layout can be made now we know how many sets (conditions) we have
         self.createSplitTraceLayout()
         
-        #populate the combobox for choosing the data shown in the zoom view
+        # populate the comboboxes for choosing the data shown in the zoom view,
+        # and choosing the reference ROI for peak extraction
         self.p3Selection.clear()
         self.p3Selection.addItems(self.conditions)
+        self.refSelection.clear()
+        self.refSelection.addItems(self.conditions)
+        
+        i = self.refSelection.findText(self.conditionForExtraction)
+        if i != -1:
+            self.refSelection.setCurrentIndex(i)      # the default
+            self.p3Selection.setCurrentIndex(i)     #set both for now
         
         #create a dataframe for peak measurements
         self.workingDataset.resultsDF = Results(self.workingDataset.ROI_list, self.conditions)

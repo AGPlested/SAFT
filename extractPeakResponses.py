@@ -19,7 +19,7 @@ class extractPeaksDialog(QDialog):
     def makeDialog(self):
         """Create the controls for the dialog"""
         
-        self.setWindowTitle("Extract peaks according to temporal pattern")
+        self.setWindowTitle("Extract peaks according to reference pattern")
         layout = QGridLayout()
         w = QWidget()
         w.setLayout(layout)

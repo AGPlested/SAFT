@@ -691,9 +691,9 @@ class histogramFitDialog(QDialog):
             _nbins  = self.histogram_parameters()[0]
             _max = 0
             for _condition in self.peakResults.keys():
-                _pdata = self.peakResults[_condition][_ROI]
-                if _pdata.max() > _max * 1.2:
-                    _max = _pdata.max() * 1.2
+                _peaks = self.peakResults[_condition][_ROI]
+                if _peaks.max() > _max * 1.2:
+                    _max = _peaks.max() * 1.2
             
         
         _hsum = self.sum_hist.currentText()
@@ -847,7 +847,7 @@ class histogramFitDialog(QDialog):
                         _hxc = np.mean(np.vstack([_hxr[0:-1], _hxr[1:]]), axis=0)
                         target = self.hPlot.stackMembers[i]
                         #_chiSq = chisquare(_hys[i], _hys[i] + _resid [i])
-                        _pdata = self.peakResults[_condition][_ROI]
+                        _pdata = self.peakResults[_condition][_ROI].dropna()
                         if "Binom" in self.fitHistogramsOption:
                             _pr = _opti.x[i+3]
                             
