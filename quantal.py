@@ -7,19 +7,20 @@ from scipy.stats import binom, poisson
 
 def cdf(x, func, max, step, *fargs):
     """calculate cdf for function. extra arguments (after x) for func in should be given in fargs"""
-    print (x, step)
+    #print ("Len (x) = {}".format(len(x)))
+    #print (x, step)
     _denom = 0
     for d in np.arange(0, max, step):
         _denom += func(d, *fargs)
     
     f = []
-    
     for xi in x:
         _num = 0
+        #print ("xi: {} step: {}".format(xi, step))
         for d in np.arange(0, xi, step):
             _num += func(d, *fargs)
         
-        f.append(_num/_denom)
+        f.append(_num / _denom)
     
     f_array = np.array(f)
     #print (f_array)

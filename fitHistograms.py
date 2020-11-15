@@ -14,7 +14,7 @@ from scipy.stats import chisquare, kstest
 ### SAFT imports
 from dataStructures import HistogramFitStore as HFStore
 from dataStructures import histogramFitParams
-from utils import getRandomString, linePrint
+from utils import getRandomString, linePrint, txOutput
 from quantal import fit_nGaussians, nGaussians_display, fit_nprGaussians, fit_PoissonGaussians_global, PoissonGaussians_display, nprGaussians_display, fit_nprGaussians_global, nprGaussians, poissonGaussians, cdf
 
 def despace (s):
@@ -148,34 +148,7 @@ class HDisplay():
         stack_member.showAxis("bottom")
         stack_member.setLabel('bottom', "dF / F")
 
-class txOutput():
-    """Console frame"""
-    def __init__(self, initialText, *args, **kwargs):
-        
-        self.text = initialText
-        self.frame = QtGui.QTextEdit()
-        font = QtGui.QFont()
-        font.setFamily('Courier')
-        font.setFixedPitch(True)
-        font.setPointSize(10)
-        self.frame.setCurrentFont(font)
-        self.appendOutText(initialText)
-        self.frame.setReadOnly(True)
-        self.size()
 
-    def appendOutText(self, newOP=None, color="Black"):
-        self.frame.setTextColor(color)
-        if newOP != None:
-            self.frame.append(str(newOP))
-
-    def size(self, _w=200, _h=200):
-        self.frame.resize(_w, _h)
-        self.frame.setMinimumSize(_w, _h)
-        self.frame.setMaximumSize(_w, _h)
-    
-    def reset(self, initialText):
-        self.frame.clear()
-        self.appendOutText(initialText)
     
 class histogramFitDialog(QDialog):
     
@@ -752,8 +725,12 @@ class histogramFitDialog(QDialog):
             for i, _condition in enumerate(self.peakResults.keys()):
                 # colours
                 col_series = (i, len(self.peakResults.keys()))
+                
                 # get relevant peaks data for displayed histograms
-                _pdata = self.peakResults[_condition][_ROI]
+                # not all traces have the same number of peaks so drop padding
+                _pdata = self.peakResults[_condition][_ROI].dropna()
+                #print ("pdata and dropna\n {}\n {}".format(_pdata, _pdata))
+                
                 # redo histogram
                 hy, hx  = np.histogram(_pdata, bins=_nbins, range=(0., _max))
                 
@@ -781,7 +758,12 @@ class histogramFitDialog(QDialog):
                     _hxc = np.mean(np.vstack([hx[0:-1], hx[1:]]), axis=0)
                     _opti = fit_nprGaussians (_num, _q, _ws, hy, _hxc)
                     
+                    ## add "if _opti success" here
+                    
                     _hx_u, _hy_u = nprGaussians_display (_hxc, _num, _q, _ws, _opti.x)
+                    
+                    # save fitted curves
+                    self.Fits_data[_ID].addFData(_condition, _hx_u, _hy_u)
                     
                     _scale = _opti.x[0]
                     _pr = _opti.x[1]

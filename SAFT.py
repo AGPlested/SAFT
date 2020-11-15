@@ -624,7 +624,7 @@ class SAFTMainWindow(QMainWindow):
         
         p3_show_label = QtGui.QLabel("Show")
         p3_show_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        p3_select_label = QtGui.QLabel("in peak editing frame")
+        p3_select_label = QtGui.QLabel("in zoom.")
         self.p3Selection = QtGui.QComboBox()
         self.p3Selection.setFixedSize(90, 25)       # only width seems to work
         self.p3Selection.addItems(['-'])

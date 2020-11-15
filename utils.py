@@ -10,6 +10,39 @@ import pandas as pd
 
 import pyqtgraph as pg
 
+from PySide2 import QtGui
+
+class txOutput():
+    """Console frame"""
+    def __init__(self, initialText, *args, **kwargs):
+        
+        self.text = initialText
+        self.frame = QtGui.QTextEdit()
+        font = QtGui.QFont()
+        font.setFamily('Courier')
+        font.setFixedPitch(True)
+        font.setPointSize(10)
+        self.frame.setCurrentFont(font)
+        self.appendOutText(initialText)
+        self.frame.setReadOnly(True)
+        self.size()
+
+    def appendOutText(self, newOP=None, color="Black"):
+        self.frame.setTextColor(color)
+        if newOP != None:
+            self.frame.append(str(newOP))
+
+    def size(self, _w=200, _h=200):
+        self.frame.resize(_w, _h)
+        self.frame.setMinimumSize(_w, _h)
+        self.frame.setMaximumSize(_w, _h)
+    
+    def reset(self, initialText):
+        self.frame.clear()
+        self.appendOutText(initialText)
+
+
+
 def decomposeRDF(rdf):
     """
     Decompose a pandas MultiIndex dataframe ('rdf') with levels R, C, (time-peak pairs)
