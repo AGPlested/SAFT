@@ -378,9 +378,10 @@ class histogramFitDialog(QDialog):
                 self.outputF.appendOutText ("N_bins {}, manual Max {}".format(_nbins, _max))
         
             
-        elif self.maxFlag == "Auto max"
+        elif self.maxFlag == "Auto max":
             
             _max = 0
+            _ROI = self.current_ROI
             for _condition in self.peakResults.keys():
                 _peaks = self.peakResults[_condition][_ROI]
                 if _peaks.max() > _max * 1.2:
@@ -710,7 +711,7 @@ class histogramFitDialog(QDialog):
         """Histogram controls were changed, redo the fit.
         """
         
-        # would be None if no data loaded so escape
+        # would be None if no data was loaded so escape
         if self.current_ROI == None:
             return
         
@@ -718,9 +719,6 @@ class histogramFitDialog(QDialog):
         
         # get values from controls (with auto override)
         _hsum, _nbins, _max = self.histogramParameters()
-
-        _hsum =
-        
         self.outputF.appendOutText ("Update {0} Histogram(s) for {1} with {2} bins and maximum dF/F = {3:0.3f}.".format(_hsum, _ROI, _nbins, _max))
     
         if "Global" in self.fitHistogramsOption:
@@ -793,7 +791,7 @@ class histogramFitDialog(QDialog):
                     
                     if self.fixW and self.SD is not None:   #fix W is ticked and we were given some SDs
                         _ws = self.SD[_ROI]
-                        print ("Fixed _ws from supplied, ROI: {} {}".format(_ws, _ROI))
+                        _wsInfo = "Fixed _ws ({}) from supplied value".format(_ws)
                     
                     else:
                         _ws = self.histo_W_Spin.value()
@@ -801,16 +799,16 @@ class histogramFitDialog(QDialog):
                         if _ws == 0:
                             _ws = self.histo_Max_Spin.value() / 10
                             _box = "M"
-                        print ("Fixed _ws from GUI spinbox {}, ROI: {} {}".format(_box, _ws, _ROI))
+                        _wsInfo = "Fixed _ws ({}) from GUI spinbox {}".format(_ws, _box)
                         
+                    print ("Fit {}, ROI: {}, _q = {}, {}".format(_ID, _ROI, _q, _wsInfo))
                         
-                    #_ws = self.fixws # / 1.5              # arbitrary but always too fat!
                     _hxc = np.mean(np.vstack([hx[0:-1], hx[1:]]), axis=0)
                     _opti = fit_nprGaussians (_num, _q, _ws, hy, _hxc)
-                    
+                    #print (_opti)
                     if _opti.success:
                         _hx_u, _hy_u = nprGaussians_display (_hxc, _num, _q, _ws, _opti.x)
-                    
+                        #print ("hxu, hyu\n{}{}".format(_hx_u, _hy_u))
                         # save fitted curves
                         self.Fits_data[_ID].addFData(_condition, _hx_u, _hy_u)
                     
@@ -955,7 +953,7 @@ class histogramFitDialog(QDialog):
                 # add single
                 self.hPlot.glw.addItem(self.hPlot.h)
                 # replace in layout *4-tuple has position and size
-                #self.hlayout.addWidget(self.hPlot.glw, *self.histogramLayPos)
+                #self.hlayout.addWidget(self.hPlot.glw, *self.histogramLayPos) ###NOT NEEDED
                 # when complete, toggle to bypass next time
                 self.split_state = False
                 
@@ -972,7 +970,7 @@ class histogramFitDialog(QDialog):
                 #print ("lens hx, hy", len(hx), len(hy))
                 _num = self.histo_nG_Spin.value()
                 _q = self.histo_q_Spin.value()
-                _ws = self.histo_Max_Spin.value() / 20
+                _ws = self.histo_Max_Spin.value() / 10
                
                 _hxc = np.mean(np.vstack([hx[0:-1], hx[1:]]), axis=0)
                 _opti = fit_nGaussians(_num, _q, _ws, sumhy, _hxc)
