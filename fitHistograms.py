@@ -171,7 +171,7 @@ class histogramFitDialog(QDialog):
         self.outputF = txOutput(self.outputHeader)
         self.current_ROI = None
         self.ROI_SD = 0                 # the SD for the ROI (assumed similar over conditions)
-        self.flag = "Auto max"          # how to find histogram x-axis
+        self.maxFlag = "Auto max"          # how to find histogram x-axis
         self.fixW = False
         self.makeDialog()
     
@@ -284,10 +284,10 @@ class histogramFitDialog(QDialog):
         self.fixWtoSDSwitch.setDisabled(True)
         self.fixWtoSDSwitch.stateChanged.connect(self.toggleFixW)
         
-        _reFit_label = QtGui.QLabel("fixed dF (q), w")
-        self.reFitSeparateBtn = QPushButton('Separate Binomial fits')
-        self.reFitSeparateBtn.clicked.connect(self.reFitSeparated)
-        self.reFitSeparateBtn.setDisabled(True)
+        _separateBinomial_label = QtGui.QLabel("fixed dF (q), w")
+        self.separateBinomialBtn = QPushButton('Separate Binomial fits')
+        self.separateBinomialBtn.clicked.connect(self.separateBinomial)
+        self.separateBinomialBtn.setDisabled(True)
         
         _sumFit_label = QtGui.QLabel("free dF (q), w, amplitudes")
         _doFitBtn = QPushButton('Fit Summed')
@@ -318,8 +318,8 @@ class histogramFitDialog(QDialog):
         
         _fitGrid.addWidget(_doFitBtn, 1, 2, 1, 1)
         _fitGrid.addWidget(_sumFit_label, 1, 3, 1, 1)
-        _fitGrid.addWidget(self.reFitSeparateBtn, 2, 2, 1, 1)
-        _fitGrid.addWidget(_reFit_label, 2, 3, 1, 1)
+        _fitGrid.addWidget(self.separateBinomialBtn, 2, 2, 1, 1)
+        _fitGrid.addWidget(_separateBinomial_label, 2, 3, 1, 1)
         _fitGrid.addWidget(_globFitBtn, 3, 2, 1, 1)
         _fitGrid.addWidget(_globFit_label, 3, 3, 1, 1)
         _fitGrid.addWidget(_PoissonGlobalFitBtn, 4, 2, 1, 1)
@@ -362,14 +362,35 @@ class histogramFitDialog(QDialog):
         self.setLayout(self.hlayout)
     
     def setManualMax(self):
-        self.flag = "Manual max"
+        self.maxFlag = "Manual max"
         self.updateHistograms()
     
-    def histogram_parameters(self):
+    def histogramParameters(self, verbose=False):
+        """ read bins from GUI and optionally read or calculate x (F) max"""
+        
         _nbins = int(self.histo_NBin_Spin.value())
-        _max = self.histo_Max_Spin.value()
-        self.outputF.appendOutText ("N_bins {}, Max {}".format(_nbins, _max))
-        return _nbins, _max
+        _hsumOpt = self.sum_hist_option.currentText()
+        
+        if self.maxFlag == "Manual max":
+            _max = self.histo_Max_Spin.value()
+            
+            if verbose:
+                self.outputF.appendOutText ("N_bins {}, manual Max {}".format(_nbins, _max))
+        
+            
+        elif self.maxFlag == "Auto max"
+            
+            _max = 0
+            for _condition in self.peakResults.keys():
+                _peaks = self.peakResults[_condition][_ROI]
+                if _peaks.max() > _max * 1.2:
+                    _max = _peaks.max() * 1.2
+            
+            if verbose:
+                self.outputF.appendOutText ("N_bins {}, auto Max {}".format(_nbins, _max))
+           
+        return _hsumOpt, _nbins, _max
+            
     
     def clearFits(self):
     
@@ -496,8 +517,10 @@ class histogramFitDialog(QDialog):
         self.fitInfo.reset(self.fitInfoHeader)
         
     
-    def reFitSeparated(self):
-        """obtain Pr using binomial, using q and w from previous fit"""
+    def separateBinomial(self):
+        """obtain Pr from separated histograms using binomial,
+        using q from previous fit,
+        w is guessed or fixed to supplied value"""
         
         # use last df_Q from last summed fit
         _q = self.fixq
@@ -627,8 +650,8 @@ class histogramFitDialog(QDialog):
         #print("Button command: {}".format(button_command))
         
         # turn off separate fitting when moving to new ROI, and get histogram x-range automatically
-        self.reFitSeparateBtn.setDisabled(True)
-        self.flag = "Auto max"
+        self.separateBinomialBtn.setDisabled(True)
+        self.maxFlag = "Auto max"
         
         if button_command == 0:
             self.ROI_N = 0
@@ -692,22 +715,12 @@ class histogramFitDialog(QDialog):
             return
         
         _ROI = self.current_ROI
-        # get values from controls and summarise them to terminal
-        if self.flag == "Manual max":
-            _nbins, _max = self.histogram_parameters()
-            #print ("Manual max triggered {} {}".format(_nbins, _max))
-        else:
-            #auto max of histogram
-            #print("self.flag is {}".format(self.flag))
-            _nbins  = self.histogram_parameters()[0]
-            _max = 0
-            for _condition in self.peakResults.keys():
-                _peaks = self.peakResults[_condition][_ROI]
-                if _peaks.max() > _max * 1.2:
-                    _max = _peaks.max() * 1.2
-            
         
-        _hsum = self.sum_hist_option.currentText()
+        # get values from controls (with auto override)
+        _hsum, _nbins, _max = self.histogramParameters()
+
+        _hsum =
+        
         self.outputF.appendOutText ("Update {0} Histogram(s) for {1} with {2} bins and maximum dF/F = {3:0.3f}.".format(_hsum, _ROI, _nbins, _max))
     
         if "Global" in self.fitHistogramsOption:
@@ -780,13 +793,17 @@ class histogramFitDialog(QDialog):
                     
                     if self.fixW and self.SD is not None:   #fix W is ticked and we were given some SDs
                         _ws = self.SD[_ROI]
-                        print ("Fixed _ws, ROI: {} {}".format(_ws, _ROI))
+                        print ("Fixed _ws from supplied, ROI: {} {}".format(_ws, _ROI))
                     
                     else:
                         _ws = self.histo_W_Spin.value()
+                        _box = "W"
                         if _ws == 0:
                             _ws = self.histo_Max_Spin.value() / 10
-                    
+                            _box = "M"
+                        print ("Fixed _ws from GUI spinbox {}, ROI: {} {}".format(_box, _ws, _ROI))
+                        
+                        
                     #_ws = self.fixws # / 1.5              # arbitrary but always too fat!
                     _hxc = np.mean(np.vstack([hx[0:-1], hx[1:]]), axis=0)
                     _opti = fit_nprGaussians (_num, _q, _ws, hy, _hxc)
@@ -973,7 +990,7 @@ class histogramFitDialog(QDialog):
             
                 # as long as we have a fit, we can enable the separate fit button
                 if _opti.success:
-                    self.reFitSeparateBtn.setEnabled(True)
+                    self.separateBinomialBtn.setEnabled(True)
                     self.outputF.appendOutText ("Summed Histogram fit\nopti.x: {}\nCost: {}".format(linePrint(_opti.x), _opti.cost), "darkgreen")
             
         
