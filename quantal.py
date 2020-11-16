@@ -41,19 +41,27 @@ def nprGaussians(x, n, q, widths, scale, pr):
         
     return g
 
-def fit_PoissonGaussians_global(num, q, ws, hy, hx):
+def fit_PoissonGaussians_global(num, q, ws, hy, hx, fixedW=False):
     # hy and hx are matrixes of n columns for the n histograms
     #print (hy.shape)
     nh = hy.shape[1]        # how many columns = how many functions
    
     mu = np.full(nh, 2)           # mean release rate, no bound (will be bounded 0 to num)
-    events = 10                   # a scale factor depending on no. of events measured
-    guesses = np.array([q, ws, events, *mu])
-       
-    l_bounds = np.zeros (nh + 3)
-    u_bounds = np.concatenate((np.full((3), np.inf), np.full(nh, num) ))
-    return optimize.least_squares(globalErrFuncP, guesses, bounds = (l_bounds, u_bounds), args=(num, nh, hx.flatten(), hy.flatten()))
+    _scale = 10                   # a scale factor depending on total no. of events measured
     
+    if fixedW==False:
+        guesses = np.array([q, ws, _scale, *mu])
+           
+        l_bounds = np.zeros (nh + 3)
+        u_bounds = np.concatenate((np.full((3), np.inf), np.full(nh, num) ))
+        return optimize.least_squares(globalErrFuncP, guesses, bounds = (l_bounds, u_bounds),
+                                        args=(num, nh, hx.flatten(), hy.flatten()))
+    else:
+        guesses = np.array([q, _scale, *mu])
+        l_bounds = np.zeros (nh + 2)
+        u_bounds = np.concatenate((np.full((2), np.inf), np.full(nh, num) ))        #maximum value of mu is num
+        return optimize.least_squares(globalErrFuncPW, guesses, bounds = (l_bounds, u_bounds),
+                                        args=(num, ws, nh, hx.flatten(), hy.flatten()))
 
 def poissonGaussians(x, n, q, widths, scale, mu):
     """Heights come from poisson with mean mu and an optimised scale parameter (no. of events)"""
@@ -64,7 +72,29 @@ def poissonGaussians(x, n, q, widths, scale, mu):
         #print ("Poisson k {}, n {}, mu {} = {}. q {}, w {}, scale {}".format(k, n, mu, b, q, widths, scale))
     
     return g
-    
+   
+   
+def globalErrFuncPW(pa, num, ws, nh, hx, hy):
+    # global poisson stats fit with fixed ws
+    # 1-D function so hx and hy are passed flat
+    # assume for now that pa is a list... it should be!
+    _errfunc_list = []
+    _hxr = hx.reshape(-1, nh)       # rows are inferred
+    _hyr = hy.reshape(-1, nh)
+
+    _q = pa[0]
+    _scale = pa[1]
+
+    # loop for each column
+    for i in range(nh):
+        _hx = _hxr[:, i]
+        _hxc = np.mean(np.vstack([_hx[0:-1], _hx[1:]]), axis=0)
+        # pa[i+2] is the relevant mu
+        _e_i = (poissonGaussians(_hxc, num,  _q, ws, _scale, pa[i+2]) - _hyr[:, i])**2
+        _errfunc_list.append(_e_i)
+
+    return np.concatenate(_errfunc_list)     #FLAT -should work for unknown n
+   
 def globalErrFuncP(pa, num, nh, hx, hy):
     # global poisson stats fit
     # 1-D function so hx and hy are passed flat
@@ -75,14 +105,14 @@ def globalErrFuncP(pa, num, nh, hx, hy):
 
     _q = pa[0]
     _ws = pa[1]
-    _events = pa[2]
+    _scale = pa[2]
 
     # loop for each column
     for i in range(nh):
         _hx = _hxr[:, i]
         _hxc = np.mean(np.vstack([_hx[0:-1], _hx[1:]]), axis=0)
         # pa[i+3] is the relevant mu
-        _e_i = (poissonGaussians(_hxc, num,  _q, _ws, _events, pa[i+3]) - _hyr[:, i])**2
+        _e_i = (poissonGaussians(_hxc, num,  _q, _ws, _scale, pa[i+3]) - _hyr[:, i])**2
         _errfunc_list.append(_e_i)
 
     return np.concatenate(_errfunc_list)     #FLAT -should work for unknown n
@@ -105,6 +135,28 @@ def fit_nGaussians (num, q, ws, hy, hx):
     # loss="soft_l1" is bad!
     return optimize.least_squares(errfunc, guesses, bounds = (0, np.inf), args=(hx, hy))
 
+def globalErrFuncBW(pa, num, ws, nh, hx, hy):
+    # global binomial stats fit with fixed ws
+    # 1-D function so hx and hy are passed flat
+    # assume for now that pa is a list... it should be!
+    _errfunc_list = []
+    _hxr = hx.reshape(-1, nh)       # rows are inferred
+    _hyr = hy.reshape(-1, nh)
+    
+    _q = pa[0]
+    _scale = pa[1]
+    
+    # loop for each column
+    for i in range(nh):
+        _hx = _hxr[:, i]
+        _hxc = np.mean(np.vstack([_hx[0:-1], _hx[1:]]), axis=0)
+        # pa[i+2] is the relevant Pr
+        _e_i = (nprGaussians(_hxc, num,  _q, ws, _scale, pa[i+2]) - _hyr[:, i])**2
+        _errfunc_list.append(_e_i)
+
+    return np.concatenate(_errfunc_list)     #FLAT -should work for unknown n
+
+
 def globalErrFuncB(pa, num, nh, hx, hy):
     # 1-D function so hx and hy are passed flat
     # assume for now that pa is a list... it should be!
@@ -114,39 +166,48 @@ def globalErrFuncB(pa, num, nh, hx, hy):
     
     _q = pa[0]
     _ws = pa[1]
-    _events = pa[2]
+    _scale = pa[2]
     
     # loop for each column
     for i in range(nh):
         _hx = _hxr[:, i]
         _hxc = np.mean(np.vstack([_hx[0:-1], _hx[1:]]), axis=0)
         # pa[i+3] is the relevant Pr
-        _e_i = (nprGaussians(_hxc, num,  _q, _ws, _events, pa[i+3]) - _hyr[:, i])**2
+        _e_i = (nprGaussians(_hxc, num,  _q, _ws, _scale, pa[i+3]) - _hyr[:, i])**2
         _errfunc_list.append(_e_i)
 
     return np.concatenate(_errfunc_list)     #FLAT -should work for unknown n
 
-def fit_nprGaussians_global(num, q, ws, hy, hx):
+def fit_nprGaussians_global(num, q, ws, hy, hx, fixedW=False):
     # hy and hx are matrixes of n columns for the n histograms
     
     nh = hy.shape[1]        # how many columns = how many functions
     #print (hy.shape, nh)
     #l = np.arange(nh, dtype=np.double)
     pr = np.full(nh, 0.5)           # release probabilities (will be bounded 0 to 1)
-    events = 10                         # a scale factor depending on no. of events measured
-    guesses = np.array([q, ws, events, *pr])
+    _scale = 10                         # a scale factor depending on no. of events measured
     
-    l_bounds = np.zeros (nh + 3)
-    u_bounds = np.concatenate((np.full((3), np.inf), np.ones (nh)))
-    return optimize.least_squares(globalErrFuncB, guesses, bounds = (l_bounds, u_bounds), args=(num, nh, hx.flatten(), hy.flatten()))
+    if fixedW==False:
+        guesses = np.array([q, ws, _scale, *pr])
     
+        l_bounds = np.zeros (nh + 3)
+        u_bounds = np.concatenate((np.full((3), np.inf), np.ones (nh)))
+        return optimize.least_squares(globalErrFuncB, guesses, bounds = (l_bounds, u_bounds),
+                                                    args=(num, nh, hx.flatten(), hy.flatten()))
+    else:
+        guesses = np.array([q, _scale, *pr])
+    
+        l_bounds = np.zeros (nh + 2)
+        u_bounds = np.concatenate((np.full((2), np.inf), np.ones (nh)))
+        return optimize.least_squares(globalErrFuncB, guesses, bounds = (l_bounds, u_bounds),
+                                                    args=(num, ws, nh, hx.flatten(), hy.flatten()))
     
 def fit_nprGaussians (num, q, ws, hy, hx):
     # with fixed number of gaussians, q, ws
     
-    events = 10         # a scale factor depending on no. of events measured
+    _scale = 10         # a scale factor depending on no. of events measured
     pr = 0.5            # release probability (will be bounded 0 to 1)
-    guesses = np.array([events, pr])
+    guesses = np.array([_scale, pr])
     
     errfunc = lambda pa, x, y: (nprGaussians(x, num, q, ws, *pa) - y)**2
     return optimize.least_squares(errfunc, guesses, bounds = ([0,0], [np.inf, 1]), args=(hx, hy))
@@ -175,8 +236,14 @@ def nGaussians_display (hx, num, optix):
     hy_u = nGaussians(hx_u, num, *list(optix))
     return hx_u, hy_u
     
+    
+    
+    
+    
 if __name__ == "__main__":
-
+    
+    # trial code
+    
     mpl.rcParams['pdf.fonttype'] = 42
 
     data = pd.read_csv('r47.txt', sep="\t", header=None)
@@ -208,7 +275,7 @@ if __name__ == "__main__":
     plt.plot(hx_u, hy_u,
        c='black', label='Fit of {} Gaussians'.format(num))
     plt.title("Optical quantal analysis of glutamate release")
-    plt.ylabel("N events")
+    plt.ylabel("No. of events")
     plt.xlabel("dF/F")
     plt.legend(loc='upper right')
 
