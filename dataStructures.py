@@ -215,8 +215,8 @@ class Dataset:
             allSD = np.vstack([s.transpose() for s in SD.values()])
             
             allSD_df = pd.DataFrame(allSD, columns=idx)
-            print (allSD_df, allSD_df.max())
-            return allSD_df.max()
+            print (allSD_df, allSD_df.min())
+            return allSD_df.min()
         
         else:
             return None

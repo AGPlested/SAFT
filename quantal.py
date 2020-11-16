@@ -6,7 +6,9 @@ import pandas as pd
 from scipy.stats import binom, poisson
 
 def cdf(x, func, max, step, *fargs):
-    """calculate cdf for function. extra arguments (after x) for func in should be given in fargs"""
+    """calculate cdf for function. extra arguments (after x) for func in should be given in fargs
+    func is the abitrary function to calculate the cdf"""
+    
     #print ("Len (x) = {}".format(len(x)))
     #print (x, step)
     _denom = 0
@@ -29,11 +31,11 @@ def cdf(x, func, max, step, *fargs):
 
 def gaussian(x, height, center, width, offset):
     """x is an array or a scalar"""
-    return height * np.exp(-(x - center)**2 / (2 * width ** 2)) + offset
+    return 0.399 * height / width * np.exp(-(x - center)**2 / (2 * width ** 2)) + offset
 
 def nprGaussians(x, n, q, widths, scale, pr):
     """heights come from binomial (Pr) and an optimised scale parameter (number of events)"""
-    g = gaussian (x, 0, 0, 1, 0) # create a blank
+    g = gaussian (x, 0, 0, 1, 0) # create a blank in the correct x
     for k in range(n+1):
         b = binom.pmf(k, n, pr)
         g += gaussian(x, b * scale, k * q, widths, 0)
@@ -75,9 +77,9 @@ def poissonGaussians(x, n, q, widths, scale, mu):
    
    
 def globalErrFuncPW(pa, num, ws, nh, hx, hy):
-    # global poisson stats fit with fixed ws
+    """global poisson stats fit with fixed ws"""
     # 1-D function so hx and hy are passed flat
-    # assume for now that pa is a list... it should be!
+    # assume that pa is a list.
     _errfunc_list = []
     _hxr = hx.reshape(-1, nh)       # rows are inferred
     _hyr = hy.reshape(-1, nh)
@@ -89,16 +91,18 @@ def globalErrFuncPW(pa, num, ws, nh, hx, hy):
     for i in range(nh):
         _hx = _hxr[:, i]
         _hxc = np.mean(np.vstack([_hx[0:-1], _hx[1:]]), axis=0)
+        
         # pa[i+2] is the relevant mu
         _e_i = (poissonGaussians(_hxc, num,  _q, ws, _scale, pa[i+2]) - _hyr[:, i])**2
         _errfunc_list.append(_e_i)
 
-    return np.concatenate(_errfunc_list)     #FLAT -should work for unknown n
+    return np.concatenate(_errfunc_list)     # FLAT -works for unknown n
    
 def globalErrFuncP(pa, num, nh, hx, hy):
-    # global poisson stats fit
+    """global mulit-gaussian fit with poisson stats"""
     # 1-D function so hx and hy are passed flat
-    # assume for now that pa is a list... it should be!
+    # assume that pa is a list...
+    
     _errfunc_list = []
     _hxr = hx.reshape(-1, nh)       # rows are inferred
     _hyr = hy.reshape(-1, nh)
@@ -111,6 +115,7 @@ def globalErrFuncP(pa, num, nh, hx, hy):
     for i in range(nh):
         _hx = _hxr[:, i]
         _hxc = np.mean(np.vstack([_hx[0:-1], _hx[1:]]), axis=0)
+        
         # pa[i+3] is the relevant mu
         _e_i = (poissonGaussians(_hxc, num,  _q, _ws, _scale, pa[i+3]) - _hyr[:, i])**2
         _errfunc_list.append(_e_i)
@@ -126,6 +131,7 @@ def nGaussians(x, n, spacing, widths, *heights):
     
 def fit_nGaussians (num, q, ws, hy, hx):
     """heights are fitted"""
+    
     h = np.random.rand(num) * np.average(hy) # array of guesses for heights
 
     guesses = np.array([q, ws, *h])
@@ -136,7 +142,7 @@ def fit_nGaussians (num, q, ws, hy, hx):
     return optimize.least_squares(errfunc, guesses, bounds = (0, np.inf), args=(hx, hy))
 
 def globalErrFuncBW(pa, num, ws, nh, hx, hy):
-    # global binomial stats fit with fixed ws
+    """global binomial stats fit with fixed ws"""
     # 1-D function so hx and hy are passed flat
     # assume for now that pa is a list... it should be!
     _errfunc_list = []
@@ -199,7 +205,7 @@ def fit_nprGaussians_global(num, q, ws, hy, hx, fixedW=False):
     
         l_bounds = np.zeros (nh + 2)
         u_bounds = np.concatenate((np.full((2), np.inf), np.ones (nh)))
-        return optimize.least_squares(globalErrFuncB, guesses, bounds = (l_bounds, u_bounds),
+        return optimize.least_squares(globalErrFuncBW, guesses, bounds = (l_bounds, u_bounds),
                                                     args=(num, ws, nh, hx.flatten(), hy.flatten()))
     
 def fit_nprGaussians (num, q, ws, hy, hx):
@@ -213,28 +219,40 @@ def fit_nprGaussians (num, q, ws, hy, hx):
     return optimize.least_squares(errfunc, guesses, bounds = ([0,0], [np.inf, 1]), args=(hx, hy))
 
 def PoissonGaussians_display (hx, num, q, ws, optix):
+    """oversample the Gaussian functions for a better display"""
+    
     # optix being a 2-list or a 2-array, the x attribute of opti (from optimise). Scale, mu?
-    # oversample the Gaussian functions for a better display
-    oversam = int(10 * (hx[1]-hx[0]) / ws) # the ratio of the G. width to the histogram bin width tells us how much to oversample
+    # the ratio of the G. width to the histogram bin width tells us how much to oversample
+    
+    oversam = int(10 * (hx[1]-hx[0]) / ws)
+    if oversam == 0:
+        oversam = 2
     hx_u = np.linspace(0, hx[-1], len(hx)*oversam, endpoint=False)
     hy_u = poissonGaussians(hx_u, num, q, ws, *list(optix))
     return hx_u, hy_u
 
 def nprGaussians_display (hx, num, q, ws, optix, verbose=False):
-    # optix being a 2-list or a 2-array, the x attribute of opti (from optimise).
     """oversample the Gaussian functions for a better display"""
-    oversam = int(10 * (hx[1]-hx[0]) / ws) # the ratio of the G. width to the histogram bin width tells us how much to oversample
+    
+    # optix being a 2-list or a 2-array, the x attribute of opti (from optimise).
+    # the ratio of the G. width to the histogram bin width tells us how much to oversample
+    
+    oversam = int(10 * (hx[1]-hx[0]) / ws)
     if oversam == 0:
         oversam = 2
+        
     if verbose: print ("nprGaussians_display", num, q, ws, optix, oversam)
     hx_o = np.linspace(0, hx[-1], len(hx)*oversam, endpoint=False)
     hy_o = nprGaussians(hx_o, num, q, ws, *list(optix))
     return hx_o, hy_o
     
 def nGaussians_display (hx, num, optix, verbose=False):
-    # optix being a 2-list, the x attribute of opti (from optimise).
     """oversample the Gaussian functions for a better display"""
-    oversam = int(10 * (hx[1]-hx[0]) / optix[1]) # the ratio of the G. width to the histogram bin width tells us how much to oversample
+    
+    # optix being a 2-list, the x attribute of opti (from optimise).
+    # the ratio of the G. width to the histogram bin width tells us how much to oversample
+    
+    oversam = int(10 * (hx[1]-hx[0]) / optix[1])
     if oversam == 0:
         oversam = 2
         

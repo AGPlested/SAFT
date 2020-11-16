@@ -512,7 +512,7 @@ class SAFTMainWindow(QMainWindow):
         self.extractGroupsDialog_Btn.clicked.connect(self.getGroups)
         self.extractGroupsDialog_Btn.setDisabled(True)
         
-        reference_label = QtGui.QLabel("Refence Condition")
+        reference_label = QtGui.QLabel("Reference Condition for peak pattern extraction")
         reference_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         
         self.refSelection = QtGui.QComboBox()

@@ -61,23 +61,23 @@ class ROI_Controls(QtGui.QWidget):
         buttonRR.setIcon(buttonRR.style().standardIcon(QtGui.QStyle.SP_MediaSeekForward))
         
         buttonList = [buttonLL, buttonL, buttonR, buttonRR]
-        bsize = (75, 20)
+        bsize = (80, 20)
         for b in buttonList:
             b.setFixedSize(*bsize)
         
         _clearFitsBtn = QPushButton('Clear recent fits')
         buttonList.append(_clearFitsBtn)
-        _clearFitsBtn.setFixedWidth(180)
+        _clearFitsBtn.setFixedWidth(150)
         
         _storeAdvBtn = QPushButton('Next ROI, keep fits')
         buttonList.append(_storeAdvBtn)
-        _storeAdvBtn.setFixedWidth(180)
+        _storeAdvBtn.setFixedWidth(150)
         
         _skipBtn = QPushButton('Next ROI, discard fits')
         buttonList.append(_skipBtn)
-        _skipBtn.setFixedWidth(180)
+        _skipBtn.setFixedWidth(150)
 
-        posn = [(0,2), (0,3), (0,4), (0,5), (1,0,1,2), (1,2,1,2), (1,4,1,2)]
+        posn = [(0,0,1,3), (0,3,1,3), (0,6,1,3), (0,9,1,3), (1,0,1,4), (1,4,1,4), (1,8,1,4)]
         
         for counter, btn in enumerate(buttonList):
             
@@ -90,7 +90,7 @@ class ROI_Controls(QtGui.QWidget):
         self.ROI_label.setFixedSize(250, 40)
         self.ROI_label.setAlignment(QtCore.Qt.AlignLeft | QtCore.Qt.AlignTop)
         
-        l.addWidget(self.ROI_label, 0, 0, 2, 1)
+        l.addWidget(self.ROI_label, 2, 0, 1, -1)
         self.ROI_box.setLayout(l)
 
     def update_ROI_label(self, t):
@@ -213,12 +213,12 @@ class histogramFitDialog(QDialog):
         self.sHFCurvesSwitch.setChecked(True)
         self.sHFCurvesSwitch.stateChanged.connect(self.toggleSaveFits)
         
-        _fileGrid.addWidget(self.loadBtn, 0, 0, 1, 1)
-        _fileGrid.addWidget(self.saveBtn, 0, 1, 1, 1)
-        _fileGrid.addWidget(self.doneBtn, 0, 2, 1, 1)
-        _fileGrid.addWidget(self.autoSaveSwitch, 2, 0, 1, -1)
+        _fileGrid.addWidget(self.loadBtn, 0, 0, 1, 2)
+        _fileGrid.addWidget(self.saveBtn, 0, 2, 1, 2)
+        _fileGrid.addWidget(self.doneBtn, 0, 4, 1, 2)
+        _fileGrid.addWidget(self.autoSaveSwitch, 2, 0, 1, 3)
         _fileGrid.addWidget(self.dataname_label, 1, 0, 1, -1)
-        _fileGrid.addWidget(self.sHFCurvesSwitch, 3, 0, 1, -1)
+        _fileGrid.addWidget(self.sHFCurvesSwitch, 2, 3, 1, 3)
         _fileOptions.setLayout(_fileGrid)
         
         # panel of display options for histograms
@@ -227,7 +227,7 @@ class histogramFitDialog(QDialog):
         
         _NBin_label = QtGui.QLabel("No. of bins")
         _NBin_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        self.histo_NBin_Spin = pg.SpinBox(value=100, step=10, bounds=[0, 250], delay=0)
+        self.histo_NBin_Spin = pg.SpinBox(value=100, step=10, bounds=[10, 250], delay=0)
         self.histo_NBin_Spin.setFixedSize(80, 25)
         self.histo_NBin_Spin.valueChanged.connect(self.updateHistograms)
         
@@ -331,32 +331,32 @@ class histogramFitDialog(QDialog):
         
         # histogram analysis layout
         self.hlayout = QGridLayout()
-        _secondRowH = 140
+        _secondcolW = 450
         
         # histogram view
-        self.histogramLayPos = (0, 0, 2, 5)
+        self.histogramLayPos = (0, 0, 4, 1)
         self.hlayout.addWidget(self.hPlot.glw, *self.histogramLayPos)
         
         # ROI controls
-        self.RC = ROI_Controls(self)        #need to send this instance as parent
-        self.RC.ROI_box.setFixedSize(575, _secondRowH)
-        self.hlayout.addWidget(self.RC.ROI_box, 2, 0, 1, 4)
+        self.RC = ROI_Controls(self)        #need to send instance as parent
+        self.RC.ROI_box.setFixedSize(_secondcolW, 120)
+        self.hlayout.addWidget(self.RC.ROI_box, 1, 1, 1, 1)
         
         # Display options for the histograms
-        _histOptions.setFixedSize(275, _secondRowH)
-        self.hlayout.addWidget(_histOptions, 2, 4, 1, 2)
+        _histOptions.setFixedSize(_secondcolW, 120)
+        self.hlayout.addWidget(_histOptions, 3, 1, 1, 1)
         
         # File controls
-        _fileOptions.setFixedSize(300, _secondRowH)
-        self.hlayout.addWidget(_fileOptions, 2, 6, 1, 2)
+        _fileOptions.setFixedSize(_secondcolW, 120)
+        self.hlayout.addWidget(_fileOptions, 0, 1, 1, 1)
+        
+        # Text output console
+        self.outputF.frame.setFixedSize(_secondcolW, 250)
+        self.hlayout.addWidget(self.outputF.frame, 2, 1, 1, 1)
         
         # Fitting controls and display
         _fittingPanel.setFixedHeight(200)
-        self.hlayout.addWidget(_fittingPanel, 3, 0, 1, 8)
-        
-        # Text output console
-        self.outputF.frame.setFixedSize(400, 450)
-        self.hlayout.addWidget(self.outputF.frame, 0, 5, 2, 3)
+        self.hlayout.addWidget(_fittingPanel, 4, 0, 1, -1)
         
         
         self.setLayout(self.hlayout)
@@ -433,7 +433,7 @@ class histogramFitDialog(QDialog):
         else:
             self.fixW = True
             self.histo_W_Spin.setDisabled(True)
-        print ("FixWToggle is {}.".format(self.fixWToggle))
+        print ("FixWToggle is {}.".format(self.fixW))
         
     def done(self, *arg):
         
@@ -827,7 +827,7 @@ class histogramFitDialog(QDialog):
                         # _Bcdf is a vector of the biomial cdf values for the observed data
                         # KS is the Kolmogorov Smirnoff test of goodness of fit
                         _Bcdf = lambda x, *pa: cdf(x, nprGaussians, *pa)
-                        KS = kstest(_pdata, _Bcdf, (_max, _max/100, _num, _q, _ws, _scale, _pr))
+                        KS = kstest(_pdata, _Bcdf, (_max, _max/_nbins, _num, _q, _ws, _scale, _pr))
                         
                         # IB for binomial individual fit
                         _IB_results = [_ROI, _ID, _num, _pr, _scale, _ws, _q, "KS", KS.statistic, KS.pvalue, "IB" ]
@@ -857,7 +857,7 @@ class histogramFitDialog(QDialog):
             if self.fitHistogramsOption == "Individual":
                 # if fits were done, they are complete so show results
                 self.outputF.appendOutText ("Individual Fit Results:\n {}".format(linePrint(self.currentROIFits.iloc[-1])), "darkmagenta")
-                
+                self.fitHistogramsOption = "None" # to avoid any cycling
             
             # Histograms are complete, so now do any global fit that was requested
             # all global options are together and use common code
@@ -873,35 +873,52 @@ class histogramFitDialog(QDialog):
                 # four possibilities : Binomial or poisson, with widths fixed or free
                 if self.fitHistogramsOption == "Global Binom" and self.SD is not None and self.fixW:
                     _ws = self.SD[_ROI]
-                    print ("Fixed _ws, ROI: {} {}".format(_ws, _ROI))
-                    _opti = fit_PoissonGaussians_global (_num, _q, _ws, _hys, _hxs, fixedW=True)
+                    print ("Fixed _ws= {}, ROI: {}".format(_ws, _ROI))
+                    _opti = fit_nprGaussians_global (_num, _q, _ws, _hys, _hxs, fixedW=True)
                     _fitType = "GBFW"
                     
-                elif self.fitHistogramsOption == "Global Binom" and self.SD is None:
-                    _ws = self.histo_Max_Spin.value() / 10
+                elif self.fitHistogramsOption == "Global Binom":
+                    
+                    if self.SD is None:
+                        _ws = self.histo_Max_Spin.value() / 10
+                    else:
+                        _ws = self.SD[_ROI]
+                        
                     _opti = fit_nprGaussians_global (_num, _q, _ws, _hys, _hxs, fixedW=False)
                     _fitType = "GB"
                     
-                elif self.fitHistogramsOption == "Poisson Binom" and self.SD is not None and self.fixW:
+                elif self.fitHistogramsOption == "Global Poisson" and self.SD is not None and self.fixW:
                     _ws = self.SD[_ROI]
-                    print ("Fixed _ws, ROI: {} {}".format(_ws, _ROI))
+                    print ("Fixed _ws= {}, ROI: {}".format(_ws, _ROI))
                     _opti = fit_PoissonGaussians_global (_num, _q, _ws, _hys, _hxs, fixedW=True)
                     _fitType = "GPFW"
                 
-                else:
-                    _ws = self.histo_Max_Spin.value() / 10
+                elif self.fitHistogramsOption == "Global Poisson":
+                    if self.SD is None:
+                        _ws = self.histo_Max_Spin.value() / 10
+                    else:
+                        _ws = self.SD[_ROI]
+                        
                     _opti = fit_PoissonGaussians_global (_num, _q, _ws, _hys, _hxs, fixedW=False)
                     _fitType = "GP"
-                 
+                
+                else:
+                    print ("fell through sfho: {}".format(self.fitHistogramsOption))
+                
+                print ("fit type, Ws: {} {}".format(_fitType, _ws))
+                
                 #if the fit worked
                 if _opti.success:
                     
                     self.outputF.appendOutText ("_opti.x: {}\nCost = {}".format(linePrint(_opti.x, pre=3), _opti.cost), color="Green")
                     
                     _q = _opti.x[0]
-                    _ws = _opti.x[1]
-                    _scale = _opti.x[2]
-                    
+                    if self.fixW:
+                        _scale = _opti.x[1]
+                    else:
+                        _ws = _opti.x[1]
+                        _scale = _opti.x[2]
+    
                     imax = self.currentROIFits.index.max()
                     if np.isnan(imax):
                         imax = 0
@@ -918,10 +935,12 @@ class histogramFitDialog(QDialog):
                         
                         # do Kolmogorov-Smirnoff test of goodness of fit and get the oversampled fitted curves
                         if "Binom" in self.fitHistogramsOption:
-                            _pr = _opti.x[i+3]
-                            
+                            if _fitType == "GBFW":
+                                _pr = _opti.x[i+2]
+                            else:
+                                _pr = _opti.x[i+3]
                             _Bcdf = lambda x, *pa: cdf(x, nprGaussians, *pa)
-                            KS = kstest(_pdata, _Bcdf, (_max, _max/100, _num, _q, _ws, _scale, _pr))
+                            KS = kstest(_pdata, _Bcdf, (_max, _max/_nbins, _num, _q, _ws, _scale, _pr))
                             
                             legend = 'Global Binomial Fit {}: {} Gaussians, Pr: {:.3f}, K.-S. P: {:.3f}'.format(_ID, _num, _pr, KS.pvalue)
                             _hx_u, _hy_u = nprGaussians_display (_hxc, _num, _q, _ws, [_scale, _pr])
@@ -929,9 +948,13 @@ class histogramFitDialog(QDialog):
                             _fitinfoCol = "darkred"
                         
                         elif "Poisson" in self.fitHistogramsOption:
-                            _mu = _opti.x[i+3]
+                            if _fitType == "GPFW":
+                                _mu = _opti.x[i+2]
+                            else:
+                                _mu = _opti.x[i+3]
+                                
                             _Pcdf = lambda x, *pa: cdf(x, poissonGaussians, *pa)
-                            KS = kstest(_pdata, _Pcdf, (_max, _max/100, _num, _q, _ws, _scale, _mu))
+                            KS = kstest(_pdata, _Pcdf, (_max, _max/_nbins, _num, _q, _ws, _scale, _mu))
 
                             legend = 'Global Poisson Fit {}: {} Gaussians, mu: {:.3f}, K.-S. P: {:.3f}'.format( _ID, _num, _mu, KS.pvalue)
                             _hx_u, _hy_u = PoissonGaussians_display (_hxc, _num, _q, _ws, [_scale, _mu])
