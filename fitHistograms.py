@@ -286,7 +286,7 @@ class histogramFitDialog(QDialog):
         
         _separateBinomial_label = QtGui.QLabel("fixed dF (q), w")
         self.separateBinomialBtn = QPushButton('Separate Binomial fits')
-        self.separateBinomialBtn.clicked.connect(self.separateBinomial)
+        self.separateBinomialBtn.clicked.connect(self.separateBinomialFits)
         self.separateBinomialBtn.setDisabled(True)
         
         _sumFit_label = QtGui.QLabel("free dF (q), w, amplitudes")
@@ -518,27 +518,7 @@ class histogramFitDialog(QDialog):
         self.fitInfo.reset(self.fitInfoHeader)
         
     
-    def separateBinomial(self):
-        """obtain Pr from separated histograms using binomial,
-        using q from previous fit,
-        w is guessed or fixed to supplied value"""
-        
-        # use last df_Q from last summed fit
-        _q = self.fixq
-        self.outputF.appendOutText ("Refit separate histograms ({}) with fixed q {:.3f} and binomial Pr.".format(self.current_ROI, _q))
-        
-        self.fitHistogramsOption = "Individual"
-        self.sum_hist_option.setCurrentIndex(1)    # change sum_hist_option combobox to "separated", this calls updateHistogram, which does fit
     
-    def poissonFitGlobalGaussians(self):
-        """obtain mean release rate using Poisson, estimating q, w and scale from global fit"""
-        self.fitHistogramsOption = "Global Poisson"
-        self.outputF.appendOutText ("\nGlobal Poisson Fit", "darkcyan")
-        _fitSum =self.sum_hist_option.currentIndex()
-        if _fitSum == 1:
-            self.updateHistograms()             # no need to adjust view (histograms already separate), just fit
-        else:
-            self.sum_hist_option.setCurrentIndex(1)    # sets view to separate histograms, calls update histograms and performs the fit.
             
     def setExternalParameters(self, extPa):
         """extPa is a dictionary of external parameters that can be passed"""
@@ -555,25 +535,47 @@ class histogramFitDialog(QDialog):
         """Take parameters specified by GUI"""
         pass
         
+    def fitUpdateLogic(self):
+        """if histograms are displayed summed, they must be switched to the separated view for separate or global fits"""
+       
+        if self.sum_hist_option.currentIndex() == 1:
+            # no need to adjust view (histograms already separate), just update and fit
+            self.updateHistograms()
+        else:
+            # sets view to separate histograms, calls update histograms, which also performs the fit.
+            self.sum_hist_option.setCurrentIndex(1)
+    
+    def separateBinomialFits(self):
+        """Target of the separate binomial fit button
+        obtain Pr from separated histograms using binomial,
+        using q from previous fit,
+        w is guessed or fixed to supplied value"""
+        # will use last df_Q from last summed fit (done automatically upon changing ROI)
+        _q = self.fixq
+        self.outputF.appendOutText ("Fit separate histograms ({}) with fixed q {:.3f} and binomial Pr.".format(self.current_ROI, _q))
+        self.fitHistogramsOption = "Individual"
+        self.fitUpdateLogic() # updates display if necessary and performs the fit.
+    
+    def poissonFitGlobalGaussians(self):
+        """Target of the global poisson fit button
+        obtain mean release rate using Poisson, estimating quantal size and scale, option to fix or estimate w"""
+        
+        self.fitHistogramsOption = "Global Poisson"
+        self.outputF.appendOutText ("\nGlobal Poisson Fit", "darkcyan")
+        self.fitUpdateLogic() # updates display if necessary and performs the fit.
     
     def binomialFitGlobalGaussians(self):
-        """Target of the global fit button"""
+        """Target of the global binomial fit button
+        obtain Pr using binomial, estimating quantal size and scale, option to fix or estimate w"""
+        
         self.fitHistogramsOption = "Global Binom"
         self.outputF.appendOutText ("\nGlobal Binomial Fit", "darkred")
-        _fitSum =self.sum_hist_option.currentIndex()
-        if _fitSum == 1:
-            self.updateHistograms()             # no need to adjust view (histograms already separate), just fit
-        else:
-            self.sum_hist_option.setCurrentIndex(1)    # sets view to separate histograms, calls update histograms and performs the fit.
+        self.fitUpdateLogic() # updates display if necessary and performs the fit.
         
     def fitGaussians(self):
         """Target of the fit summed button"""
-        
         self.fitHistogramsOption = "Summed"
-        _fitSum =self.sum_hist_option.currentIndex()
-        #self.split_state == False
-        
-        if _fitSum == 0:
+        if self.sum_hist_option.currentIndex() == 0:
             self.updateHistograms()             # no need to adjust view, just update and fit
         else:
             self.sum_hist_option.setCurrentIndex(0)    # sets view to summed, calls update histograms and performs the fit.
@@ -708,7 +710,7 @@ class histogramFitDialog(QDialog):
             self.sum_hist_option.setCurrentIndex(0)    # sets view to summed, calls update histograms and performs the fit.
         
     def updateHistograms(self):
-        """Histogram controls were changed, redo the fit.
+        """Histogram controls were changed, optionally redo the fits.
         """
         
         # would be None if no data was loaded so escape
@@ -721,24 +723,30 @@ class histogramFitDialog(QDialog):
         _hsum, _nbins, _max = self.histogramParameters()
         self.outputF.appendOutText ("Update {0} Histogram(s) for {1} with {2} bins and maximum dF/F = {3:0.3f}.".format(_hsum, _ROI, _nbins, _max))
     
+        # for global fits, we will collect all the histograms and flatten them later (global fits are still 1-D)
         if "Global" in self.fitHistogramsOption:
             ystack = []
             xstack = []
         
         # _ID is a unique identifier for each fit
-        # it is the key for the fits dict
+        # it is the key for the fits dictionary
         _ID = getRandomString(4)
         
         if self.fitHistogramsOption not in ["None", "Summed"]:
             
             self.Fits_data[_ID] = HFStore(self.current_ROI, self.peakResults.keys())
             #print ("SFHO: {}\nSFDID: {}".format(self.fitHistogramsOption, self.Fits_data[_ID]))
-            
+         
+         
+        # Below we draw the individual histograms.
+        # at the moment, the individual fits are done as this progresses.
+        # global fits must wait until after histograms are all drawn.
         if _hsum == "Separated":
             _num = self.histo_nG_Spin.value()
             
+            # bring in split histogram view
             if self.split_state == False:
-                # bring in split histogram view
+                
                 # remove single
                 self.hPlot.glw.removeItem(self.hPlot.h)
                 # add multiple
@@ -770,9 +778,10 @@ class histogramFitDialog(QDialog):
                 
                 if hy.max() > _ymax:
                     _ymax = hy.max()
+                
                 # Only store histogram values if we are doing a global fit
                 if self.fitHistogramsOption not in ["None", "Summed"]:
-                    #print (self.Fits_data)
+                   
                     self.Fits_data[_ID].addHData(_condition, hx, hy)
                 
                 if "Global" in self.fitHistogramsOption:
@@ -785,7 +794,7 @@ class histogramFitDialog(QDialog):
                 target.plot(hx, hy, name="{} {} Histogram".format(_ROI, _condition), stepMode=True, fillLevel=0, fillOutline=True, pen=col_series, brush=col_series)
             
                 if self.fitHistogramsOption == "Individual":
-                    # binomial path
+                    # separate binomial fits path
                     _q = self.fixq
                     _num = self.histo_nG_Spin.value()
                     
@@ -850,8 +859,10 @@ class histogramFitDialog(QDialog):
                 self.outputF.appendOutText ("Individual Fit Results:\n {}".format(linePrint(self.currentROIFits.iloc[-1])), "darkmagenta")
                 
             
+            # Histograms are complete, so now do any global fit that was requested
+            # all global options are together and use common code
             if "Global" in self.fitHistogramsOption:
-                # put both global options together and use common code
+                
                 _hys = np.vstack(ystack).transpose()
                 _hxs = np.vstack(xstack).transpose()
                 
@@ -859,13 +870,12 @@ class histogramFitDialog(QDialog):
                 _num = self.histo_nG_Spin.value()
                 _q = self.histo_q_Spin.value()
                 
-                
+                # four possibilities : Binomial or poisson, with widths fixed or free
                 if self.fitHistogramsOption == "Global Binom" and self.SD is not None and self.fixW:
                     _ws = self.SD[_ROI]
                     print ("Fixed _ws, ROI: {} {}".format(_ws, _ROI))
                     _opti = fit_PoissonGaussians_global (_num, _q, _ws, _hys, _hxs, fixedW=True)
                     _fitType = "GBFW"
-                    
                     
                 elif self.fitHistogramsOption == "Global Binom" and self.SD is None:
                     _ws = self.histo_Max_Spin.value() / 10
@@ -882,13 +892,16 @@ class histogramFitDialog(QDialog):
                     _ws = self.histo_Max_Spin.value() / 10
                     _opti = fit_PoissonGaussians_global (_num, _q, _ws, _hys, _hxs, fixedW=False)
                     _fitType = "GP"
-                    
+                 
+                #if the fit worked
                 if _opti.success:
+                    
                     self.outputF.appendOutText ("_opti.x: {}\nCost = {}".format(linePrint(_opti.x, pre=3), _opti.cost), color="Green")
+                    
                     _q = _opti.x[0]
                     _ws = _opti.x[1]
                     _scale = _opti.x[2]
-                    #_resid = _opti.fun.reshape(-1, len(self.peakResults.keys()))
+                    
                     imax = self.currentROIFits.index.max()
                     if np.isnan(imax):
                         imax = 0
@@ -900,8 +913,10 @@ class histogramFitDialog(QDialog):
                         _hxr = _hxs[:, i]
                         _hxc = np.mean(np.vstack([_hxr[0:-1], _hxr[1:]]), axis=0)
                         target = self.hPlot.stackMembers[i]
-                        #_chiSq = chisquare(_hys[i], _hys[i] + _resid [i])
+                        
                         _pdata = self.peakResults[_condition][_ROI].dropna()
+                        
+                        # do Kolmogorov-Smirnoff test of goodness of fit and get the oversampled fitted curves
                         if "Binom" in self.fitHistogramsOption:
                             _pr = _opti.x[i+3]
                             
@@ -923,23 +938,24 @@ class histogramFitDialog(QDialog):
                             _globalR = [_ROI, _ID, _num, _mu, _scale, _ws, _q, "KS", KS.statistic, KS.pvalue, _fitType]
                             _fitinfoCol = "darkcyan"
                         
+                        # write the results to the running fits text panel
                         self.fitInfo.appendOutText (linePrint(_globalR, pre=3), _fitinfoCol)
+                        
                         _c = target.plot(_hx_u, _hy_u, name=legend)
                         _c.setPen(color=col_series, width=3)
                         _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
                         
                         self.currentROIFits.loc[imax + 1, (_condition, slice(None))] = _globalR
-                        #print (self.currentROIFits)
                         self.Fits_data[_ID].addFData(_condition, _hx_u, _hy_u)
                 
-                        
-                    self.saveBtn.setEnabled(True) # results so we have something to save
+                    # results were obtained so we have something to save
+                    self.saveBtn.setEnabled(True)
                     
                 else :
                     self.outputF.appendOutText ("Global fit failed! reason: {} cost: {} fit type: {}".format(_opti.message, _opti.cost, _fitType), "Red")
                     
                     del self.Fits_data[_ID]
-                    print ("Fit failed: {}, removed histogram fit container {}".format(_opti.message, _ID))
+                    print ("Fit failed: {}, removed histogram fit container with ID : {}".format(_opti.message, _ID))
                     
                 self.fitHistogramsOption = "None" # to stop cycling but avoid problems with substrings.
                 
