@@ -220,26 +220,28 @@ def PoissonGaussians_display (hx, num, q, ws, optix):
     hy_u = poissonGaussians(hx_u, num, q, ws, *list(optix))
     return hx_u, hy_u
 
-def nprGaussians_display (hx, num, q, ws, optix):
+def nprGaussians_display (hx, num, q, ws, optix, verbose=False):
     # optix being a 2-list or a 2-array, the x attribute of opti (from optimise).
     """oversample the Gaussian functions for a better display"""
     oversam = int(10 * (hx[1]-hx[0]) / ws) # the ratio of the G. width to the histogram bin width tells us how much to oversample
     if oversam == 0:
         oversam = 2
-    print (num, q, ws, optix, oversam)
+    if verbose: print ("nprGaussians_display", num, q, ws, optix, oversam)
     hx_o = np.linspace(0, hx[-1], len(hx)*oversam, endpoint=False)
     hy_o = nprGaussians(hx_o, num, q, ws, *list(optix))
     return hx_o, hy_o
     
-def nGaussians_display (hx, num, optix):
+def nGaussians_display (hx, num, optix, verbose=False):
     # optix being a 2-list, the x attribute of opti (from optimise).
     """oversample the Gaussian functions for a better display"""
     oversam = int(10 * (hx[1]-hx[0]) / optix[1]) # the ratio of the G. width to the histogram bin width tells us how much to oversample
     if oversam == 0:
         oversam = 2
-    hx_u = np.linspace(0, hx[-1], len(hx)*oversam, endpoint=False)
-    hy_u = nGaussians(hx_u, num, *list(optix))
-    return hx_u, hy_u
+        
+    if verbose: print ("nGaussians_display", num, optix, oversam)
+    hx_o = np.linspace(0, hx[-1], len(hx)*oversam, endpoint=False)
+    hy_o = nGaussians(hx_o, num, *list(optix))
+    return hx_o, hy_o
     
     
     
