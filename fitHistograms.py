@@ -459,14 +459,22 @@ class histogramFitDialog(QDialog):
             self.fitResults = self.fitResults.append(copy.copy(self.currentROIFits), ignore_index=True)
         
             usr = os.path.expanduser("~")
-            #print ("user path : {}".format(usr))
+            
             if self.filename:
 
                 if os.path.split(self.filename)[0] is not None:
                     _outfile =  os.path.join(usr,"HFit_" + os.path.split(self.filename)[1])
-                    #print ("_outfile : {}".format(_outfile))
+                    
                 else:
                     _outfile = "HFit_" + self.filename
+            
+            elif self.dataname:
+                
+                _outfile =  os.path.join(usr,"HFit_" + self.dataname + ".xlsx")
+                
+            
+            else:
+                _outfile = usr
                 
             _saveFilename = QFileDialog.getSaveFileName(self,
                         "Save Results",  _outfile)[0]
@@ -1013,24 +1021,29 @@ class histogramFitDialog(QDialog):
                
                 _hxc = np.mean(np.vstack([hx[0:-1], hx[1:]]), axis=0)
                 _opti = fit_nGaussians(_num, _q, _ws, sumhy, _hxc)
-                _hx_u, _hy_u = nGaussians_display (_hxc, _num, _opti.x)
-                _qfit = _opti.x[0]
-                _wsfit = _opti.x[1]
-                _c = self.hPlot.h.plot(_hx_u, _hy_u, name='Fit {} Gaussians q: {:.3f}, w: {:.3f}'.format(_num, _qfit, _wsfit))
                 
-                # store fitted q for use in a separated Pr fit
-                self.fixq = _qfit
-                
-                # from pyqtgraph.examples
-                _c.setPen('w', width=3)
-                _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
-            
-                # as long as we have a fit, we can enable the separate fit button
                 if _opti.success:
+                    _hx_u, _hy_u = nGaussians_display (_hxc, _num, _opti.x)
+                    _qfit = _opti.x[0]
+                    _wsfit = _opti.x[1]
+                    _c = self.hPlot.h.plot(_hx_u, _hy_u, name='Fit {} Gaussians q: {:.3f}, w: {:.3f}'.format(_num, _qfit, _wsfit))
+                
+                    # store fitted q for use in a separated Pr fit
+                    self.fixq = _qfit
+                
+                    # from pyqtgraph.examples
+                    _c.setPen('w', width=3)
+                    _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
+            
+                    # as long as we have a fit, we can enable the separate fit button
+                
                     self.separateBinomialBtn.setEnabled(True)
                     self.outputF.appendOutText ("Summed Histogram fit\nopti.x: {}\nCost: {}".format(linePrint(_opti.x), _opti.cost), "darkgreen")
-            
-        
+                else:
+                    
+                    print ("Summed fit failed!")
+                    self.outputF.appendOutText ("Summed Histogram fit failed!\nopti.x: {}\nCost: {}".format(linePrint(_opti.x), _opti.cost), "red")
+                    
 if __name__ == '__main__':
     if len(sys.argv) > 1:
         if sys.argv[1] == 'test':
