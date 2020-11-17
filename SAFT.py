@@ -512,7 +512,7 @@ class SAFTMainWindow(QMainWindow):
         self.extractGroupsDialog_Btn.clicked.connect(self.getGroups)
         self.extractGroupsDialog_Btn.setDisabled(True)
         
-        reference_label = QtGui.QLabel("Reference Condition for peak pattern extraction")
+        reference_label = QtGui.QLabel("Reference condition for pattern extraction")
         reference_label.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         
         self.refSelection = QtGui.QComboBox()
@@ -535,8 +535,8 @@ class SAFTMainWindow(QMainWindow):
         
         dataGrid.addWidget(d_divider, 3, 0, 1, -1)
         
-        dataGrid.addWidget(reference_label, 4, 0, 1, 2)
-        dataGrid.addWidget(self.refSelection, 4, 2, 1, 2)
+        dataGrid.addWidget(reference_label, 4, 0, 1, 3)
+        dataGrid.addWidget(self.refSelection, 4, 3, 1, 1)
         
         dataGrid.addWidget(extractPeaksBtn, 5, 0, 1, 2)
         dataGrid.addWidget(self.extractGroupsDialog_Btn, 5, 2, 1, 2)
