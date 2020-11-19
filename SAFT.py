@@ -931,7 +931,7 @@ class SAFTMainWindow(QMainWindow):
         _dataset = copy.copy(self.workingDataset)
         
         ddf = utils.decomposeRDF(_dataset.resultsDF.df)
-        self.hfd.addData(ddf, _dataset.DSname, _dataset.getSD())
+        self.hfd.addData(ddf, _dataset.DSname, _dataset.getSD(maskWidth=10))
         
         accepted = self.hfd.exec_()
         
@@ -960,10 +960,15 @@ class SAFTMainWindow(QMainWindow):
         
         #get the times of the peaks from the "best" trace, that were selected auto or manually
         _peak_t, _ = self.workingDataset.resultsDF.getPeaks('Mean', self.refSelection.currentText())  # pd.series
+        
         #print ("srsv: {}".format(self.refSelection.currentText()))
         
         _sorted_peak_t = _peak_t.sort_values(ascending=True)    # list is not sorted until now
         _sorted_peak_t.dropna(inplace=True)                     # if there are 'empty' NaN, remove them
+        
+        self.workingDataset.resultsDF.peakTimes = _sorted_peak_t # the definitive list of peak times, woud be degraded by editing but will only be used for masking traces later.
+        
+        print ("swdrdfpt : {}".format(self.workingDataset.resultsDF.peakTimes))
         
         self.extPa["tPeaks"] = _sorted_peak_t
         
@@ -1010,6 +1015,7 @@ class SAFTMainWindow(QMainWindow):
             extracted.ROI_list = copy.copy(extracted_peaksRDF.ROI_list)
             # add baselined traces to new set
             extracted.addTracesToDS(self.gpd.tracedata)
+            extracted.peakTimes = _sorted_peak_t            # the same as the source dataset (for masking)
             
             # store
             self.store.storeSet(extracted)
@@ -1394,7 +1400,6 @@ class SAFTMainWindow(QMainWindow):
         print ("save_baselined data")
         self.filename = QFileDialog.getSaveFileName(self,
         "Save Baselined ROI Data", os.path.expanduser("~"))[0]
-        
         
         # save baselined data
         

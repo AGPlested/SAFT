@@ -1,6 +1,7 @@
 import itertools
 import pandas as pd
 import numpy as np
+from utils import maskPeaks
 
 def histogramFitParams(conditions, pColumns=None):
     if pColumns == None:
@@ -98,6 +99,7 @@ class Results:
         self.condition_list = condition_list
         self.pairs = ['t', 'peak']
         
+        
         #print (self.ROI_list, self.condition_list, self.pairs, self.headr)
         #print (type(self.ROI_list), type(self.condition_list), type(self.pairs), type(self.headr))
         if self.ROI_list and self.condition_list:
@@ -181,6 +183,7 @@ class Dataset:
         self.GUIcontrols["autoPeaks"] = "Enable"   # a dataset can activate/deactivate parts of the GUI, activated by default
         self.ROI_list = []
         self.trace = None
+        self.peakTimes = pd.Series([])
     
     def setDSname(self, _name):
         self.DSname = _name
@@ -202,15 +205,27 @@ class Dataset:
         self.isempty = False
         print ("addTracesToDS: added")
 
-    def getSD (self):
+    def getSD (self, maskWidth=10):
         if self.isempty:
             return None
         SD = {}
         if self.traces:
+            
+            # need to get the peaks
+            # get SD should only be called after peaks were found - should be an option
+            peakTimes = self.peakTimes.values
+            print ("peakTimes", peakTimes)
             for i, condition in enumerate(self.traces):
-                SD[i] = self.traces[condition].std()
-                print ("SDi", SD[i])
-                idx = SD[i].index
+                _stc = self.traces[condition]
+                # find the row indices in the trace dataframe that match the times of the peaks
+                peaksIdx = _stc[_stc.index.isin(peakTimes)].index.values
+                print ("Peaks idx", peaksIdx)
+                peaksOmitted = maskPeaks (_stc, peaksIdx, maskWidth)
+                
+                SD[i] = peaksOmitted.std()
+                old = _stc.std()
+                print ("old, masked SDi: {} {}".format(old, SD[i]))
+                idx = SD[i].index   # all the same so use the last one below
                 
             allSD = np.vstack([s.transpose() for s in SD.values()])
             

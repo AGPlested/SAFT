@@ -7,6 +7,7 @@ import string
 import random
 
 import pandas as pd
+import numpy as np
 
 import pyqtgraph as pg
 
@@ -42,6 +43,22 @@ class txOutput():
         self.appendOutText(initialText)
 
 
+def extendMaskArray(series, r):
+    """series should be a list of indices, r is the width"""
+    new = []
+    for i in series:
+        new.extend(np.arange(i-r, i+r))
+    return  pd.Series(new).drop_duplicates()
+    
+def maskPeaks(df, peaks, width):
+    """df is the dataframe to mask rows
+    peaks are the row indices
+    width is the extent to mask around each row in peaks"""
+    e = extendMaskArray(peaks, width)
+    # make sure no values are outside the row count (although pandas would not care
+    f = pd.Series(e.values[(e>=0) & (e<len(df.index))])
+
+    return df[~df.index.isin (f)]
 
 def decomposeRDF(rdf):
     """
