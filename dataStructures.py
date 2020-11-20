@@ -30,6 +30,7 @@ class HistogramFitStore:
         sHy = pd.Series(hy)
         
         # both indices *should* be monotonic ascending integer
+        # if this is not done, the series will be cropped when added
         if len (self.df.index) < len (sHx.index):
             self.df = self.df.reindex(sHx.index)
         
@@ -43,6 +44,7 @@ class HistogramFitStore:
         sFy = pd.Series(fity)
         
         # both indices *should* be monotonic ascending integer
+        # if this is not done, the series will be cropped when added 
         if len (self.df.index) < len (sFx.index):
             self.df = self.df.reindex(sFx.index)
         

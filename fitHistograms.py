@@ -746,22 +746,22 @@ class histogramFitDialog(QDialog):
             _fixText = "Guess for"
             
         if self.SD is not None:   #fix W is ticked and we were given some SDs
-            ws = self.SD[_ROI]
-            _wsInfo = "{} _ws ({}) from supplied value".format(_fixText, _ws)
+            _wchoice = self.SD[_ROI]
+            _wsInfo = "{} _ws ({}) from supplied value".format(_fixText, _wchoice)
                     
         else:
-            ws = self.histo_W_Spin.value()
+            _wchoice = self.histo_W_Spin.value()
             _box = "Width"
             
-            if ws == 0:
-                ws = self.histo_Max_Spin.value() / 10
+            if _wchoice == 0:
+                _wchoice = self.histo_Max_Spin.value() / 10
                 _box = "Max"
             
-            _wsInfo = "{} _ws ({}) taken from GUI spinbox {}".format(_fixText, ws, _box)
+            _wsInfo = "{} _ws ({}) taken from GUI spinbox {}".format(_fixText, _wchoice, _box)
                         
         if verbose: print ("Fit {}, ROI: {}, {}".format(_fitID, _ROI, _wsInfo))
         
-        return ws
+        return _wchoice
         
     def updateHistograms(self):
         """Histogram controls were changed, optionally redo the fits.
