@@ -917,23 +917,23 @@ class histogramFitDialog(QDialog):
                 
                 if self.fitHistogramsOption == "Global Binom" and self.fixW:
                     _fitType = "GBFW"
-                    _ws = self.chooseWsSource(_fitType, _ROI)
+                    _ws = self.chooseWsSource(_ROI, _ID)
                     _opti = fit_nprGaussians_global (_num, _q, _ws, _hys, _hxs, fixedW=True)
                     
                 elif self.fitHistogramsOption == "Global Binom":
                     _fitType = "GB"
-                    _ws = self.chooseWsSource(_fitType, _ROI)
+                    _ws = self.chooseWsSource(_ROI, _ID)
                     _opti = fit_nprGaussians_global (_num, _q, _ws, _hys, _hxs, fixedW=False)
                     
                 elif self.fitHistogramsOption == "Global Poisson" and self.fixW:
                     _fitType = "GPFW"
-                    _ws = self.chooseWsSource(_fitType, _ROI)
+                    _ws = self.chooseWsSource(_ROI, _ID)
                     _opti = fit_PoissonGaussians_global (_num, _q, _ws, _hys, _hxs, fixedW=True)
                     
                 
                 elif self.fitHistogramsOption == "Global Poisson":
                     _fitType = "GP"
-                    _ws = self.chooseWsSource(_fitType, _ROI)
+                    _ws = self.chooseWsSource(_ROI, _ID)
                     _opti = fit_PoissonGaussians_global (_num, _q, _ws, _hys, _hxs, fixedW=False)
                     
                 else:
