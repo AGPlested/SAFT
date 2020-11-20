@@ -26,15 +26,28 @@ class HistogramFitStore:
     
     def addHData(self, condition, hx, hy):
         _c = condition
-    
-        self.df.loc(axis=1)[(_c, "Hx")] = pd.Series(hx)
-        self.df.loc(axis=1)[(_c, "Hy")] = pd.Series(hy)
+        sHx = pd.Series(hx)
+        sHy = pd.Series(hy)
+        
+        # both indices *should* be monotonic ascending integer
+        if len (self.df.index) < len (sHx.index):
+            self.df.reindex = sHx.index
+        
+        self.df.loc(axis=1)[(_c, "Hx")] = sHx
+        self.df.loc(axis=1)[(_c, "Hy")] = sHy
         self.empty = False
     
     def addFData(self, condition, fitx, fity):
         _c = condition
-        self.df.loc(axis=1)[(_c, "Fitx")] = pd.Series(fitx)
-        self.df.loc(axis=1)[(_c, "Fity")] = pd.Series(fity)
+        sFx = pd.Series(fitx)
+        sFy = pd.Series(fity)
+        
+        # both indices *should* be monotonic ascending integer
+        if len (self.df.index) < len (sFx.index):
+            self.df.reindex = sHx.index
+        
+        self.df.loc(axis=1)[(_c, "Fitx")] = sFx
+        self.df.loc(axis=1)[(_c, "Fity")] = sFy
         self.empty = False
         
     def addHFData(self, condition, hx, hy, fitx, fity):

@@ -404,7 +404,7 @@ class histogramFitDialog(QDialog):
     
     def skipROI(self):
         
-        self.clearFits()
+        #self.clearFits()
         self.ROI_change_command(2)
         self.outputF.appendOutText ("Advance to next ROI: {}".format(self.current_ROI), "magenta")
     
@@ -616,17 +616,17 @@ class histogramFitDialog(QDialog):
             self.dataname_label.setText (_name)
             self.dataname = _name
         
-        self.SD = _SD       #None by default
+        self.SD = _SD       # None by default
         
-        #take all peak lists
+        # Take all peak lists
         self.peakResults = _data # a dict of DataFrames
 
         
-        # any histograms aren't much use, we will change binning, so remove them
+        # Any histograms aren't much use, we will change binning, so remove them
         if 'histograms' in self.peakResults:
             del self.peakResults['histograms']
         
-        # clean out any low SNR data _ avoid interating over an ordered dict
+        # Clean out any low SNR data _ avoid interating over an ordered dict
         for key in self.peakResults.copy():
             if "SNR<" in key:
                 del self.peakResults[key]
@@ -657,27 +657,46 @@ class histogramFitDialog(QDialog):
         self.ROI_change()   # default is the first (0).
         self.updateHistograms()
     
+    def ROI_has_changed(self):
+        
+        # clear fits and get histogram x-range automatically
+        self.clearFits()
+        #self.separateBinomialBtn.setDisabled(True)     # not needed any more, there is always a guess
+        self.maxFlag = "Auto max"
+        #print ("self_ROI_N is ", self.ROI_N)
+        self.ROI_change(self.ROI_N)
+        
     def ROI_change_command (self, button_command):
         #print("Button command: {}".format(button_command))
         
-        # turn off separate fitting when moving to new ROI, and get histogram x-range automatically
-        self.separateBinomialBtn.setDisabled(True)
-        self.maxFlag = "Auto max"
-        
+        # To start button <<
         if button_command == 0:
-            self.ROI_N = 0
-        
+            if self.ROI_N != 0:
+                self.ROI_N = 0
+                self.ROI_has_changed()
+                
+        # back one button <
         elif button_command == 1:
             self.ROI_N -= 1
-            if self.ROI_N < 0:  self.ROI_N = 0
-        
+            if self.ROI_N < 0:
+                self.ROI_N = 0
+            else:
+                self.ROI_has_changed()
+                
+        # forward one button >
         elif button_command == 2:
             self.ROI_N += 1
-            if self.ROI_N == len(self.ROI_list):  self.ROI_N = len(self.ROI_list) - 1
-        
+            if self.ROI_N == len(self.ROI_list):
+                self.ROI_N = len(self.ROI_list) - 1
+            else:
+                self.ROI_has_changed()
+           
+       # To end button >>
         elif button_command == 3:
-            self.ROI_N = len(self.ROI_list) - 1
-        
+            if self.ROI_N !=  len(self.ROI_list) - 1:
+                self.ROI_N = len(self.ROI_list) - 1
+                self.ROI_has_changed()
+                
         elif button_command == 4:
             self.clearFits()
             return
@@ -690,8 +709,7 @@ class histogramFitDialog(QDialog):
             self.skipROI()  # comes back here with b_c = 2
             return
             
-        #print ("self_ROI_N is ", self.ROI_N)
-        self.ROI_change(self.ROI_N)
+        
         
     def ROI_change(self, _ROI=0):
         """ update on ROI change"""
@@ -702,8 +720,7 @@ class histogramFitDialog(QDialog):
         
         if self.SD is not None:
             self.fixWtoSDSwitch.setEnabled(True)
-            self.fixws = self.SD[self.current_ROI]
-            ROI_label_text += " , baseline SD: {:.3f}".format(self.fixws)
+            ROI_label_text += " , baseline SD: {:.3f}".format(self.SD[self.current_ROI])
         
         self.RC.update_ROI_label(ROI_label_text)
         
@@ -717,6 +734,35 @@ class histogramFitDialog(QDialog):
         else:
             self.sum_hist_option.setCurrentIndex(0)    # sets view to summed, calls update histograms and performs the fit.
         
+    def chooseWsSource(self, _ROI, _fitID, _fixed=None, verbose=True):
+        
+        #override
+        if self.fixW:
+            _fixed = True
+        
+        if _fixed :
+            _fixText = "Fixed"
+        else :
+            _fixText = "Guess for"
+            
+        if self.SD is not None:   #fix W is ticked and we were given some SDs
+            ws = self.SD[_ROI]
+            _wsInfo = "{} _ws ({}) from supplied value".format(_fixText, _ws)
+                    
+        else:
+            ws = self.histo_W_Spin.value()
+            _box = "Width"
+            
+            if ws == 0:
+                ws = self.histo_Max_Spin.value() / 10
+                _box = "Max"
+            
+            _wsInfo = "{} _ws ({}) taken from GUI spinbox {}".format(_fixText, ws, _box)
+                        
+        if verbose: print ("Fit {}, ROI: {}, {}".format(_fitID, _ROI, _wsInfo))
+        
+        return ws
+        
     def updateHistograms(self):
         """Histogram controls were changed, optionally redo the fits.
         """
@@ -724,8 +770,12 @@ class histogramFitDialog(QDialog):
         # would be None if no data was loaded so escape
         if self.current_ROI == None:
             return
-        
-        _ROI = self.current_ROI
+        else:
+            _ROI = self.current_ROI
+            
+        # _ID is a unique identifier for each fit
+        # it is the key for the fits dictionary
+        _ID = getRandomString(4)
         
         # get values from controls (with auto override)
         _hsum, _nbins, _max = self.histogramParameters()
@@ -736,15 +786,11 @@ class histogramFitDialog(QDialog):
             ystack = []
             xstack = []
         
-        # _ID is a unique identifier for each fit
-        # it is the key for the fits dictionary
-        _ID = getRandomString(4)
         
         if self.fitHistogramsOption not in ["None", "Summed"]:
             
             self.Fits_data[_ID] = HFStore(self.current_ROI, self.peakResults.keys())
             #print ("SFHO: {}\nSFDID: {}".format(self.fitHistogramsOption, self.Fits_data[_ID]))
-         
          
         # Below we draw the individual histograms.
         # at the moment, the individual fits are done as this progresses.
@@ -805,20 +851,7 @@ class histogramFitDialog(QDialog):
                     # separate binomial fits path
                     _q = self.fixq
                     _num = self.histo_nG_Spin.value()
-                    
-                    if self.fixW and self.SD is not None:   #fix W is ticked and we were given some SDs
-                        _ws = self.SD[_ROI]
-                        _wsInfo = "Fixed _ws ({}) from supplied value".format(_ws)
-                    
-                    else:
-                        _ws = self.histo_W_Spin.value()
-                        _box = "W"
-                        if _ws == 0:
-                            _ws = self.histo_Max_Spin.value() / 10
-                            _box = "M"
-                        _wsInfo = "Fixed _ws ({}) from GUI spinbox {}".format(_ws, _box)
-                        
-                    print ("Fit {}, ROI: {}, _q = {}, {}".format(_ID, _ROI, _q, _wsInfo))
+                    _ws = self.chooseWsSource(_ROI, _ID, _fixed=True)
                         
                     _hxc = np.mean(np.vstack([hx[0:-1], hx[1:]]), axis=0)
                     _opti = fit_nprGaussians (_num, _q, _ws, hy, _hxc)
@@ -874,46 +907,37 @@ class histogramFitDialog(QDialog):
                 _hys = np.vstack(ystack).transpose()
                 _hxs = np.vstack(xstack).transpose()
                 
-                # guesses
+                # parameter
                 _num = self.histo_nG_Spin.value()
+                
+                # guess
                 _q = self.histo_q_Spin.value()
                 
                 # four possibilities : Binomial or poisson, with widths fixed or free
-                if self.fitHistogramsOption == "Global Binom" and self.SD is not None and self.fixW:
-                    _ws = self.SD[_ROI]
-                    print ("Fixed _ws= {}, ROI: {}".format(_ws, _ROI))
-                    _opti = fit_nprGaussians_global (_num, _q, _ws, _hys, _hxs, fixedW=True)
+                
+                if self.fitHistogramsOption == "Global Binom" and self.fixW:
                     _fitType = "GBFW"
+                    _ws = self.chooseWsSource(_fitType, _ROI)
+                    _opti = fit_nprGaussians_global (_num, _q, _ws, _hys, _hxs, fixedW=True)
                     
                 elif self.fitHistogramsOption == "Global Binom":
-                    
-                    if self.SD is None:
-                        _ws = self.histo_Max_Spin.value() / 10
-                    else:
-                        _ws = self.SD[_ROI]
-                        
-                    _opti = fit_nprGaussians_global (_num, _q, _ws, _hys, _hxs, fixedW=False)
                     _fitType = "GB"
+                    _ws = self.chooseWsSource(_fitType, _ROI)
+                    _opti = fit_nprGaussians_global (_num, _q, _ws, _hys, _hxs, fixedW=False)
                     
-                elif self.fitHistogramsOption == "Global Poisson" and self.SD is not None and self.fixW:
-                    _ws = self.SD[_ROI]
-                    print ("Fixed _ws= {}, ROI: {}".format(_ws, _ROI))
-                    _opti = fit_PoissonGaussians_global (_num, _q, _ws, _hys, _hxs, fixedW=True)
+                elif self.fitHistogramsOption == "Global Poisson" and self.fixW:
                     _fitType = "GPFW"
+                    _ws = self.chooseWsSource(_fitType, _ROI)
+                    _opti = fit_PoissonGaussians_global (_num, _q, _ws, _hys, _hxs, fixedW=True)
+                    
                 
                 elif self.fitHistogramsOption == "Global Poisson":
-                    if self.SD is None:
-                        _ws = self.histo_Max_Spin.value() / 10
-                    else:
-                        _ws = self.SD[_ROI]
-                        
-                    _opti = fit_PoissonGaussians_global (_num, _q, _ws, _hys, _hxs, fixedW=False)
                     _fitType = "GP"
-                
+                    _ws = self.chooseWsSource(_fitType, _ROI)
+                    _opti = fit_PoissonGaussians_global (_num, _q, _ws, _hys, _hxs, fixedW=False)
+                    
                 else:
                     print ("fell through sfho: {}".format(self.fitHistogramsOption))
-                
-                print ("fit type, Ws: {} {}".format(_fitType, _ws))
                 
                 #if the fit worked
                 if _opti.success:
@@ -921,6 +945,7 @@ class histogramFitDialog(QDialog):
                     self.outputF.appendOutText ("_opti.x: {}\nCost = {}".format(linePrint(_opti.x, pre=3), _opti.cost), color="Green")
                     
                     _q = _opti.x[0]
+                    
                     if self.fixW:
                         _scale = _opti.x[1]
                     else:
@@ -935,6 +960,7 @@ class histogramFitDialog(QDialog):
                     for i, _condition in enumerate(self.peakResults.keys()):
                         # colours
                         col_series = (i, len(self.peakResults.keys()))
+                        # select right part of flattened histogram matrix
                         _hxr = _hxs[:, i]
                         _hxc = np.mean(np.vstack([_hxr[0:-1], _hxr[1:]]), axis=0)
                         target = self.hPlot.stackMembers[i]
@@ -972,6 +998,7 @@ class histogramFitDialog(QDialog):
                         # write the results to the running fits text panel
                         self.fitInfo.appendOutText (linePrint(_globalR, pre=3), _fitinfoCol)
                         
+                        # plot the oversampled fitted curve
                         _c = target.plot(_hx_u, _hy_u, name=legend)
                         _c.setPen(color=col_series, width=3)
                         _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
@@ -1015,9 +1042,13 @@ class histogramFitDialog(QDialog):
            
             if self.fitHistogramsOption == "Summed":
                 #print ("lens hx, hy", len(hx), len(hy))
+                
+                # summed fit does not fix Ws in any circumstances?
+                self.fixWtoSDSwitch.setChecked(False)
+                
                 _num = self.histo_nG_Spin.value()
                 _q = self.histo_q_Spin.value()
-                _ws = self.histo_Max_Spin.value() / 10
+                _ws = self.chooseWsSource(_ROI, _ID)
                
                 _hxc = np.mean(np.vstack([hx[0:-1], hx[1:]]), axis=0)
                 _opti = fit_nGaussians(_num, _q, _ws, sumhy, _hxc)
@@ -1036,7 +1067,6 @@ class histogramFitDialog(QDialog):
                     _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
             
                     # as long as we have a fit, we can enable the separate fit button
-                
                     self.separateBinomialBtn.setEnabled(True)
                     self.outputF.appendOutText ("Summed Histogram fit\nopti.x: {}\nCost: {}".format(linePrint(_opti.x), _opti.cost), "darkgreen")
                 else:
