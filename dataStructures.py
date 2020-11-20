@@ -31,7 +31,7 @@ class HistogramFitStore:
         
         # both indices *should* be monotonic ascending integer
         if len (self.df.index) < len (sHx.index):
-            self.df.reindex = sHx.index
+            self.df = self.df.reindex(sHx.index)
         
         self.df.loc(axis=1)[(_c, "Hx")] = sHx
         self.df.loc(axis=1)[(_c, "Hy")] = sHy
@@ -44,7 +44,7 @@ class HistogramFitStore:
         
         # both indices *should* be monotonic ascending integer
         if len (self.df.index) < len (sFx.index):
-            self.df.reindex = sHx.index
+            self.df = self.df.reindex(sFx.index)
         
         self.df.loc(axis=1)[(_c, "Fitx")] = sFx
         self.df.loc(axis=1)[(_c, "Fity")] = sFy
