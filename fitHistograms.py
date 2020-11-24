@@ -111,7 +111,7 @@ class HDisplay():
         self.h = self.glw.addPlot(title="<empty>", *self.hrc)
         self.h.setLabel('left', "N")
         self.h.setLabel('bottom', "dF / F")
-        self.h.vb.setLimits(xMin=0, yMin=0)
+        self.h.vb.setLimits(yMin=0)
         self.h.addLegend(offset=(-10, 5))
         self.stack = pg.GraphicsLayout()
         
@@ -130,7 +130,7 @@ class HDisplay():
             memberName = _condition + " histogram"
             stack_member = self.stack.addPlot(y=data, name=memberName)
             
-            stack_member.vb.setLimits(xMin=0, yMin=0)
+            stack_member.vb.setLimits(yMin=0)
             stack_member.hideAxis('bottom')
             stack_member.addLegend(offset=(-10, 5))
             stack_member.setLabel('left', "N")
@@ -828,7 +828,7 @@ class histogramFitDialog(QDialog):
                 #print ("pdata and dropna\n {}\n {}".format(_pdata, _pdata))
                 
                 # redo histogram
-                hy, hx  = np.histogram(_pdata, bins=_nbins, range=(0., _max))
+                hy, hx  = np.histogram(_pdata, bins=_nbins, range=(-_max/5, _max))
                 
                 if hy.max() > _ymax:
                     _ymax = hy.max()
@@ -1034,7 +1034,7 @@ class histogramFitDialog(QDialog):
             sumhy = np.zeros(_nbins)
             for _condition in self.peakResults.keys():
                 _pdata = self.peakResults[_condition][_ROI].dropna()
-                hy, hx  = np.histogram(_pdata, bins=_nbins, range=(0., _max))
+                hy, hx  = np.histogram(_pdata, bins=_nbins, range=(-_max/5, _max))
                 sumhy += hy
             
             self.hPlot.h.clear()
@@ -1075,6 +1075,7 @@ class histogramFitDialog(QDialog):
                     self.outputF.appendOutText ("Summed Histogram fit failed!\nopti.x: {}\nCost: {}".format(linePrint(_opti.x), _opti.cost), "red")
                     
 if __name__ == '__main__':
+    test = False
     if len(sys.argv) > 1:
         if sys.argv[1] == 'test':
             test = True
