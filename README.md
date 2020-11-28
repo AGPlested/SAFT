@@ -7,48 +7,50 @@ SAFT was written in Python 3 for macOS. In principle it is cross-platform, in pr
 
 (Python/UNIX experts [see below](#experts))
 
-Clone the SAFT repository to your machine by clicking the green "Code" button at the top of this page and selecting "Download Zip".
+Note, we are sorry, the following isn't trivial. We do work on packaging SAFT into a clickable app, it's just not easy either.
+
+1. Clone the SAFT repository to your machine by clicking the green "Code" button at the top of this page and selecting "Download Zip".
 
 You will receive a directory called "SAFT-master", probably in the 'Downloads' folder. 
 
-To get all the Python packages you need to run SAFT, we recommend using miniconda.  
+2. To get all the Python packages you need to run SAFT, we recommend using miniconda.  
 Download `miniconda for python 3.6 bash` ; we provide everything you need after that. Here's the [link](#https://docs.conda.io/projects/continuumio-conda/en/latest/user-guide/install/macos.html).
 
-Use Spotlight (Command+Space) to find and launch 'Terminal'. In the following, you will need to enter `commands` in the Terminal. You must be exact...
+3. Use Spotlight (Command+Space) to find and launch 'Terminal'. In the following, you will need to enter `commands` in the Terminal. You must be exact...
 
-To install miniconda, you need to navigate to the directory where it downloaded, probably again 'Downloads'.
+4. To install miniconda, you need to navigate to the directory where it downloaded, probably again 'Downloads'.
 
 > `cd Downloads`
 
-Then you can type the following command to make the installation. Use the space bar to page through the licence agreement. Answer (type) 'yes' to everything...
+5. Type the following command to make the installation. Use the space bar to page through the licence agreement. Answer (type) 'yes' to everything...
 
 > `bash Miniconda3-latest-MacOSX-x86_64.sh`
 
 (Free UNIX tip: if you start typing `bash Min` and then press the Tab key "->|", it will autocomplete)
 
-After this you'll need to restart the Terminal window. 
+6. After this you'll need to restart the Terminal window (command + W, then command + N)
 
-Now you need to navigate to the SAFT directory *in the Terminal*. You start in your "Home" folder (its name is your username).  
+7. Now you need to navigate to the SAFT directory *in the Terminal*. You start in your "Home" folder (its name is your username).  
 The command you need is cd (change directory):
 
 > `cd Downloads\SAFT-master`
 
-To prepare for SAFT, get Conda to create the SAFT environment:
+8. To prepare for SAFT, get Conda to create the SAFT environment:
 >`conda env create --file SAFTenv.yml`
 
-Once all the packages have downloaded and Conda has arranged them all, to use them you need to switch to this environment: 
+9. Once all the packages have downloaded and Conda has arranged them all, to use them you need to switch to this environment: 
 
 > `conda activate SAFT`
 
-To run SAFT, type the following command into the Terminal:
+10. To run SAFT, type the following command into the Terminal:
 
 > `pythonw SAFT.py`
 
 On the first run in a freshly installed environment, you will have to wait for some of the packages. Matplotlib is kind enough to note that it is spending the time installing fonts.
 
-From the window, you can open the example file `SAFT_Data.xlsx` for analysis. Read `instructions.pdf` for how to use the program.
+From the window, you can open the example file `SAFT_Data.xlsx` for analysis. Read `instructions.pdf` for how some information about how to use the program.
 
-You can also launch quantal fitting of histograms as a standalone app. If you add `test` some example data (the file `ExPeak_Data.xlsx`) will load automatically.
+Note: You can also launch quantal fitting of histograms as a standalone app. If you add `test` some example data (the file `ExPeak_Data.xlsx`) will load automatically.
 
 >`pythonw fitHistograms.py`
 >`pythonw fitHistograms.py test`
