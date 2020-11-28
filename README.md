@@ -62,6 +62,8 @@ SAFT depends on quite a few packages, for its GUI (Qt, pyqtgraph, pyside2, matpl
 
 Conda currently provides Qt 5.9.7 and this makes it convenient to use conda to set up a fresh environment. To make getting the right environment in place easy, we include a conda environment .yml file in the distribution (SAFTenv.yml). To use this, you must have Anaconda or Miniconda installed on your machine. If you don't have Anaconda already, just get [Miniconda](# https://docs.conda.io/projects/continuumio-conda/en/latest/user-guide/install/macos.html).
 
+It is not recommended to work with any of the versions of Python that Apple bundles with OSX. Please have conda install Python 3.7.9 (if you don't have it) before doing anything further. 
+
 To install the packages needed for SAFT into a fresh environment with Miniconda, go to the SAFT directory and enter the following in the Terminal,
 
 > `conda env create --file SAFTenv.yml`
@@ -85,7 +87,8 @@ PySide2 versions up to 5.15 seem to run happily with Qt 5.9.7 but it may be diff
 ### Dependencies *current as of 2020-11-12*
 ---
 
-Python 3.7.9   
+Python 3.7.9  
+
 qt==5.9.7   
 PySide2>=5.9.0a1  
 numpy==1.19.2 
