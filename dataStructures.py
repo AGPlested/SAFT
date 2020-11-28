@@ -129,9 +129,11 @@ class Results:
         self.headr = list(itertools.product(self.ROI_list, self.condition_list, self.pairs))
         self.cols = pd.MultiIndex.from_tuples(self.headr)
                 
-    def addPeaksExtracted (self, _peakDict, _name=None):
-        for d in _peakDict.values():
-            print ("dhead\n\n{}".format(d.head(5)))
+    def addPeaksExtracted (self, _peakDict, _name=None, verbose=False):
+        if verbose:
+            for i, d in enumerate(_peakDict.values()):
+                print ("{} d head(5)\n{}\n".format(i, d.head(5)))
+        
         if _name:
             self.name = _name
         
@@ -143,6 +145,7 @@ class Results:
             _ROIs = df.columns
             self.ROI_list = list(set(list(_ROIs) + list(self.ROI_list)))   #take only unique ROIs
         
+        if verbose: print ("len {} and selfROIlist:\n{}".format(len(self.ROI_list),self.ROI_list))
         #what about order?
         
         # in extracted data they should be all the same.
@@ -151,16 +154,22 @@ class Results:
         self.makeDF(_index)
         
         rs = self.df.columns.get_level_values(0).unique()
+        if verbose: print ("RS: ", rs)
         condi = self.df.columns.get_level_values(1).unique()
 
         for rx in rs:
             for c , d  in _peakDict.items():
                 self.df.loc(axis=1)[rx, c, 't'] = _index.to_series().values
-                self.df.loc(axis=1)[rx, c, 'peak'] = d[rx]
-        
+                
+                # simple hack, leaves the problem of unequal lists for something else to deal with later (like subplots in main window)
+                try:
+                    self.df.loc(axis=1)[rx, c, 'peak'] = d[rx]
+                except KeyError:
+                    print ("No peaks for {}, probably excluded for low SNR".format(rx))
+                    
         self.df.reset_index(drop=True, inplace=True)
         
-        print ("selfdfhead\n\n{}".format(self.df.head(5)))
+        if verbose: print ("self df head\n\n{}".format(self.df.head(5)))
     
     def addPeaks (self, _ROI, _condition, _times, _peaks):
         # the peaks (and their times) are arrays of values that belong to a ROI and a condition.
