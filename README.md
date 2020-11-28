@@ -91,14 +91,14 @@ Python 3.7.9
 
 qt==5.9.7   
 PySide2>=5.9.0a1  
-numpy==1.19.2 
+numpy==1.19.2  
 scipy==1.5.2  
 pyqtgraph==0.11.0  
 pandas==0.24.0  
-matplotlib==3.3.2  
+matplotlib==3.3.2    
 xlrd==1.2.0  
-openpyxl==3.0.5
-pyobjc-framework-Cocoa==6.2.2
+openpyxl==3.0.5  
+pyobjc-framework-Cocoa==6.2.2  
 python.app 2  
 
 
