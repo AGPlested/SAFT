@@ -139,7 +139,7 @@ class Results:
         
         self.condition_list = list(_peakDict.keys())
         
-        # reset in case
+        # reset just in case
         self.ROI_list = []
         for df in _peakDict.values():
             _ROIs = df.columns
@@ -155,6 +155,7 @@ class Results:
         
         rs = self.df.columns.get_level_values(0).unique()
         if verbose: print ("RS: ", rs)
+        
         condi = self.df.columns.get_level_values(1).unique()
 
         for rx in rs:
@@ -168,7 +169,6 @@ class Results:
                     print ("No peaks for {}, probably excluded for low SNR".format(rx))
                     
         self.df.reset_index(drop=True, inplace=True)
-        
         if verbose: print ("self df head\n\n{}".format(self.df.head(5)))
     
     def addPeaks (self, _ROI, _condition, _times, _peaks):

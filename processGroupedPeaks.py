@@ -77,12 +77,13 @@ class groupPeakDialog(QDialog):
         print ("save group peak data")
         #print (self.hDF.df.head(5))
         
+        # needs to be updated for openpyxl
         # format for header cells.
-        self.hform = {
-        'text_wrap': True,
-        'valign': 'top',
-        'fg_color': '#A504AC',
-        'border': 1}
+        # self.hform = {
+        #'text_wrap': True,
+        #'valign': 'top',
+        #'fg_color': '#A504AC',
+        #'border': 1}
         
         self.filename = QFileDialog.getSaveFileName(self,
         "Save Group Analysis", os.path.expanduser("~"))[0]
@@ -94,13 +95,14 @@ class groupPeakDialog(QDialog):
                 for _set, _df in self.groupsextracted_by_set.items():
                 
                     _df.to_excel(writer, sheet_name=_set, startrow=1, header=False)
-                    _workbook  = writer.book
+                    #_workbook  = writer.book
                     _worksheet = writer.sheets[_set]
-                    header_format = _workbook.add_format(self.hform)
-                    for col_num, value in enumerate(_df.columns.values):
+                    #header_format = _workbook.add_format(self.hform)
+                    for col_num, v in enumerate(_df.columns.values):
                         #print (col_num, value, _set)
-                        _worksheet.write(0, col_num + 1, str(value) + " " + _set, header_format)
-                    
+                        _worksheet.cell(1, col_num + 2).value = str(v[0]) + " " + _set
+                        _worksheet.cell(2, col_num + 2).value = str(v[1])
+                        
     def saveGraphs(self):
         """Multipage PDF output of groupData analysis"""
         self.gfilename = QFileDialog.getSaveFileName(self,
@@ -223,7 +225,7 @@ class groupPeakDialog(QDialog):
         self.N_ROI_label.setText("Grouping peaks from {} ROIs \n over the sets named {}".format(N_ROI, pdk_display))
         self.updateGrouping()
         
-    def addData(self, data, name=None):
+    def addData(self, data, name=None, verbose=True):
         """Bring in external data for analysis"""
         #data is a dictionary of Pandas DataFrames
         self.peakData = data
@@ -231,7 +233,8 @@ class groupPeakDialog(QDialog):
             self.name = name
         else:
             self.name = "unnamed"
-        print (self.peakData)
+        
+        if verbose: print ("spD\n\n", self.peakData)
         
         #remove any duplicate peaks
         for k, _v in self.peakData.items():
@@ -239,20 +242,20 @@ class groupPeakDialog(QDialog):
             self.peakData[k] = _v.loc[~_v.index.duplicated(keep='first')] #StackOverflow 13035764
             _isShape = _v.shape
             if _isShape != _wasShape:
-                print ("Removed duplicates, df.shape() was {}, now {}".format(_wasShape, _isShape))
+                if verbose: print ("Removed duplicates, df.shape() was {}, now {}".format(_wasShape, _isShape))
             
         pdk = self.peakData.keys()
         pdk_display = ", ".join(str(k) for k in pdk)
         N_ROI = [len (self.peakData[d].columns) for d in pdk]
         
         _printable = "{}\n{}\n".format(pdk_display, [self.peakData[d].head() for d in pdk])
-        print ("Added data of type {}:\n{}\n".format(type(self.peakData), _printable))
+        if verbose: print ("Added data of type {}:\nPrintable:\n{}\n".format(type(self.peakData), _printable))
         
         self.dataLoaded = True
         self.N_ROI_label.setText("Grouping peaks from {} dataset: {} ROIs \n over the conditions {}".format(self.name, N_ROI, pdk_display))
         self.updateGrouping()
         
-    def groupPeaks(self):
+    def groupPeaks(self, verbose=True):
         print ("Analayse group peaks.")
         
         self.prepGuiParameters()
@@ -262,9 +265,9 @@ class groupPeakDialog(QDialog):
        
         
         for _set in self.peakData.keys():
-            #prep means and sd frames
+            # prep means and sd frames
             _c = self.peakData[_set].columns
-            #print (c, _step)
+            if verbose: print (c, _step)
             
             
             _stat = ['mean','SD']
@@ -272,78 +275,42 @@ class groupPeakDialog(QDialog):
             # make dataframe
             cols = pd.MultiIndex.from_tuples(_headr)
             _s = pd.DataFrame([], range(self.step), cols)
-            print (_s)
+            if verbose: print (_s)
             
             for p in range(self.step):
                 # get pth row group
                 _subset = self.peakData[_set].iloc[p::self.step]
-                print ("{0}. subset\n {1}".format(p + 1, _subset))
+                if verbose: print ("{0}. subset\n {1}".format(p + 1, _subset))
+                
                 # each set of paired mean, sd results is assigned to two columns
                 pth_row = _s.index.isin(_s.index[p:p+1])
-                #print (pth_row, _s.loc[pth_row, (All, 'mean')] , _subset.describe().loc['mean'])
+                if verbose: print (pth_row, _s.loc[pth_row, (All, 'mean')] , _subset.describe().loc['mean'])
+                
                 _s.loc[pth_row, (All, 'mean')] = _subset.describe().loc['mean'].values
                 _s.loc[pth_row, (All, 'SD')] = _subset.describe().loc['std'].values
-    
-                #_means.iloc[p] = _subset.describe().loc['mean']
-                #_SDs.iloc[p] = _subset.describe().loc['std']
-            
-            #print(_s)
+
             self.groupsextracted_by_set[_set] = _s
-            #self.groupsextracted_by_set[_set + "_sd"] = _SDs
         
         # we can save now that we have data
         self.saveGroupsBtn.setEnabled(True)
         self.saveGraphsBtn.setEnabled(True)
-        print (self.groupsextracted_by_set)
-        """
-        for _set in self.peakdata.keys():
-            maxVal = len(self.tPeaks)
+        if verbose: print (self.groupsextracted_by_set)
         
-        
-            ROI_df = self.tracedata[_set]
-            #print (ROI_df)
-        
-            peaksList = []
-            progMsg = "Get {0} peaks, {1} set..".format(maxVal, _set)
-            with pg.ProgressDialog(progMsg, 0, maxVal) as dlg:
-                for t in self.tPeaks:
-                    dlg += 1
-                    idx =  np.searchsorted(ROI_df.index, t)
-                    # avoid falling off start or end of columns
-                    e = max (idx-self.psr, 0)
-                    # zero biased so add one.
-                    l = min (idx+self.psr+1, len(ROI_df.index))
-                    print (t, e, idx, l, ROI_df.iloc[e:l])
-                    
-                    p = ROI_df.iloc[e:l].max().to_frame().transpose()
-                    peaksList.append(p)
-                
-                #stick rows together (all have same zero index...)
-                peaksdf = pd.concat(peaksList)
-                
-                # Overwrite index with the original peak positions
-                # (somewhat inexact because of the 'range')
-                peaksdf.index = self.tPeaks
-                self.pkextracted_by_set[_set] = peaksdf
-        
-    
-        
-        #close the dialog
-        self.accept()"""
     
 
-    def updateGrouping(self):
+    def updateGrouping(self, verbose=True):
         """recalculate groups"""
         
-        print ('update grouping')
+        if verbose: print ('update grouping')
         
         if self.dataLoaded:
             try:
                 _firstdf = list(self.peakData.values())[0]
-                print (_firstdf)
+                if verbose: print ("first DF,\n", _firstdf)
                 self.peaksN = _firstdf.shape[0]     # get the number of rows in the first DataFrame
             except:
                 print ("couldn't find a dataframe in self.peakData")
+                return False
                 
         self.NRepeats  = int(self.peaksN / self.groupNSB.value())
         self.step = int(self.groupNSB.value())

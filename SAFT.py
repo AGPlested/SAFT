@@ -198,7 +198,7 @@ class SAFTMainWindow(QMainWindow):
         self.p3.setTitle('Zoom - auto peak mode', color="F0F0F0", justify="right")
         self.p3.setLabel('left', "dF / F")
         self.p3.setLabel('bottom', "Time (s)")
-        self.p3.setFixedWidth(600)
+        self.p3.setFixedWidth(550)
         self.p3vb = self.p3.vb
         
         # draw the crosshair if we are in manual editing mode
@@ -542,8 +542,6 @@ class SAFTMainWindow(QMainWindow):
         dataGrid.addWidget(self.extractGroupsDialog_Btn, 5, 2, 1, 2)
         dataGrid.addWidget(self.fitHistDialogBtn, 6, 0, 1, 2)
         
-        
-        
         dataPanel.setLayout(dataGrid)
         
         # Baseline controls box
@@ -717,11 +715,16 @@ class SAFTMainWindow(QMainWindow):
         
     
         #stack widgets into control panel
-        controls.addWidget(dataPanel, 0, 0, 1, -1)
-        controls.addWidget(histograms, 6 , 0, 1, -1)
+        dataPanel.setFixedHeight(225)
+        baseline.setFixedHeight(150)
+        peakFinding.setFixedHeight(225)
+        histograms.setFixedHeight(150)
         
-        controls.addWidget(baseline, 1, 0 , 1, -1)
-        controls.addWidget(peakFinding, 4, 0 , 2, -1)
+        controls.addWidget(dataPanel, 0, 0, 2, -1)
+        controls.addWidget(baseline, 2, 0 , 1, -1)
+        controls.addWidget(peakFinding, 3, 0 , 2, -1)
+        controls.addWidget(histograms, 5 , 0, 1, -1)
+        
         controls.setFixedWidth(420)
         
         self.central_layout.addWidget(controls, 0, 3, -1, 1)
@@ -868,22 +871,21 @@ class SAFTMainWindow(QMainWindow):
             self.workingDataset = self.store.retrieveWorkingSet(self.datasetCBx.currentText())
             print ('Retrieved {}'.format(self.workingDataset.DSname))
         
-            # update the ROI list combobox (should have a list)
-            # needed for updating GUI
-            self.updateROI_list_Box()
-            self.ROI_Change()
-            
             # print GUI control dict
             print ("swdsGC {}".format(self.workingDataset.GUIcontrols))
             
+            # do this first otherwise on ROI extracted peaks are overwritten
             # execute GUI controls specified in the retrieved Dataset
             for k,v in self.workingDataset.GUIcontrols.items():
                 if k == "autoPeaks":
                     self.autoPeaks_GUI_switch(v)
                 elif k == "print":
                     print (v)
-
             
+            # update the ROI list combobox (should have a list)
+            # needed for updating GUI
+            self.updateROI_list_Box()
+            self.ROI_Change()
             
             
         
@@ -1340,14 +1342,15 @@ class SAFTMainWindow(QMainWindow):
     
     def save_peaks(self):
         print ("save extracted peak data and optionally histograms")
-        #### will have to update for Store
+        #### will have to update for Store?
         
+        # needs to be updated for openpyxl
         #format for header cells.
-        self.hform = {
-        'text_wrap': True,
-        'valign': 'top',
-        'fg_color': '#D5D4AC',
-        'border': 1}
+        #self.hform = {
+        #'text_wrap': True,
+        #'valign': 'top',
+        #'fg_color': '#D5D4AC',
+        #'border': 1}
         
         if self.noPeaks:        #nothing to save
             print ('Nothing to save, no peaks found yet!')
@@ -1370,13 +1373,13 @@ class SAFTMainWindow(QMainWindow):
                     #skip the first row
                     _pe.to_excel(writer, sheet_name=_condi, startrow=1, header=False)
                     
-                    _workbook  = writer.book
+                    #_workbook  = writer.book
                     _worksheet = writer.sheet[_condi]
                     
                     #write header manually so that values can be modified with addition of the sheet (for downstream use)
-                    header_format = _workbook.add_format(self.hform)
-                    for col_num, value in enumerate(_pe.columns.values):
-                        _worksheet.write(0, col_num + 1, value + " " +_condi, header_format)
+                    #header_format = _workbook.add_format(self.hform)
+                    for col_num, v in enumerate(_pe.columns.values):
+                        _worksheet.cell(1, col_num + 2).value = v + " " + _condi      #, header_format)
                 
                 if self.saveHistogramsOption:
                     self.save_histograms(writer)
