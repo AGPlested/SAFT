@@ -1053,6 +1053,7 @@ class SAFTMainWindow(QMainWindow):
                 
                 if self.autoPeaks:
                     xp, yp = self.peaksWrapper(x, y[i], _condi)
+                    
                 else:
                     # if new data is loaded without autopeaks, there are no peaks....
                     # this goes wrong later on though
@@ -1061,6 +1062,7 @@ class SAFTMainWindow(QMainWindow):
                 
                 # need to add something to p3 scatter
                 self.p3.plot(xp, yp, name="Peaks "+_condi, pen=None, symbol="s", symbolBrush=(i,3))
+                self.plots.peakslabel.setText("{} peaks in {} condition".format(len(yp), _condi))
                 
                 # create the object for parsing clicks in p3
                 self.cA = clickAlgebra(self.p3)
@@ -1116,8 +1118,8 @@ class SAFTMainWindow(QMainWindow):
             print ('No peaks found in {0} with cwt algorithm, width: {1}, SNR: {2}, cutOff: {4}.'.format(name, self.cwt_width, self.cwt_SNR, _cutOff))
             xpf = []
             ypf = []
-        
-        self.plots.peakslabel.setText("Number of peaks: {}".format(_npeaks))
+        #_condi = self.p3Selection.currentText() == _condi:
+        #self.plots.peakslabel.setText("{} peaks in ".format(_npeaks, _condi))
         
         return xpf, ypf
     
@@ -1164,7 +1166,7 @@ class SAFTMainWindow(QMainWindow):
             else:
                 self.p1.plot(xp, yp, pen=None, symbol="s", symbolBrush=col_series)
             
-            self.plots.peakslabel.setText("Number of peaks in {} set: {}".format(_condi, len(yp)))
+            self.plots.peakslabel.setText("{} peaks in {} condition.".format(len(yp), _condi))
                 
     def setBaselineParams (self):
         """Get parameters for auto baseline from GUI"""
@@ -1274,26 +1276,33 @@ class SAFTMainWindow(QMainWindow):
                 
                 # call the relevant peak finding algorithm
                 xp, yp = self.peaksWrapper(x, y[i], _condi)
+                self.plots.peakslabel.setText("{} peaks in {} condition".format(len(yp), _condi))
                 
                 # write automatically found peaks into results
                 self.workingDataset.resultsDF.addPeaks(_ROI, _condi, xp, yp)
-            
+                
+                
             else: # we are in manual peaks
                 
                 # read back existing peak data from results (might be empty if it's new ROI)
                 xp, yp = self.workingDataset.resultsDF.getPeaks(_ROI, _condi)
-                if len(xp) == 0: print ("Peak results for {} {} are empty".format( _ROI, _condi))
-                else : print ("Retrieved: {} {} first xp,yp : {}, {}".format( _ROI, _condi, xp[0], yp[0]))
-            
+                if len(yp) == 0: print ("Peak results for {} {} are empty".format( _ROI, _condi))
+                else :
+                    try:
+                        print ("Retrieved: {} {} first xp,yp : {}, {}".format( _ROI, _condi, xp[0], yp[0]))
+                    except KeyError:
+                        #print (xp.shape, yp.shape)
+                        print ("No peaks, xp or yp empty? {} {} {} {}".format(_ROI, _condi, xp, yp))
+                        
             # draw p1 traces and scatter
             if self.split_traces:
                 target = self.p1stackMembers[i]
                 target.clear()
                 target.plot(x, y[i], pen=col_series)
-                if len(xp) > 0 : target.plot(xp, yp, pen=None, symbol="s", symbolBrush=col_series)
+                if len(yp) > 0 : target.plot(xp, yp, pen=None, symbol="s", symbolBrush=col_series)
             else:
                 self.p1.plot(x, y[i], pen=col_series)
-                if len(xp) > 0 : self.p1.plot(xp, yp, pen=None, symbol="s", symbolBrush=col_series)
+                if len(yp) > 0 : self.p1.plot(xp, yp, pen=None, symbol="s", symbolBrush=col_series)
                 
                 #plot baseline, offset by the signal max.
                 if self.auto_bs:
@@ -1301,12 +1310,14 @@ class SAFTMainWindow(QMainWindow):
             
             #p3: plot only the chosen trace
             if self.p3Selection.currentText() == _condi:
+                self.plots.peakslabel.setText("{} peaks in {} condition.".format(len(yp), _condi))
                 if _p3_scatter is None:
-                    # Do something about it, there are no peaks!
-                    self.p3.addPlot(xp, yp, pen=None, brush=col_series)
+                    # Do something about it, there is no peak scatter yet in this graph
+                    if len(yp) > 0 :
+                        self.p3.plot(xp, yp, name="Peaks "+_condi, pen=None, symbol="s", symbolBrush=col_series)
                 else:
                     _p3_scatter.clear()
-                    _p3_scatter.setData(xp, yp, brush=col_series)
+                    if len(yp) > 0 : _p3_scatter.setData(xp, yp, brush=col_series)
                 
                 _p3_curve.clear()
                 _p3_curve.setData(x, y[i], pen=col_series)

@@ -22,12 +22,12 @@ class groupPeakDialog(QDialog):
     def makeDialog(self):
         """Create the controls for the dialog"""
         
-        self.setWindowTitle("Group analysis")
+        self.setWindowTitle("Grouped peaks analysis")
         layout = QGridLayout()
         w = QWidget()
         w.setLayout(layout)
         
-        self.resize(400,500)
+        self.resize(400,400)
         vbox = QVBoxLayout()
         vbox.addWidget(w)
         self.setLayout(vbox)
@@ -38,10 +38,11 @@ class groupPeakDialog(QDialog):
         self.N_ROI_label = QLabel('Grouping peaks from ROIs \n over sets')
         layout.addWidget(self.N_ROI_label, 2, 0, 1, 2)
         
-        groupNSB_selecter_label = QLabel('Number of responses in group')
+        groupNSB_selecter_label = QLabel('Number of responses in each group')
         layout.addWidget(groupNSB_selecter_label, 0, 0, 1, 2)
         
-        # group N selecter
+        # N peaks in each repeating group
+        # (that is, N=5 means the peaks are in groups of 5, not 5 groups)
         self.groupNSB = pg.SpinBox(value=5, step = 1, bounds=[1, 10], delay=0)
         self.groupNSB.setFixedSize(60, 25)
         layout.addWidget(self.groupNSB, 0, 2, 1, 1)
@@ -51,7 +52,7 @@ class groupPeakDialog(QDialog):
         _doScrapeBtn.clicked.connect(self.groupPeaks)
         layout.addWidget(_doScrapeBtn, 5, 0, 1, 2)
         
-        self.saveGraphsBtn = QPushButton('Save graphs of grouped peaks')
+        self.saveGraphsBtn = QPushButton('Save graphs of grouped peak responses')
         
         # at first, there is nothing to save
         self.saveGraphsBtn.setEnabled(False)
@@ -66,18 +67,28 @@ class groupPeakDialog(QDialog):
         layout.addWidget(self.saveGroupsBtn, 6, 0, 1, 2)
         
         _doneBtn = QPushButton('Done')
-        _doneBtn.clicked.connect(self.accept)
+        _doneBtn.clicked.connect(self.gPDone)
         
         layout.addWidget(_doneBtn, row=6, col=2)
         self.setLayout(layout)
         
         self.updateGrouping()
     
-    def saveGroupPeaks (self):
-        print ("save group peak data")
-        #print (self.hDF.df.head(5))
+    def gPDone (self, *args):
+        try:
+            print ("Done.")
+            self.accept()   # works if the dialog was called from elsewhere
+        except:
+            print ("Bye.")
+            self.hide()     # works if the dialog was called standalone
+    
+    def saveGroupPeaks (self, *args, verbose=True):
         
-        # needs to be updated for openpyxl
+        if verbose: print ("Open dialog to save grouped peak data.")
+            #print (self.hDF.df.head(5))
+        
+        # below needs to be updated for openpyxl
+        
         # format for header cells.
         # self.hform = {
         #'text_wrap': True,
@@ -88,7 +99,9 @@ class groupPeakDialog(QDialog):
         self.filename = QFileDialog.getSaveFileName(self,
         "Save Group Analysis", os.path.expanduser("~"))[0]
         
-        #from XlsxWriter examples, John McNamara
+        # from XlsxWriter examples, John McNamara
+        # updated for openpyxl
+        
         if self.filename:
             with pd.ExcelWriter(self.filename) as writer:
                 #save peaks into sheet
@@ -100,9 +113,15 @@ class groupPeakDialog(QDialog):
                     #header_format = _workbook.add_format(self.hform)
                     for col_num, v in enumerate(_df.columns.values):
                         #print (col_num, value, _set)
+                        # redone for openpyxl syntax
                         _worksheet.cell(1, col_num + 2).value = str(v[0]) + " " + _set
                         _worksheet.cell(2, col_num + 2).value = str(v[1])
-                        
+           
+            if verbose: print ("Saved {}".format(self.filename))
+        
+        else:
+            if verbose: print ("No filename given, nothing saved.")
+           
     def saveGraphs(self):
         """Multipage PDF output of groupData analysis"""
         self.gfilename = QFileDialog.getSaveFileName(self,
@@ -190,9 +209,9 @@ class groupPeakDialog(QDialog):
         if 'tPeaks' in extPa:
             self.tPeaks = extPa['tPeaks']
         
-    def prepGuiParameters(self):
+    def prepGuiParameters(self, verbose=True):
         """Take parameters specified by GUI"""
-        print ("prep GUI parameters?")
+        if verbose: print ("Take parameters from GUI and prepare it?")
         #True if box is checked, otherwise False
         #self.ignore =  self.skipRB.isChecked()
         
@@ -205,8 +224,8 @@ class groupPeakDialog(QDialog):
         self.name = d.name
         print (self.peakData)
         
-        #following was designed for dictionary, maybe fails with resultsDF object
-        #remove any duplicate peaks
+        # the following was designed for a dictionary, maybe fails with resultsDF object
+        # remove any duplicate peaks
         for k, _v in self.peakData.items():
             _wasShape = _v.shape
             self.peakData[k] = _v.loc[~_v.index.duplicated(keep='first')] #StackOverflow 13035764
@@ -225,21 +244,22 @@ class groupPeakDialog(QDialog):
         self.N_ROI_label.setText("Grouping peaks from {} ROIs \n over the sets named {}".format(N_ROI, pdk_display))
         self.updateGrouping()
         
-    def addData(self, data, name=None, verbose=True):
+    def addData(self, data, *args, name=None, verbose=True):
         """Bring in external data for analysis"""
-        #data is a dictionary of Pandas DataFrames
+        
+        print ("Add (import) data.")
+        
+        # data is expected to be a dictionary of Pandas DataFrames
         self.peakData = data
         if name:
             self.name = name
         else:
             self.name = "unnamed"
-        
-        if verbose: print ("spD\n\n", self.peakData)
-        
+ 
         #remove any duplicate peaks
         for k, _v in self.peakData.items():
             _wasShape = _v.shape
-            self.peakData[k] = _v.loc[~_v.index.duplicated(keep='first')] #StackOverflow 13035764
+            self.peakData[k] = _v.loc[~_v.index.duplicated(keep='first')] # StackOverflow 13035764
             _isShape = _v.shape
             if _isShape != _wasShape:
                 if verbose: print ("Removed duplicates, df.shape() was {}, now {}".format(_wasShape, _isShape))
@@ -248,15 +268,20 @@ class groupPeakDialog(QDialog):
         pdk_display = ", ".join(str(k) for k in pdk)
         N_ROI = [len (self.peakData[d].columns) for d in pdk]
         
-        _printable = "{}\n{}\n".format(pdk_display, [self.peakData[d].head() for d in pdk])
-        if verbose: print ("Added data of type {}:\nPrintable:\n{}\n".format(type(self.peakData), _printable))
+        _printable = ""
+        for k, v in self.peakData.items():
+            _printable += ("{}\n{}\n.....\n".format(k, v.head()))
+        
+        if verbose: print ("Added self.peakData of type: {}\n{}".format(type(self.peakData), _printable))
         
         self.dataLoaded = True
         self.N_ROI_label.setText("Grouping peaks from {} dataset: {} ROIs \n over the conditions {}".format(self.name, N_ROI, pdk_display))
         self.updateGrouping()
         
-    def groupPeaks(self, verbose=True):
-        print ("Analayse group peaks.")
+        
+        
+    def groupPeaks(self, *args, verbose=True):
+        print ("Analyse group peaks.")
         
         self.prepGuiParameters()
         self.groupsextracted_by_set = {}
@@ -267,7 +292,7 @@ class groupPeakDialog(QDialog):
         for _set in self.peakData.keys():
             # prep means and sd frames
             _c = self.peakData[_set].columns
-            if verbose: print (c, _step)
+            if verbose: print("_c, self.step \n{}\t{}".format(_c, self.step))
             
             
             _stat = ['mean','SD']
@@ -275,33 +300,40 @@ class groupPeakDialog(QDialog):
             # make dataframe
             cols = pd.MultiIndex.from_tuples(_headr)
             _s = pd.DataFrame([], range(self.step), cols)
-            if verbose: print (_s)
+            if verbose: print ("_s: {}".format(_s))
             
             for p in range(self.step):
                 # get pth row group
                 _subset = self.peakData[_set].iloc[p::self.step]
-                if verbose: print ("{0}. subset\n {1}".format(p + 1, _subset))
+                if verbose: print ("{0}. subset\n {1}\n".format(p + 1, _subset))
                 
+                _ssmean = _subset.describe().loc['mean']
+                _ssSD = _subset.describe().loc['std']
                 # each set of paired mean, sd results is assigned to two columns
-                pth_row = _s.index.isin(_s.index[p:p+1])
-                if verbose: print (pth_row, _s.loc[pth_row, (All, 'mean')] , _subset.describe().loc['mean'])
                 
-                _s.loc[pth_row, (All, 'mean')] = _subset.describe().loc['mean'].values
-                _s.loc[pth_row, (All, 'SD')] = _subset.describe().loc['std'].values
+                pth_row = _s.index.isin(_s.index[p:p+1])
+                if verbose: print ("pth row: {0}\nempty\n {1}\n describe.transposed\n{2}\n".format(pth_row, _s.loc[pth_row, (All, 'mean')] , _ssmean.transpose()))
+                
+                _ROI_cols = [str(x) for x in _ssmean.index.values]
+                
+                _s.loc[pth_row, (_ROI_cols, 'mean')] = _ssmean.values       
+                _s.loc[pth_row, (_ROI_cols, 'SD')] = _ssSD.values
 
             self.groupsextracted_by_set[_set] = _s
         
         # we can save now that we have data
         self.saveGroupsBtn.setEnabled(True)
         self.saveGraphsBtn.setEnabled(True)
-        if verbose: print (self.groupsextracted_by_set)
         
-    
+        print ("\n\nResults of group analysis\n-------------\n")
+        for k,v in self.groupsextracted_by_set.items():
+            print ("{}\n{}\n".format(k,v))
+        
 
-    def updateGrouping(self, verbose=True):
+    def updateGrouping(self, *args, verbose=False):
         """recalculate groups"""
         
-        if verbose: print ('update grouping')
+        print ('Update peak grouping.')
         
         if self.dataLoaded:
             try:
@@ -309,7 +341,7 @@ class groupPeakDialog(QDialog):
                 if verbose: print ("first DF,\n", _firstdf)
                 self.peaksN = _firstdf.shape[0]     # get the number of rows in the first DataFrame
             except:
-                print ("couldn't find a dataframe in self.peakData")
+                if verbose: print ("couldn't find a dataframe in self.peakData")
                 return False
                 
         self.NRepeats  = int(self.peaksN / self.groupNSB.value())
@@ -324,7 +356,7 @@ class groupPeakDialog(QDialog):
 if __name__ == '__main__':
     
     app = QApplication([])
-    main_window = groupDialog()
+    main_window = groupPeakDialog()
     
     # trial data
     a = np.arange(150).reshape((50, 3))
