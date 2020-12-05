@@ -475,6 +475,10 @@ class SAFTMainWindow(QMainWindow):
         self.split_B.toggled.connect(lambda:self.splitState(self.split_B))
         self.combine_B.toggled.connect(lambda:self.splitState(self.combine_B))
         
+        # load dataset button - for Benni
+        loadDataBtn = QtGui.QPushButton('Load traces')
+        loadDataBtn.clicked.connect(self.open_file)
+        
         # select working dataset
         datasetLabel = QtGui.QLabel("Dataset")
         datasetLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
@@ -522,22 +526,22 @@ class SAFTMainWindow(QMainWindow):
         for b in _buttonList:
             b.setMinimumSize(*bsize)
         
+        dataGrid.addWidget(loadDataBtn, 0, 0, 1, 2)
+        dataGrid.addWidget(datasetLabel, 0, 2, 1, 2)
+        dataGrid.addWidget(self.datasetCBx, 0, 4, 1, 4)
+        dataGrid.addWidget(ROIBox_label, 2, 2, 1, 2)
+        dataGrid.addWidget(self.ROI_selectBox, 2, 4, 1, 3)
+        dataGrid.addWidget(self.combine_B, 3, 0, 1, 4)
+        dataGrid.addWidget(self.split_B, 3, 4, 1, 4)
         
-        dataGrid.addWidget(datasetLabel, 0, 0, 1, 1)
-        dataGrid.addWidget(self.datasetCBx, 0, 1, 1, 3)
-        dataGrid.addWidget(ROIBox_label, 1, 0)
-        dataGrid.addWidget(self.ROI_selectBox, 1, 1)
-        dataGrid.addWidget(self.combine_B, 1, 2, 1, 2)
-        dataGrid.addWidget(self.split_B, 2, 2, 1, 2)
+        dataGrid.addWidget(d_divider, 4, 0, 1, -1)
         
-        dataGrid.addWidget(d_divider, 3, 0, 1, -1)
+        dataGrid.addWidget(reference_label, 5, 0, 1, 6)
+        dataGrid.addWidget(self.refSelection, 5, 6, 1, 2)
         
-        dataGrid.addWidget(reference_label, 4, 0, 1, 3)
-        dataGrid.addWidget(self.refSelection, 4, 3, 1, 1)
-        
-        dataGrid.addWidget(extractPeaksBtn, 5, 0, 1, 2)
-        dataGrid.addWidget(self.extractGroupsDialog_Btn, 5, 2, 1, 2)
-        dataGrid.addWidget(self.fitHistDialogBtn, 6, 0, 1, 2)
+        dataGrid.addWidget(extractPeaksBtn, 6, 0, 1, 4)
+        dataGrid.addWidget(self.extractGroupsDialog_Btn, 6, 4, 1, 4)
+        dataGrid.addWidget(self.fitHistDialogBtn, 7, 0, 1, 4)
         
         dataPanel.setLayout(dataGrid)
         
