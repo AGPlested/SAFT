@@ -14,6 +14,7 @@ class extractPeaksDialog(QDialog):
         self.peaksScraped = False
         self.small = 3
         self.failures_nulled = False
+        self.rundownThreshold = 0.5     # to assess whether responses are running down (by factor 2 or more)
         self.makeDialog()
     
     def makeDialog(self):
@@ -34,7 +35,7 @@ class extractPeaksDialog(QDialog):
         
         #will be altered as soon as data loads
         self.skipRB = QCheckBox('Skip ROIs with SNR less than')
-        self.skipRB.setChecked(True)
+        self.skipRB.setChecked(False)
         self.skipRB.setLayoutDirection(QtCore.Qt.LeftToRight)
         self.skipRB.stateChanged.connect(self.maskLowSNR)
         
@@ -64,6 +65,10 @@ class extractPeaksDialog(QDialog):
         _doScrapeBtn = QPushButton('Extract responses')
         _doScrapeBtn.clicked.connect(self.scrapePeaks)
         
+        self.getRundownBtn = QPushButton('Calculate rundown')
+        self.getRundownBtn.clicked.connect(self.getRundown)
+        self.getRundownBtn.setDisabled(True)
+        
         _cancelBtn = QPushButton('Cancel')
         _cancelBtn.clicked.connect(self.reject)
         
@@ -84,8 +89,9 @@ class extractPeaksDialog(QDialog):
         layout.addWidget(self.peaksLabel, 4, 0, 1, -1)
         
         layout.addWidget(_doScrapeBtn, 5, 0)
-        layout.addWidget(_cancelBtn, row=5, col=1)
-        layout.addWidget(self.acceptBtn, row=5, col=2)
+        layout.addWidget(self.getRundownBtn, 5, 1)
+        layout.addWidget(_cancelBtn, 6, 1)
+        layout.addWidget(self.acceptBtn, 6, 2)
         
         self.setLayout(layout)
          
@@ -123,6 +129,51 @@ class extractPeaksDialog(QDialog):
         _printable = "{}\n{}\n".format(tdk_display, [self.tracedata[d].head() for d in tdk])
         print ("Added data of type {}:\n{}\n".format(type(self.tracedata), _printable))
         self.maskLowSNR()
+       
+    def getRundown(self, silent=False):
+        rtext = ""
+        self.rundownCount = 0
+        for _condi, _pkdf in self.pk_extracted_by_condi.items():
+            _Np = len(_pkdf.index)
+            _NROI = len(_pkdf.columns)
+            ten_percent = int(_Np / 10)
+            rtext += "10% of peaks count is {} peaks\n".format(ten_percent)
+            # look at first 5 peaks
+            _firsttenpc = _pkdf.iloc[0:ten_percent].describe().loc["mean"]
+            # look at last 5 peaks
+            _lasttenpc = _pkdf.iloc[-1-ten_percent:-1].describe().loc["mean"]
+            
+            #print ("ff, lf : {} {}".format(_firstfive, _lastfive))
+            
+            _ratio = _lasttenpc.div(_firsttenpc)
+            self.rundownCount += _ratio[_ratio < self.rundownThreshold].count()
+            
+            rtext += "{} condition, rundown (last 10% / first 10%) for {} ROIs:\n{}\n\n".format(_condi, _NROI, _ratio.to_string())
+            
+        rtext += "Total number of traces with rundown worse than threshold ({}): {}\n".format(self.rundownThreshold, self.rundownCount)
+        
+        print (rtext)
+        
+        if not silent:
+            ###Make a pop up window of these results
+            qmb = QDialog()
+            qmb.setWindowTitle('Rundown {}'.format(self.name))
+            qmb.setGeometry(800,600,600,600)
+            self.rundownText = QtGui.QTextEdit()
+            font = QtGui.QFont()
+            font.setFamily('Courier')
+            font.setFixedPitch(True)
+            font.setPointSize(12)
+            self.rundownText.setCurrentFont(font)
+            self.rundownText.setText(rtext)
+            self.rundownText.setReadOnly(True)
+            
+            #add buttons, make it the right size
+            qmb.layout = QVBoxLayout()
+            qmb.layout.addWidget(self.rundownText)
+            qmb.setLayout(qmb.layout)
+            qmb.exec_()
+            
         
     def scrapePeaks(self):
         """Some peak-finding function with output filtering based on SNR"""
@@ -165,6 +216,7 @@ class extractPeaksDialog(QDialog):
         # yes, output may be modified below
         self.peaksScraped = True
         self.acceptBtn.setEnabled(True)
+        self.getRundownBtn.setEnabled(True)
         self.noiseRB.setEnabled(True)
         self.noiseSB.setEnabled(True)
         self.blacklisted_by_condi = {}
@@ -187,9 +239,7 @@ class extractPeaksDialog(QDialog):
                 self.pk_extracted_by_condi[s] = whitelisted
                 self.blacklisted_by_condi[s + "_SNR<" + str(_cut)] = blacklisted
     
-        #close the dialog
-        #self.accept()
-    
+
     def prepareAccept(self):
         if self.failures_nulled:
             self.pk_extracted_by_condi = self.pk_extracted_with_failures
@@ -206,7 +256,6 @@ class extractPeaksDialog(QDialog):
         else:
             self.noiseSB.setEnabled(True)
             
-        print ("Provide some indication of total peaks altered interactively")
         # in whitelist traces
         self.noiseCut = self.noiseSB.value()
         print ("Self.noisecut {}".format(self.noiseCut))
@@ -224,6 +273,7 @@ class extractPeaksDialog(QDialog):
             _numberCut += _bycol.sum()
             self.pk_extracted_with_failures[_condi] = _peaksDF
         
+        # Provide some indication of total peaks altered interactively
         self.peaksLabel.setText("{} peaks set as failures ({: .1f}% of total).".format(_numberCut, 100*_numberCut/self.total_peaks))
         
 
