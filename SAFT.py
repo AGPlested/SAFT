@@ -86,7 +86,7 @@ class SAFTMainWindow(QMainWindow):
         self.extPa = {}                         # external parameters for the peak scraping dialog
         self.dataLock = True                    # when manual peak editing, lock to trace data
         self.noPeaks = True                     # were any peaks found yet?
-        
+        self.fitHistogramsOption = False        # histograms are not fitted by default, checkbox -> False later
         
         # setup main window widgets and menus
         self.createPlotWidgets()
@@ -418,13 +418,15 @@ class SAFTMainWindow(QMainWindow):
         self.sum_hist = pg.ComboBox()
         self.sum_hist.setFixedSize(95,25)
         self.sum_hist.addItems(['Separated','Summed'])
+        
         self.sum_hist.currentIndexChanged.connect(self.updateHistograms)
         
         #toggle fitting
         self.fitHistogramsToggle = QCheckBox("Fit Histograms", self)
-        #self.fitHistogramsToggle.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
-        self.fitHistogramsToggle.setChecked(False)
         self.fitHistogramsToggle.toggled.connect(lambda:self.fitHistogramsLogic(self.fitHistogramsToggle))
+        self.fitHistogramsToggle.setChecked(self.fitHistogramsOption)
+        
+        
         
         #fit parameters
         histnG_label = QtGui.QLabel("No. of Gaussians")
@@ -844,20 +846,22 @@ class SAFTMainWindow(QMainWindow):
             self.p2.plot(hx, sumhy, name="Summed histogram "+_ROI, stepMode=True, fillLevel=0, fillOutline=True, brush='y')
             
             if self.fitHistogramsOption:
-                print ("lens hx, hy", len(hx), len(hy))
+                print ("len hx {}, hy {}".format(len(hx), len(hy)))
                 _num = self.histo_nG_Spin.value()
                 _q = self.histo_q_Spin.value()
                 _ws = self.histo_Max_Spin.value() / 20
                 
                 _hxc = np.mean(np.vstack([hx[0:-1], hx[1:]]), axis=0)
-                opti = fit_nGaussians(_num, _q, _ws, sumhy, _hxc)
-                _hx_u, _hy_u = nGaussians_display (_hxc, _num, opti)
-                _qfit = opti.x[0]
-                _c = self.p2.plot(_hx_u, _hy_u, name='Fit of {} Gaussians q: {:.2f}'.format(_num,_qfit))
-                #from pyqtgraph.examples
-                _c.setPen('w', width=3)
-                _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
-        
+                _opti = fit_nGaussians(_num, _q, _ws, sumhy, _hxc)
+                if _opti.success:
+                    _hx_u, _hy_u = nGaussians_display (_hxc, _num, _opti.x)
+                    _qfit = _opti.x[0]
+                    _c = self.p2.plot(_hx_u, _hy_u, name='Fit of {} Gaussians q: {:.2f}'.format(_num,_qfit))
+                    #from pyqtgraph.examples
+                    _c.setPen('w', width=3)
+                    _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
+                else:
+                    print ("fit failed")
         
        
     def datasetChange(self):
