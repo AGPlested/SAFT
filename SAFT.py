@@ -493,6 +493,7 @@ class SAFTMainWindow(QMainWindow):
         
         d_divider = QHLine()
         d_divider.setFixedWidth(375)
+        
         # launch histogram fitting dialog
         # should be inactive until extraction
         self.fitHistDialogBtn = QtGui.QPushButton('Quantal Histogram Fit')
@@ -502,10 +503,6 @@ class SAFTMainWindow(QMainWindow):
         # launch peak extraction wizard dialog
         extractPeaksBtn = QtGui.QPushButton('Extract peaks from all ROIs')
         extractPeaksBtn.clicked.connect(self.extractAllPeaks)
-        
-        
-        
-        
         
         # should be inactive until extraction
         self.extractGroupsDialog_Btn = QtGui.QPushButton('Extract grouped responses')
@@ -520,10 +517,10 @@ class SAFTMainWindow(QMainWindow):
         self.refSelection.addItems(['-'])
         self.refSelection.currentIndexChanged.connect(self.ROI_Change)
         
-        ##_buttonList = [self.fitHistDialogBtn, extractPeaksBtn, self.savePSRBtn, self.save_baselined_ROIs_Btn, self.extractGroupsDialog_Btn, showDataBtn]
-        ##bsize = (195, 37)
-        ##for b in _buttonList:
-        ##    b.setFixedSize(*bsize)
+        _buttonList = [self.fitHistDialogBtn, extractPeaksBtn, self.extractGroupsDialog_Btn]
+        bsize = (190, 40)
+        for b in _buttonList:
+            b.setMinimumSize(*bsize)
         
         
         dataGrid.addWidget(datasetLabel, 0, 0, 1, 1)
