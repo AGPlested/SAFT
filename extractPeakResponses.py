@@ -145,10 +145,10 @@ class extractPeaksDialog(QDialog):
             
             #print ("ff, lf : {} {}".format(_firstfive, _lastfive))
             
-            _ratio = _lasttenpc.div(_firsttenpc)
+            _ratio = _lasttenpc.div(_firsttenpc).sort_values()
             self.rundownCount += _ratio[_ratio < self.rundownThreshold].count()
             
-            rtext += "{} condition, rundown (last 10% / first 10%) for {} ROIs:\n{}\n\n".format(_condi, _NROI, _ratio.to_string())
+            rtext += "{} condition, rundown (amplitude ratio: last 10% / first 10%)\nfor {} ROIs (worst first):\n{}\n\n".format(_condi, _NROI, _ratio.to_string())
             
         rtext += "Total number of traces with rundown worse than threshold ({}): {}\n".format(self.rundownThreshold, self.rundownCount)
         
