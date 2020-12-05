@@ -134,21 +134,35 @@ class extractPeaksDialog(QDialog):
         rtext = ""
         self.rundownCount = 0
         for _condi, _pkdf in self.pk_extracted_by_condi.items():
+            
+            
+            
+            
             _Np = len(_pkdf.index)
             _NROI = len(_pkdf.columns)
             ten_percent = int(_Np / 10)
-            rtext += "10% of peaks count is {} peaks\n".format(ten_percent)
+            rtext += "{} condition, 10% of peaks count is {} peaks\n".format(_condi, ten_percent)
             # look at first 5 peaks
             _firsttenpc = _pkdf.iloc[0:ten_percent].describe().loc["mean"]
             # look at last 5 peaks
             _lasttenpc = _pkdf.iloc[-1-ten_percent:-1].describe().loc["mean"]
             
+            _tdf = self.tracedata[_condi]
+            _max = _tdf.max()
+            _SD = _tdf.std()
+            
+            _bestSNR = _max / _SD
+            _startSNR = _firsttenpc / _SD
+            _endSNR = _lasttenpc / _SD
             #print ("ff, lf : {} {}".format(_firstfive, _lastfive))
             
-            _ratio = _lasttenpc.div(_firsttenpc).sort_values()
-            self.rundownCount += _ratio[_ratio < self.rundownThreshold].count()
+            _rundownRatio = _lasttenpc.div(_firsttenpc).sort_values()
+            self.rundownCount += _rundownRatio[_rundownRatio < self.rundownThreshold].count()
             
-            rtext += "{} condition, rundown (amplitude ratio: last 10% / first 10%)\nfor {} ROIs (worst first):\n{}\n\n".format(_condi, _NROI, _ratio.to_string())
+            _rd_SNR = pd.concat([_rundownRatio, _bestSNR, _startSNR, _endSNR], axis=1)
+            _rd_SNR.columns = ['Rundown', 'Best SNR', 'Initial SNR', 'Final SNR']
+            
+            rtext += "Rundown (amplitude ratio: last 10% / first 10%) and signal to noise ratio (start, end)\nfor {} ROIs (ROIs with worst rundown first):\n{}\n\n".format(_NROI, _rd_SNR.round(2).to_string())
             
         rtext += "Total number of traces with rundown worse than threshold ({}): {}\n".format(self.rundownThreshold, self.rundownCount)
         
@@ -299,13 +313,13 @@ class extractPeaksDialog(QDialog):
         wl_count = 0
         bl_count = 0
         
-        for _condi in self.tracedata:
+        for _condi, _tdf in self.tracedata.items():
             
-            _df = self.tracedata[_condi]
+            #_df = self.tracedata[_condi]
             
             # find SNR from column-wise Max / SD
-            _max = _df.max()
-            _SD = _df.std()
+            _max = _tdf.max()
+            _SD = _tdf.std()
             snr = _max / _SD
             #print ("max {}, sd {}, snr {}".format(_max, _SD, snr))
             # add histogram of SNR values with 'SNRcut'-off drawn?
