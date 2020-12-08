@@ -171,12 +171,12 @@ class Results:
         self.df.reset_index(drop=True, inplace=True)
         if verbose: print ("self df head\n\n{}".format(self.df.head(5)))
     
-    def addPeaks (self, _ROI, _condition, _times, _peaks):
+    def addPeaks (self, _ROI, _condition, _times, _peaks, verbose=False):
         # the peaks (and their times) are arrays of values that belong to a ROI and a condition.
         
         # list of peaks will be of arbitrary length
         # check that it is not too long for the dataFrame
-        print ("addPeaks: self.df.index.size, lenpeaks:", self.df.index.size, len(_peaks) )
+        if verbose: print ("addPeaks: self.df.index.size, lenpeaks:", self.df.index.size, len(_peaks) )
         if self.df.index.size < len (_peaks):
             _rlp = range(len(_peaks))
             self.df = self.df.reindex(_rlp)

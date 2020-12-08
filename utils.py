@@ -160,7 +160,7 @@ def removeAllScatter(p1, verbose=True):
         
         x, _ = pdi.scatter.getData()            #scatter data objects have some data points in them
         if len(x) > 0:
-            print ("Removing: {}".format(pdi))
+            if verbose: print ("Removing: {}".format(pdi))
             p1.removeItem(pdi)                  #need to use remove item to get rid of it.
             
     _rem = p1.listDataItems()

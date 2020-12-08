@@ -15,6 +15,8 @@ import numpy as np
 import pandas as pd
 from scipy import __version__ as scipy_version
 import scipy.signal as scsig
+from openpyxl import Workbook
+from openpyxl.utils.dataframe import dataframe_to_rows
 
 #SAFT imports
 from clicker import clickAlgebra
@@ -87,6 +89,7 @@ class SAFTMainWindow(QMainWindow):
         self.dataLock = True                    # when manual peak editing, lock to trace data
         self.noPeaks = True                     # were any peaks found yet?
         self.fitHistogramsOption = False        # histograms are not fitted by default, checkbox -> False later
+        self.saveHistogramsOption = False       # histograms are not saved by default,  checkbox -> False later
         
         # setup main window widgets and menus
         self.createPlotWidgets()
@@ -443,7 +446,7 @@ class SAFTMainWindow(QMainWindow):
         self.histo_q_Spin.valueChanged.connect(self.updateHistograms)
         
         self.saveHistogramsToggle = QCheckBox("Save Histograms", self)
-        self.saveHistogramsToggle.setChecked(False)
+        self.saveHistogramsToggle.setChecked(self.saveHistogramsOption)
         self.saveHistogramsToggle.toggled.connect(lambda:self.saveHistogramsLogic(self.saveHistogramsToggle))
         
         
@@ -795,19 +798,21 @@ class SAFTMainWindow(QMainWindow):
         _condList = self.conditions + ["Sum"]
         
         # create a dataframe to put the results in
-        self.hDF = HistogramsR(self.workingDataset.ROI_list, _condiList, _nbins, 0., _max)
+        self.hDF = HistogramsR(self.workingDataset.ROI_list, _condList, _nbins, 0., _max)
         
         maxVal = len (self.workingDataset.ROI_list) * len (_condList)
-        progMsg = "Histogram for {0} traces".format(maxVal)
-        with pg.ProgressDialog(progMsg, 0, maxVal) as dlg:
+        progMsg = "Histograms for {0} traces".format(maxVal)
         
-            for _condi in self.gpd.pk_extracted_by_condi.keys():      #from the whitelist, should be from edited internal data?
-                _pe = self.gpd.pk_extracted_by_condi[_condi]
-                print (_condi, _pe.columns)
-                for _ROI in _pe.columns:
+        with pg.ProgressDialog(progMsg, 0, maxVal) as dlg:
+            
+            #from the whitelist, should be from edited internal data?
+            for _condi, _pdf in self.gpd.pk_extracted_by_condi.items():
+                
+                print (_condi, _pdf.columns)
+                for _ROI in _pdf.columns:
                     dlg += 1
                     # calculate individual histograms and add to dataframe
-                    hy, hx = np.histogram(_pe[_ROI], bins=_nbins, range=(0., _max))
+                    hy, hx = np.histogram(_pdf[_ROI], bins=_nbins, range=(0., _max))
                     self.hDF.addHist(_ROI, _condi, hy)
                     
         # add sum columns
@@ -846,7 +851,7 @@ class SAFTMainWindow(QMainWindow):
             self.p2.plot(hx, sumhy, name="Summed histogram "+_ROI, stepMode=True, fillLevel=0, fillOutline=True, brush='y')
             
             if self.fitHistogramsOption:
-                print ("len hx {}, hy {}".format(len(hx), len(hy)))
+                #print ("len hx {}, hy {}".format(len(hx), len(hy)))
                 _num = self.histo_nG_Spin.value()
                 _q = self.histo_q_Spin.value()
                 _ws = self.histo_Max_Spin.value() / 20
@@ -1136,7 +1141,7 @@ class SAFTMainWindow(QMainWindow):
         _ROI = self.ROI_selectBox.currentText()
         
         # update the peaks in p1 and histograms only
-        utils.removeAllScatter(self.p1)
+        utils.removeAllScatter(self.p1, verbose=False)
         
         #update p2 histograms
         self.updateHistograms()
@@ -1371,52 +1376,81 @@ class SAFTMainWindow(QMainWindow):
         if self.noPeaks:        #nothing to save
             print ('Nothing to save, no peaks found yet!')
             return
+        
         self.filename = QFileDialog.getSaveFileName(self,
         "Save Peak Data", os.path.expanduser("~"))[0]
         
-        #from XlsxWriter examples, John McNamara
+    
         if self.filename:
-            with pd.ExcelWriter(self.filename) as writer:
+            
+            
+            wb = Workbook()
+            
+            # combine whitelist and blacklist dictionaries for output
+            _output = {**self.gpd.pk_extracted_by_condi, **self.gpd.blacklisted_by_condi}
                 
-                # combine whitelist and blacklist dictionaries for output
-                _output = {**self.gpd.pk_extracted_by_condi, **self.gpd.blacklisted_by_condi}
+            for _condi, _resultdf in _output.items():
+                # in case there are duplicate peaks extracted, remove them and package into dummy variable
+                # this syntax means : loc["not" the duplicates]
+                _pe = _resultdf.loc[~_resultdf.index.duplicated(keep='first')] #StackOverflow 13035764
                 
-                for _condi in _output:
-                    # in case there are duplicate peaks extracted, remove them and package into dummy variable
-                    # loc["not" the duplicates]
-                    _pe = _output[_condi].loc[~_output[_condi].index.duplicated(keep='first')] #StackOverflow 13035764
-                    
-                    #skip the first row
-                    _pe.to_excel(writer, sheet_name=_condi, startrow=1, header=False)
-                    
-                    #_workbook  = writer.book
-                    _worksheet = writer.sheet[_condi]
-                    
-                    #write header manually so that values can be modified with addition of the sheet (for downstream use)
-                    #header_format = _workbook.add_format(self.hform)
-                    for col_num, v in enumerate(_pe.columns.values):
-                        _worksheet.cell(1, col_num + 2).value = v + " " + _condi      #, header_format)
+                wb.create_sheet(_condi)
+                _wcs = wb[_condi]
                 
-                if self.saveHistogramsOption:
-                    self.save_histograms(writer)
+                # write customised header
+                for _num, _pcol in enumerate(_pe.columns.values):
+                    _wcs.cell(1, _num + 1).value = _pcol + " " + _condi      #, header_format)
+                    
+                # write out data
+                for _row in dataframe_to_rows(_pe, index=False, header=False):
+                    _wcs.append(_row)
+            
+                #write index
+                _wcs.insert_cols(1)
+                for _num, _pin in enumerate(_pe.index.values):
+                    _wcs.cell(1,1).value = "Time"
+                    _wcs.cell(_num + 2, 1).value = _pin
+            
+            wb.remove(wb['Sheet'])
+            
+            if self.saveHistogramsOption:
+                wb = self.save_histograms(wb)
+            
+            wb.save(self.filename)
+            print ("Saved peaks to workboook {}".format(self.filename))
+          
+            
 
-    def save_histograms(self, writer):
-        """write out histograms for each ROI to disk"""
+    def save_histograms(self, wb):
+        """write out histograms for each ROI to excel workbook"""
         
+        print ("saving histograms")
         self.doHistograms()
         print (self.hDF.df.head(5))
         #save histograms into new sheet
-        self.hDF.df.to_excel(writer, sheet_name="histograms",startrow=1, header=False)
-        _workbook  = writer.book
-        _worksheet = writer.conditions["histograms"]
-        header_format = _workbook.add_format(self.hform)
-        for col_num, value in enumerate(_pe.columns.values):
-            _worksheet.write(0, col_num + 1, value + " hi", header_format)
+        wb.create_sheet("Histograms")
+        _wcs = wb["Histograms"]
+    
+        # write header
+        for col_num, col in enumerate(self.hDF.df.columns.values):
+            _wcs.cell(1, col_num + 1).value = str(col) + " hi"
+        
+        # histogrammed data
+        for _row in dataframe_to_rows(self.hDF.df, index=False, header=False):
+            _wcs.append(_row)
+        
+        # bin edges go in first column
+        _wcs.insert_cols(1)
+        for _num, _pin in enumerate(self.hDF.binEdges):
+            _wcs.cell(1,1).value = "BinEdges"
+            _wcs.cell(_num + 2, 1).value = _pin
             
+        return wb
+        
     def save_baselined(self):
         
         # No filtering so far
-        print ("save_baselined data")
+        print ("save_baselined data?")
         self.filename = QFileDialog.getSaveFileName(self,
         "Save Baselined ROI Data", os.path.expanduser("~"))[0]
         
