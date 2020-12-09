@@ -489,6 +489,7 @@ class SAFTMainWindow(QMainWindow):
         datasetLabel.setAlignment(QtCore.Qt.AlignRight | QtCore.Qt.AlignVCenter)
         
         self.datasetCBx = pg.ComboBox()
+        self.datasetCBx.setFixedWidth(200)
         self.datasetCBx.setItems(self.datasetList_CBX)
         self.datasetCBx.currentIndexChanged.connect(self.datasetChange)
         
@@ -805,7 +806,7 @@ class SAFTMainWindow(QMainWindow):
         
         with pg.ProgressDialog(progMsg, 0, maxVal) as dlg:
             
-            #from the whitelist, should be from edited internal data?
+            #from the allowlist, should be from edited internal data?
             for _condi, _pdf in self.gpd.pk_extracted_by_condi.items():
                 
                 print (_condi, _pdf.columns)
@@ -997,7 +998,7 @@ class SAFTMainWindow(QMainWindow):
         if accepted:
             self.noPeaks = False
 
-            print (self.gpd.pk_extracted_by_condi) #the whitelist
+            print (self.gpd.pk_extracted_by_condi) #will be the allow list if the allowlist
             # these should now become available to be viewed (even edited?)
             
             #make 'save' and other analysis buttons available
@@ -1025,12 +1026,30 @@ class SAFTMainWindow(QMainWindow):
             extracted_peaksRDF.addPeaksExtracted(_resdf)        # conversion
             extracted.addPeaksToDS (extracted_peaksRDF)
             extracted.ROI_list = copy.copy(extracted_peaksRDF.ROI_list)
+            
+            _bl_resd = self.gpd.excludedListedByCondi
+            print ("bl_resd {}".format(_bl_resd))
+            
+            if self.gpd.excludedCount == 0:
+                extracted.excludedList = None
+                print ("No traces on excluded list.")
+            else:
+                len(_bl_resd)
+                print ("{} excluded traces for bad SNR".format(self.gpd.excludedCount))
+                _bl_prdf = Results()
+                _bl_prdf.addPeaksExtracted(_bl_resd)
+                extracted.excludelisted = _bl_prdf
+            
             # add baselined traces to new set
             extracted.addTracesToDS(self.gpd.tracedata)
             extracted.peakTimes = _sorted_peak_t            # the same as the source dataset (for masking)
             
             # store
             self.store.storeSet(extracted)
+            
+            #for convenience, switch immediately to display the dataset that was just created
+            self.datasetCBx.setValue(extracted.DSname)
+            
         
         else:
             print ('Returned but not happily: self.gpd.pk_extracted_by_condi is {}'.format(self.gpd.pk_extracted_by_condi))
@@ -1363,7 +1382,6 @@ class SAFTMainWindow(QMainWindow):
     
     def save_peaks(self):
         print ("save extracted peak data and optionally histograms")
-        #### will have to update for Store?
         
         # needs to be updated for openpyxl
         #format for header cells.
@@ -1380,15 +1398,22 @@ class SAFTMainWindow(QMainWindow):
         self.filename = QFileDialog.getSaveFileName(self,
         "Save Peak Data", os.path.expanduser("~"))[0]
         
-    
         if self.filename:
-            
-            
+            _wds = self.workingDataset
             wb = Workbook()
             
-            # combine whitelist and blacklist dictionaries for output
-            _output = {**self.gpd.pk_extracted_by_condi, **self.gpd.blacklisted_by_condi}
-                
+            # combine allowlist and excludelist dictionaries for output
+            #_output = {**self.gpd.pk_extracted_by_condi, **self.gpd.excludelisted_by_condi}
+            _allowedPeaks = {}
+            _excludedPeaks = {}
+            
+            if _wds.resultsDF:
+                _allowedPeaks = utils.decomposeRDF (_wds.resultsDF.df)
+            if _wds.excludelisted:
+                _excludedPeaks = utils.decomposeRDF (_wds.excludelisted.df)
+            
+            _output = {**_allowedPeaks, **_excludedPeaks}
+            
             for _condi, _resultdf in _output.items():
                 # in case there are duplicate peaks extracted, remove them and package into dummy variable
                 # this syntax means : loc["not" the duplicates]
@@ -1417,7 +1442,7 @@ class SAFTMainWindow(QMainWindow):
                 wb = self.save_histograms(wb)
             
             wb.save(self.filename)
-            print ("Saved peaks to workboook {}".format(self.filename))
+            print ("Saved peaks from to workboook {}".format(self.filename))
           
             
 
@@ -1478,6 +1503,8 @@ class SAFTMainWindow(QMainWindow):
                         self.conditions.remove(_sheet)
                 # decide if there is data or not
             """
+            
+            # Now as a oneliner
             #"None" reads all the sheets into a dictionary of data frames
             _traces = pd.read_excel(self.filename, None, index_col=0)
         

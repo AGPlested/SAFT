@@ -135,9 +135,6 @@ class extractPeaksDialog(QDialog):
         self.rundownCount = 0
         for _condi, _pkdf in self.pk_extracted_by_condi.items():
             
-            
-            
-            
             _Np = len(_pkdf.index)
             _NROI = len(_pkdf.columns)
             ten_percent = int(_Np / 10)
@@ -233,30 +230,38 @@ class extractPeaksDialog(QDialog):
         self.getRundownBtn.setEnabled(True)
         self.noiseRB.setEnabled(True)
         self.noiseSB.setEnabled(True)
-        self.blacklisted_by_condi = {}
+        self.excludedListedByCondi = {}
         
         if self.ignore:
             
-            # freshly blacklist peaks from traces with low SNR
+            # freshly excludedList peaks from traces with low SNR
             self.maskLowSNR()
-        
-            # the cut-off value
-            _cut = self.badSNRcut
+            self.splitAllowedExcluded()
             
-            #split peak data into sets from high and low SNR
-            for s in self.pk_extracted_by_condi.keys():
-                wls = self.whitelists[s]
-                bls = self.blacklists[s]
-                pk = self.pk_extracted_by_condi[s]
-                whitelisted = pk[wls.sort_values(ascending=False).index]
-                blacklisted = pk[bls.sort_values(ascending=False).index]
-                self.pk_extracted_by_condi[s] = whitelisted
-                self.blacklisted_by_condi[s + "_SNR<" + str(_cut)] = blacklisted
     
-
+    def splitAllowedExcluded(self):
+        # the cut-off value
+        _cut = self.excludeSNRcut
+            
+        #split peak data into sets from high and low SNR
+        for s in self.pk_extracted_by_condi.keys():
+            wls = self.allowedLists[s]
+            bls = self.excludedLists[s]
+            pk = self.pk_extracted_by_condi[s]
+            allowedListed = pk[wls.sort_values(ascending=False).index]
+            excludedListed = pk[bls.sort_values(ascending=False).index]
+            
+            self.pk_extracted_by_condi[s] = allowedListed
+            self.excludedListedByCondi[s + "_SNR<" + str(_cut)] = excludedListed
+            
     def prepareAccept(self):
+        
+        # substitute failures (destructively)
         if self.failures_nulled:
             self.pk_extracted_by_condi = self.pk_extracted_with_failures
+        
+        # divide peak results into Allowed list and Excluded list based on SNR
+        self.splitAllowedExcluded()
         
         self.accept()
     
@@ -270,7 +275,7 @@ class extractPeaksDialog(QDialog):
         else:
             self.noiseSB.setEnabled(True)
             
-        # in whitelist traces
+        # in allowedList traces
         self.noiseCut = self.noiseSB.value()
         print ("Self.noisecut {}".format(self.noiseCut))
         _numberCut = 0
@@ -302,16 +307,16 @@ class extractPeaksDialog(QDialog):
         else:
             self.skipSB.setEnabled(True)
         
-        self.badSNRcut = self.skipSB.value()
+        self.excludeSNRcut = self.skipSB.value()
 
         # use selective region (LR?)
         # or just the whole trace?
         
-        #store whitelists and blacklists as values with the set as key.
-        self.whitelists = {}
-        self.blacklists = {}
-        wl_count = 0
-        bl_count = 0
+        #store allowedLists and excludedLists as values with the set as key.
+        self.allowedLists = {}
+        self.excludedLists = {}
+        self.allowedCount = 0
+        self.excludedCount = 0
         
         for _condi, _tdf in self.tracedata.items():
             
@@ -324,17 +329,17 @@ class extractPeaksDialog(QDialog):
             #print ("max {}, sd {}, snr {}".format(_max, _SD, snr))
             # add histogram of SNR values with 'SNRcut'-off drawn?
             
-            self.whitelists[_condi] = snr.where(snr >= self.badSNRcut).dropna()
-            self.blacklists[_condi] = snr.where(snr < self.badSNRcut).dropna()
+            self.allowedLists[_condi] = snr.where(snr >= self.excludeSNRcut).dropna()
+            self.excludedLists[_condi] = snr.where(snr < self.excludeSNRcut).dropna()
             
-            wl_count += len(self.whitelists[_condi])
-            bl_count += len(self.blacklists[_condi])
+            self.allowedCount += len(self.allowedLists[_condi])
+            self.excludedCount += len(self.excludedLists[_condi])
         
-            #print ("Whitelist: "+_condi, self.whitelists[_condi])
-            #print ("Blacklist: "+_condi, self.blacklists[_condi])
+            #print ("allowedList: "+_condi, self.allowedLists[_condi])
+            #print ("excludedList: "+_condi, self.excludedLists[_condi])
         
         #update dialog
-        skipLabelText = "Skipping {0} traces out of {1} for low SNR.".format(bl_count, wl_count+bl_count)
+        skipLabelText = "Skipping {0} traces out of {1} for low SNR.".format(self.excludedCount, self.allowedCount + self.excludedCount)
         self.skipRB.setText(skipLabelText)
         
 """

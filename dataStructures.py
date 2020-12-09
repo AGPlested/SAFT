@@ -139,6 +139,11 @@ class Results:
         
         self.condition_list = list(_peakDict.keys())
         
+        # just in case
+        if len(self.condition_list) == 0:
+            print ("No conditions! Can't add peaks.")
+            return False
+            
         # reset just in case
         self.ROI_list = []
         for df in _peakDict.values():
