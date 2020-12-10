@@ -519,13 +519,13 @@ class histogramFitDialog(QDialog):
         self.fitResults = self.fitResults.append(copy.copy(self.currentROIFits), ignore_index=True)
         if self.autoSave:
             self.save(auto=True)
-        self.ROI_change_command(2)
-        self.outputF.appendOutText ("Advance to next ROI: {}".format(self.current_ROI), "Magenta")
+        
         # empty the current fits dataframe
         self.currentROIFits = pd.DataFrame(columns=self.currentROIFits.columns)
         self.fitInfo.reset(self.fitInfoHeader)
         
-    
+        self.ROI_change_command(2)
+        self.outputF.appendOutText ("Advance to next ROI: {}".format(self.current_ROI), "Magenta")
     
             
     def setExternalParameters(self, extPa):
@@ -632,7 +632,7 @@ class histogramFitDialog(QDialog):
                 del self.peakResults[key]
                 self.outputF.appendOutText ("Removed low SNR data {}".format(key), "Red")
         
-        pRK = self.peakResults.keys()
+        pRK = list(self.peakResults.keys())
         
         print ("Conditions: {}".format(linePrint(pRK)))
         N_ROI = [len (self.peakResults[d].columns) for d in pRK]
@@ -648,6 +648,7 @@ class histogramFitDialog(QDialog):
         self.ROI_list = list(self.peakResults[list(pRK)[0]].keys().unique(level=0))
         print ("ROI list: {}".format(linePrint(self.ROI_list)))
         
+        pRK.append("Summed")
         self.fitResults = histogramFitParams(pRK, self.fitPColumns)
         self.currentROIFits = histogramFitParams(pRK, self.fitPColumns)
         self.Fits_data = {}
@@ -655,7 +656,7 @@ class histogramFitDialog(QDialog):
         self.hPlot.createSplitHistLayout(self.peakResults.keys())
         
         self.ROI_change()   # default is the first (0).
-        self.updateHistograms()
+        #self.updateHistograms() is called automatically if needed
     
     def ROI_has_changed(self):
         
@@ -663,6 +664,7 @@ class histogramFitDialog(QDialog):
         self.clearFits()
         #self.separateBinomialBtn.setDisabled(True)     # not needed any more, there is always a guess
         self.maxFlag = "Auto max"
+        self.fitHistogramsOption = "Summed"
         #print ("self_ROI_N is ", self.ROI_N)
         self.ROI_change(self.ROI_N)
         
@@ -732,7 +734,7 @@ class histogramFitDialog(QDialog):
             self.updateHistograms()
             # if the view was already "summed", no need to adjust, just update and fit
         else:
-            self.sum_hist_option.setCurrentIndex(0)    # sets view to summed, calls update histograms and performs the fit.
+            self.sum_hist_option.setCurrentIndex(0)    # sets view to summed, then calls update histograms and performs the fit.
         
     def chooseWsSource(self, _ROI, _fitID, _fixed=None, verbose=True):
         
@@ -833,10 +835,10 @@ class histogramFitDialog(QDialog):
                 if hy.max() > _ymax:
                     _ymax = hy.max()
                 
-                # Only store histogram values if we are doing a global fit
+                # store histogram values if we are doing a global fit
                 if self.fitHistogramsOption not in ["None", "Summed"]:
-                   
                     self.Fits_data[_ID].addHData(_condition, hx, hy)
+        
                 
                 if "Global" in self.fitHistogramsOption:
                     ystack.append(hy)
@@ -1041,7 +1043,13 @@ class histogramFitDialog(QDialog):
             self.hPlot.h.plot(hx, sumhy, name="Summed histogram "+_ROI, stepMode=True, fillLevel=0, fillOutline=True, brush='y')
            
             if self.fitHistogramsOption == "Summed":
+                imax = self.currentROIFits.index.max()
+                if np.isnan(imax):
+                    imax = 0
+                
                 #print ("lens hx, hy", len(hx), len(hy))
+                self.Fits_data[_ID] = HFStore(self.current_ROI, ["Summed"])
+                self.Fits_data[_ID].addHData("Summed", hx, sumhy)
                 
                 # summed fit does not fix Ws in any circumstances?
                 self.fixWtoSDSwitch.setChecked(False)
@@ -1058,17 +1066,23 @@ class histogramFitDialog(QDialog):
                     _qfit = _opti.x[0]
                     _wsfit = _opti.x[1]
                     _c = self.hPlot.h.plot(_hx_u, _hy_u, name='Fit {} Gaussians q: {:.3f}, w: {:.3f}'.format(_num, _qfit, _wsfit))
-                
+                    _sf_results = [_ROI, _ID, _num, 0, -1, _wsfit, _qfit, "None", -1, -1, "SG"]
+                    
+                    self.fitInfo.appendOutText (linePrint(_sf_results, pre=3), "Orange")
                     # store fitted q for use in a separated Pr fit
                     self.fixq = _qfit
-                
+                    self.Fits_data[_ID].addFData("Summed", _hx_u, _hy_u)
                     # from pyqtgraph.examples
                     _c.setPen('w', width=3)
                     _c.setShadowPen(pg.mkPen((70,70,30), width=8, cosmetic=True))
-            
+                    self.currentROIFits.loc[imax + 1, ("Summed", slice(None))]= _sf_results
+                    
                     # as long as we have a fit, we can enable the separate fit button
                     self.separateBinomialBtn.setEnabled(True)
+                    
                     self.outputF.appendOutText ("Summed Histogram fit\nopti.x: {}\nCost: {}".format(linePrint(_opti.x), _opti.cost), "darkgreen")
+                    self.saveBtn.setEnabled(True)
+                
                 else:
                     
                     print ("Summed fit failed!")
