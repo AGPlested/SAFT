@@ -258,7 +258,10 @@ class histogramFitDialog(QDialog):
         _fittingPanel = QGroupBox("Fitting")
         _fitGrid = QGridLayout()
 
-        
+                
+        #_globFit_label = QtGui.QLabel("find N, Pr; common dF (q), w")
+        _bruteNFitBtn = QPushButton('Find N by brute force summed')
+        _bruteNFitBtn.clicked.connect(self.bruteFindNFromSummed)
 
         _hist_W_label = QtGui.QLabel("Gaussian widths (from SD)")
         self.histo_W_Spin = pg.SpinBox(value=self.ROI_SD, step=0.005, delay=0, int=False)
@@ -315,7 +318,7 @@ class histogramFitDialog(QDialog):
         _fitGrid.addWidget(self.histo_W_Spin, 3, 1)
         _fitGrid.addWidget(self.fixWtoSDSwitch, 4, 0, 1 ,2)
         
-        
+        _fitGrid.addWidget(_bruteNFitBtn, 0, 0, 1, 3)
         _fitGrid.addWidget(_doFitBtn, 1, 2, 1, 1)
         _fitGrid.addWidget(_sumFit_label, 1, 3, 1, 1)
         _fitGrid.addWidget(self.separateBinomialBtn, 2, 2, 1, 1)
@@ -553,6 +556,51 @@ class histogramFitDialog(QDialog):
             # sets view to separate histograms, calls update histograms, which also performs the fit.
             self.sum_hist_option.setCurrentIndex(1)
     
+    def bruteFindNFromSummed(self):
+        _hsum, _nbins, _max = self.histogramParameters()
+        #_ID =          not needed
+        if self.current_ROI == None:
+            return
+        else:
+            _ROI = self.current_ROI
+        
+        # sum data for current ROI
+        _pdata = pd.concat([pd.Series(data=self.peakResults[c][_ROI].dropna().values) for c in self.peakResults.keys()])
+        _hy, _hx  = np.histogram(_pdata, bins=_nbins, range=(-_max/5, _max))
+        _hxc = np.mean(np.vstack([_hx[0:-1], _hx[1:]]), axis=0)
+        
+        _N_KS_pairs = {}
+        # range of N values
+        for _N in np.arange(3,13):
+            _q = self.histo_q_Spin.value()
+            _ws = self.chooseWsSource(_ROI, "brut", verbose=False) # dummy _ID_
+               
+            #_hxc = np.mean(np.vstack([hx[0:-1], hx[1:]]), axis=0)
+            _opti = fit_nGaussians(_N, _q, _ws, _hy, _hxc)
+                
+            if _opti.success:
+                    #_hx_u, _hy_u = nGaussians_display (_hxc, _num, _opti.x)
+                _qfit = _opti.x[0]
+                _wsfit = _opti.x[1]
+                _heights = _opti.x[2:_N+2]
+                
+                    
+                _Scdf = lambda x, *pa: cdf(x, nGaussians, *pa)
+                KS = kstest(_pdata, _Scdf, (_max, _max/_nbins, _N, _qfit, _wsfit, *_heights))# fit and get KS prob for each
+                _N_KS_pairs[_N] = KS.pvalue
+                print ("N, q, ws, K-S P : {} {:.3f} {:.3f} {:.3f}".format(_N, _qfit, _wsfit, KS.pvalue))
+            else :
+                _N_KS_pairs[_N] = 0
+                print ("Fit for N={} failed.".format(_N))
+        
+        #  set N to best and this will make the fit, show and store best
+        
+        best = max(_N_KS_pairs, key=_N_KS_pairs.get)
+        bestP = _N_KS_pairs[best]
+        print ("best N, Pval {},{:.3f}. Setting spinbox...".format(best, bestP))
+        self.histo_nG_Spin.setValue(best)
+        self.fitGaussians()
+        
     def separateBinomialFits(self):
         """Target of the separate binomial fit button
         obtain Pr from separated histograms using binomial,
