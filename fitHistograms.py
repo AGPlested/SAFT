@@ -15,7 +15,7 @@ from scipy.stats import chisquare, kstest
 from dataStructures import HistogramFitStore as HFStore
 from dataStructures import histogramFitParams
 from utils import getRandomString, linePrint, txOutput
-from quantal import fit_nGaussians, nGaussians_display, fit_nprGaussians, fit_PoissonGaussians_global, PoissonGaussians_display, nprGaussians_display, fit_nprGaussians_global, nprGaussians, poissonGaussians, cdf
+from quantal import nGaussians, fit_nGaussians, nGaussians_display, fit_nprGaussians, fit_PoissonGaussians_global, PoissonGaussians_display, nprGaussians_display, fit_nprGaussians_global, nprGaussians, poissonGaussians, cdf
 
 def despace (s):
     sp = " "
@@ -1034,10 +1034,19 @@ class histogramFitDialog(QDialog):
                 self.split_state = False
                 
             sumhy = np.zeros(_nbins)
-            for _condition in self.peakResults.keys():
-                _pdata = self.peakResults[_condition][_ROI].dropna()
-                hy, hx  = np.histogram(_pdata, bins=_nbins, range=(-_max/5, _max))
+            #_pdata = pd.Series(data=None)
+            for _condition, _df in self.peakResults.items():
+                _cdata = _df[_ROI].dropna()
+                #print ("cdat:{}".format(_cdata))
+                
+                hy, hx  = np.histogram(_cdata, bins=_nbins, range=(-_max/5, _max))
                 sumhy += hy
+            
+            # mega list comprehension to extract the same objects as in the preceding loop, but simultaneously for concat
+    
+            _pdata = pd.concat([pd.Series(data=self.peakResults[c][_ROI].dropna().values) for c in self.peakResults.keys()])
+            
+            #print ("_pdata: {}".format(_pdata)) # length should be 3x
             
             self.hPlot.h.clear()
             self.hPlot.h.plot(hx, sumhy, name="Summed histogram "+_ROI, stepMode=True, fillLevel=0, fillOutline=True, brush='y')
@@ -1065,8 +1074,14 @@ class histogramFitDialog(QDialog):
                     _hx_u, _hy_u = nGaussians_display (_hxc, _num, _opti.x)
                     _qfit = _opti.x[0]
                     _wsfit = _opti.x[1]
+                    _heights = _opti.x[2:_num+2]
+                    #print ("num, heights : {} {}".format(_num, _heights))
+                    
+                    _Scdf = lambda x, *pa: cdf(x, nGaussians, *pa)
+                    KS = kstest(_pdata, _Scdf, (_max, _max/_nbins, _num, _qfit, _wsfit, *_heights))
+                    
                     _c = self.hPlot.h.plot(_hx_u, _hy_u, name='Fit {} Gaussians q: {:.3f}, w: {:.3f}'.format(_num, _qfit, _wsfit))
-                    _sf_results = [_ROI, _ID, _num, 0, -1, _wsfit, _qfit, "None", -1, -1, "SG"]
+                    _sf_results = [_ROI, _ID, _num, 0, -1, _wsfit, _qfit, "KS", KS.statistic, KS.pvalue, "SG"]
                     
                     self.fitInfo.appendOutText (linePrint(_sf_results, pre=3), "Orange")
                     # store fitted q for use in a separated Pr fit
