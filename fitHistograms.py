@@ -1081,7 +1081,7 @@ class histogramFitDialog(QDialog):
                     KS = kstest(_pdata, _Scdf, (_max, _max/_nbins, _num, _qfit, _wsfit, *_heights))
                     
                     _c = self.hPlot.h.plot(_hx_u, _hy_u, name='Fit {} Gaussians q: {:.3f}, w: {:.3f}'.format(_num, _qfit, _wsfit))
-                    _sf_results = [_ROI, _ID, _num, 0, -1, _wsfit, _qfit, "KS", KS.statistic, KS.pvalue, "SG"]
+                    _sf_results = [_ROI, _ID, _num, -1, -1, _wsfit, _qfit, "KS", KS.statistic, KS.pvalue, "SG"]
                     
                     self.fitInfo.appendOutText (linePrint(_sf_results, pre=3), "Orange")
                     # store fitted q for use in a separated Pr fit
