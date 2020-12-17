@@ -1473,14 +1473,39 @@ class SAFTMainWindow(QMainWindow):
         return wb
         
     def save_baselined(self):
-        
+        # save baselined traces
         # No filtering so far
         print ("save_baselined data?")
-        self.filename = QFileDialog.getSaveFileName(self,
+        self.btfilename = QFileDialog.getSaveFileName(self,
         "Save Baselined ROI Data", os.path.expanduser("~"))[0]
         
-        # save baselined data
-        
+        if self.btfilename:
+            _wdsT = self.workingDataset.traces
+            wb = Workbook()
+            for _condi, _tdf in _wdsT.items():
+                wb.create_sheet(_condi)
+                _wcs = wb[_condi]
+                
+                # write customised header
+                for _num, _pcol in enumerate(_tdf.columns.values):
+                    _wcs.cell(1, _num + 1).value = _pcol + " " + _condi      #, header_format)
+                    
+                # write out data
+                for _row in dataframe_to_rows(_tdf, index=False, header=False):
+                    _wcs.append(_row)
+            
+                #write index
+                _wcs.insert_cols(1)
+                for _num, _pin in enumerate(_tdf.index.values):
+                    _wcs.cell(1,1).value = "Time"
+                    _wcs.cell(_num + 2, 1).value = _pin
+            
+            # was created at start
+            
+            wb.remove(wb['Sheet'])
+            wb.save(self.btfilename)
+            print ("Saved traces from to workboook {}".format(self.btfilename))
+            
     def open_file(self):
         """Open a dialog to provide sheet names"""
         
