@@ -99,7 +99,7 @@ def globalErrFuncPW(pa, num, ws, nh, hx, hy):
     return np.concatenate(_errfunc_list)     # FLAT -works for unknown n
    
 def globalErrFuncP(pa, num, nh, hx, hy):
-    """global mulit-gaussian fit with poisson stats"""
+    """global multi-gaussian fit with poisson stats"""
     # 1-D function so hx and hy are passed flat
     # assume that pa is a list...
     
