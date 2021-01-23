@@ -14,7 +14,7 @@ Note, we are sorry, the following isn't trivial. We do work on packaging SAFT in
 You will receive a directory called "SAFT-master", probably in the 'Downloads' folder. 
 
 2. To get all the Python packages you need to run SAFT, we recommend using miniconda.  
-Download `miniconda for python 3.6 bash` ; we provide everything you need after that. Here's the [link](#https://docs.conda.io/projects/continuumio-conda/en/latest/user-guide/install/macos.html).
+Download `miniconda for python 3.6 bash` ; we provide everything you need after that. Here's the [link](#https://docs.conda.io/projects/continuumio-conda/en/latest/user-guide/install/macos.html) .
 
 3. Use Spotlight (Command+Space) to find and launch 'Terminal'. In the following, you will need to enter `commands` in the Terminal. You must be exact...
 
