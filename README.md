@@ -15,7 +15,7 @@ You will receive a directory called "SAFT-master", probably in the 'Downloads' f
 
 2. To get all the Python packages you need to run SAFT, we recommend using miniconda.  
 Download `miniconda for python 3.6 bash` ; we provide everything you need after that.   
-[Here's the link.](#https://docs.conda.io/projects/continuumio-conda/en/latest/user-guide/install/macos.html)   
+Here's the link. <https://docs.conda.io/projects/continuumio-conda/en/latest/user-guide/install/macos.html>
 
 3. Use Spotlight (Command+Space) to find and launch 'Terminal'. In the following, you will need to enter `commands` in the Terminal. You must be exact...
 
@@ -61,7 +61,7 @@ Note: You can also launch quantal fitting of histograms as a standalone app. If 
 
 SAFT depends on quite a few packages, for its GUI (Qt, pyqtgraph, pyside2, matplotlib, pyobjc-framework-Cocoa), for number crunching (numpy, scipy, pandas) and for data handling (pandas, xlrd, openpyxl). Getting all these packages aligned in mutually compatible versions is not easy, even with package management. You can use anaconda, pip or compile from source. In our experience, it is best to start with a fresh environment.
 
-Conda currently provides Qt 5.9.7 and this makes it convenient to use conda to set up a fresh environment. To make getting the right environment in place easy, we include a conda environment .yml file in the distribution (SAFTenv.yml). To use this, you must have Anaconda or Miniconda installed on your machine. If you don't have Anaconda already, just get [Miniconda](# https://docs.conda.io/projects/continuumio-conda/en/latest/user-guide/install/macos.html).
+Conda currently provides Qt 5.9.7 and this makes it convenient to use conda to set up a fresh environment. To make getting the right environment in place easy, we include a conda environment .yml file in the distribution (SAFTenv.yml). To use this, you must have Anaconda or Miniconda installed on your machine. If you don't have Anaconda already, just get [Miniconda](#https://docs.conda.io/projects/continuumio-conda/en/latest/user-guide/install/macos.html).
 
 It is not recommended to work with any of the versions of Python that Apple bundles with OSX. Please have conda install Python 3.7.9 (if you don't have it) before doing anything further. 
 
@@ -82,7 +82,7 @@ If you happen to already have an environment named SAFT, you would need to remov
 >`conda env remove --name SAFT`
 
 **Very important** : Qt versions after 5.9 are not open source (breaking the conditions of our license), and coincidentally have serious bugs that break the GUI on macOS. 
-We need Qt for the high-performance scientific plotting library [pyqtgraph](#http://www.pyqtgraph.org). 
+We need Qt for the high-performance scientific plotting library [pyqtgraph](# http://www.pyqtgraph.org). 
 PySide2 versions up to 5.15 seem to run happily with Qt 5.9.7 but it may be difficult to avoid a concurrent Qt update, unless you have a separate version of Qt compiled from open source and know how to point PySide2 at it. The latter solution is not stable. 
 
 ### Dependencies *current as of 2020-11-12*
