@@ -82,7 +82,7 @@ If you happen to already have an environment named SAFT, you would need to remov
 >`conda env remove --name SAFT`
 
 **Very important** : Qt versions after 5.9 are not open source (breaking the conditions of our license), and coincidentally have serious bugs that break the GUI on macOS. 
-We need Qt for the high-performance scientific plotting library [pyqtgraph](#http://www.pyqtgraph.org). 
+We need Qt for the high-performance scientific plotting library pyqtgraph: <http://www.pyqtgraph.org>.   
 PySide2 versions up to 5.15 seem to run happily with Qt 5.9.7 but it may be difficult to avoid a concurrent Qt update, unless you have a separate version of Qt compiled from open source and know how to point PySide2 at it. The latter solution is not stable. 
 
 ### Dependencies *current as of 2020-11-12*
