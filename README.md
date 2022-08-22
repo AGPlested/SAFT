@@ -84,7 +84,7 @@ If you happen to already have an environment named SAFT, you would need to remov
 
 SAFT runs normally on M1 Mac, if you have upgraded your machine since installing, issue the following command to get packages up to date: 
 
-> conda env update --file SAFTenv.yml
+> `conda env update --file SAFTenv.yml`
 
 **Very important** : Qt versions after 5.9 are not open source (breaking the conditions of our license), and coincidentally have serious bugs that break the GUI on macOS. 
 We need Qt for the high-performance scientific plotting library pyqtgraph: <http://www.pyqtgraph.org>.   
