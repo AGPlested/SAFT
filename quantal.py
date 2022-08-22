@@ -93,7 +93,9 @@ def globalErrFuncPW(pa, num, ws, nh, hx, hy):
         _hxc = np.mean(np.vstack([_hx[0:-1], _hx[1:]]), axis=0)
         
         # pa[i+2] is the relevant mu
-        _e_i = (poissonGaussians(_hxc, num,  _q, ws, _scale, pa[i+2]) - _hyr[:, i])**2
+        #_e_i = (poissonGaussians(_hxc, num,  _q, ws, _scale, pa[i+2]) - _hyr[:, i])**2
+        # JUST RESIDUAL!
+        _e_i = (poissonGaussians(_hxc, num,  _q, ws, _scale, pa[i+2]) - _hyr[:, i])
         _errfunc_list.append(_e_i)
 
     return np.concatenate(_errfunc_list)     # FLAT -works for unknown n
@@ -117,7 +119,9 @@ def globalErrFuncP(pa, num, nh, hx, hy):
         _hxc = np.mean(np.vstack([_hx[0:-1], _hx[1:]]), axis=0)
         
         # pa[i+3] is the relevant mu
-        _e_i = (poissonGaussians(_hxc, num,  _q, _ws, _scale, pa[i+3]) - _hyr[:, i])**2
+        #_e_i = (poissonGaussians(_hxc, num,  _q, _ws, _scale, pa[i+3]) - _hyr[:, i])**2
+        #just residual
+        _e_i = (poissonGaussians(_hxc, num,  _q, _ws, _scale, pa[i+3]) - _hyr[:, i])
         _errfunc_list.append(_e_i)
 
     return np.concatenate(_errfunc_list)     #FLAT -should work for unknown n
@@ -137,6 +141,8 @@ def fit_nGaussians (num, q, ws, hy, hx):
     guesses = np.array([q, ws, *h])
 
     errfunc = lambda pa, x, y: (nGaussians(x, num, *pa) - y)**2
+    # JUST RESIDUAL!
+    errfunc = lambda pa, x, y: (nGaussians(x, num, *pa) - y)
 
     # loss="soft_l1" is bad!
     return optimize.least_squares(errfunc, guesses, bounds = (0, np.inf), args=(hx, hy))
@@ -157,7 +163,9 @@ def globalErrFuncBW(pa, num, ws, nh, hx, hy):
         _hx = _hxr[:, i]
         _hxc = np.mean(np.vstack([_hx[0:-1], _hx[1:]]), axis=0)
         # pa[i+2] is the relevant Pr
-        _e_i = (nprGaussians(_hxc, num,  _q, ws, _scale, pa[i+2]) - _hyr[:, i])**2
+        #_e_i = (nprGaussians(_hxc, num,  _q, ws, _scale, pa[i+2]) - _hyr[:, i])**2
+        # just residual
+        _e_i = (nprGaussians(_hxc, num,  _q, ws, _scale, pa[i+2]) - _hyr[:, i])
         _errfunc_list.append(_e_i)
 
     return np.concatenate(_errfunc_list)     #FLAT -should work for unknown n
@@ -179,7 +187,9 @@ def globalErrFuncB(pa, num, nh, hx, hy):
         _hx = _hxr[:, i]
         _hxc = np.mean(np.vstack([_hx[0:-1], _hx[1:]]), axis=0)
         # pa[i+3] is the relevant Pr
-        _e_i = (nprGaussians(_hxc, num,  _q, _ws, _scale, pa[i+3]) - _hyr[:, i])**2
+        #_e_i = (nprGaussians(_hxc, num,  _q, _ws, _scale, pa[i+3]) - _hyr[:, i])**2
+        #JUST RESIDUAL
+        _e_i = (nprGaussians(_hxc, num,  _q, _ws, _scale, pa[i+3]) - _hyr[:, i])
         _errfunc_list.append(_e_i)
 
     return np.concatenate(_errfunc_list)     #FLAT -should work for unknown n
@@ -215,7 +225,9 @@ def fit_nprGaussians (num, q, ws, hy, hx):
     pr = 0.5            # release probability (will be bounded 0 to 1)
     guesses = np.array([_scale, pr])
     
-    errfunc = lambda pa, x, y: (nprGaussians(x, num, q, ws, *pa) - y)**2
+    #errfunc = lambda pa, x, y: (nprGaussians(x, num, q, ws, *pa) - y)**2
+    # just residual
+    errfunc = lambda pa, x, y: (nprGaussians(x, num, q, ws, *pa) - y)
     return optimize.least_squares(errfunc, guesses, bounds = ([0,0], [np.inf, 1]), args=(hx, hy))
 
 def PoissonGaussians_display (hx, num, q, ws, optix):
