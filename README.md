@@ -1,9 +1,8 @@
 # SAFT : Semi Automatic Fluorescent Trace analysis
 v. 0.5  2022-08-22
 
-SAFT was written in Python 3 for macOS. In principle it is cross-platform, in practice it was never launched on Windows or Linux. If you happen to get it working on either of these platforms, please let us know. 
-*** SAFT runs normally on M1 Mac, issue the following command to get packages up to date. 
-> conda env update --file SAFTenv.yml
+SAFT was written in Python 3 for macOS. In principle it is cross-platform, in practice it was never launched on Windows or Linux. If you happen to get it working on either of these platforms, please let us know. SAFT runs normally on M1 Macs. 
+
 
 ### Getting Started on macOS (for Python/UNIX beginners) 
 
@@ -83,11 +82,15 @@ If you happen to already have an environment named SAFT, you would need to remov
 
 >`conda env remove --name SAFT`
 
+SAFT runs normally on M1 Mac, if you have upgraded your machine since installing, issue the following command to get packages up to date: 
+
+> conda env update --file SAFTenv.yml
+
 **Very important** : Qt versions after 5.9 are not open source (breaking the conditions of our license), and coincidentally have serious bugs that break the GUI on macOS. 
 We need Qt for the high-performance scientific plotting library pyqtgraph: <http://www.pyqtgraph.org>.   
 PySide2 versions up to 5.15 seem to run happily with Qt 5.9.7 but it may be difficult to avoid a concurrent Qt update, unless you have a separate version of Qt compiled from open source and know how to point PySide2 at it. The latter solution is not stable. 
 
-### Dependencies *current as of 2020-11-12*
+### Dependencies *as of 2020-11-12*
 ---
 
 Python 3.7.9  
