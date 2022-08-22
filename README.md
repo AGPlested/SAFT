@@ -1,7 +1,9 @@
 # SAFT : Semi Automatic Fluorescent Trace analysis
-v. 0.4  2020-11-15
+v. 0.5  2022-08-22
 
 SAFT was written in Python 3 for macOS. In principle it is cross-platform, in practice it was never launched on Windows or Linux. If you happen to get it working on either of these platforms, please let us know. 
+*** SAFT runs normally on M1 Mac, issue the following command to get packages up to date. 
+> conda env update --file SAFTenv.yml
 
 ### Getting Started on macOS (for Python/UNIX beginners) 
 
