@@ -3,6 +3,12 @@ v. 0.5  2022-08-22
 
 SAFT was written in Python 3 for macOS. In principle it is cross-platform, in practice it was never launched on Windows or Linux. If you happen to get it working on either of these platforms, please let us know. SAFT runs normally on M1 Macs. 
 
+This software package is described in the following publication:
+Yuchen Hao, Estelle Toulmé, Benjamin König, Christian Rosenmund, Andrew J R Plested (2023) 
+Targeted sensors for glutamatergic neurotransmission 
+eLife 12:e84029
+https://doi.org/10.7554/eLife.84029
+
 
 ### Getting Started on macOS (for Python/UNIX beginners) 
 
