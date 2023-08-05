@@ -171,7 +171,7 @@ close("Peaks in Plot of Results");
 roiManager("select", Roicount);
 rName= Roi.getName();
 selectWindow("Plot of Results");
-Plot.freeze();
+Plot.freeze(true);
 rename(rName);
 Roicount=Roicount+1;
 xRoi=xRoi+SizeofRoi;
