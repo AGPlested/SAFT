@@ -152,8 +152,12 @@ IJ.renameResults("Plot Values", "Results");
 MinimumNrPeaks=ExpectedPeaks/3;
 Test=0;
 Test=getResult("Y1", MinimumNrPeaks);
+
+// AP 230808 changed to provide no 2nd argument in getResult below (gives last value in column)
+// 2nd argument was, somewhat inexplicably, '50' before.
+
 Test2=0;
-Test2=getResult("Y1",50);
+Test2=getResult("Y1");
 if(isNaN(Test)){
 	roiManager("select", Roicount);
 roiManager("delete");
